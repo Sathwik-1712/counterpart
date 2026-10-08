@@ -1,42 +1,49 @@
 @import "tailwindcss";
 
 /* Counterpart design tokens.
-   Design read: a mobile-first work tool for a busy café owner; calm, trustworthy, the posts are the hero.
-   Neutral stone greys, ONE accent (banana-leaf green, "verified / go"). Turmeric and kumkum are status colours
-   only ("needs you", "blocked"), never decoration.
-   Shape rule: surfaces 16px, inputs 12px, buttons and chips full pill. */
+   Design read: a mobile-first product app for an independent café owner, demoed to judges. Premium consumer,
+   "Forest" family: green-tinted bone paper, green-black ink, deep forest surfaces for the few hero moments, and
+   ONE accent (banana-leaf green, "verified / go"). Turmeric and kumkum are status colours only, never decoration.
+   Real food photography (the generated post pictures) carries the visual weight.
+   Shape rule: surfaces 22px (bezel shells 28px), inputs 14px, buttons and chips full pill. */
 @theme {
-  --color-paper: #f4f4f3;
+  --color-paper: #eff1ec;
   --color-surface: #ffffff;
-  --color-sunken: #ececea;
-  --color-ink: #18181b;
-  --color-ink-2: #3f3f46;
-  --color-muted: #71717a;
-  --color-line: #e4e4e7;
-  --color-line-strong: #d4d4d8;
+  --color-sunken: #e6e9e3;
+  --color-ink: #0f1712;
+  --color-ink-2: #39443d;
+  --color-muted: #66706a;
+  --color-line: #dfe3dc;
+  --color-line-strong: #c9cfc7;
 
+  --color-forest: #0e2a1c;
+  --color-forest-2: #163a28;
   --color-leaf: #1f6f43;
   --color-leaf-ink: #154d2f;
-  --color-leaf-soft: #e3f1e8;
-  --color-turmeric: #a15c07;
-  --color-turmeric-soft: #fdf1d8;
+  --color-leaf-soft: #dcefe2;
+  --color-mint: #9fdcb5;
+  --color-turmeric: #9a5806;
+  --color-turmeric-soft: #fbefd3;
   --color-kumkum: #b42318;
   --color-kumkum-soft: #fde8e6;
-  --color-receipt: #fcfcfb;
+  --color-receipt: #fcfcfa;
 
   --font-sans: var(--font-geist), var(--font-kannada), var(--font-devanagari), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-geist), var(--font-kannada), var(--font-devanagari), ui-sans-serif, sans-serif;
   --font-receipt: var(--font-geist-mono), ui-monospace, monospace;
 
   --text-2xs: 0.6875rem;
-  --radius-sm: 6px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 22px;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-xl: 28px;
 
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
-  --shadow-soft: 0 1px 2px rgb(24 24 27 / 0.04), 0 8px 24px -12px rgb(24 24 27 / 0.12);
-  --shadow-lift: 0 2px 4px rgb(24 24 27 / 0.05), 0 18px 40px -18px rgb(24 24 27 / 0.22);
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+  /* Shadows are tinted with the forest hue, never pure black. */
+  --shadow-soft: 0 1px 2px rgb(14 42 28 / 0.05), 0 10px 30px -14px rgb(14 42 28 / 0.18);
+  --shadow-lift: 0 2px 6px rgb(14 42 28 / 0.06), 0 24px 50px -20px rgb(14 42 28 / 0.32);
+  --shadow-float: 0 30px 60px -24px rgb(14 42 28 / 0.45), 0 8px 18px -8px rgb(14 42 28 / 0.2);
 }
 
 @layer base {
@@ -55,8 +62,8 @@
   h1, h2, h3 {
     font-family: var(--font-display);
     font-weight: 600;
-    letter-spacing: -0.025em;
-    line-height: 1.12;
+    letter-spacing: -0.03em;
+    line-height: 1.08;
     text-wrap: balance;
   }
   p {
@@ -65,7 +72,7 @@
   :focus-visible {
     outline: 2px solid var(--color-leaf);
     outline-offset: 2px;
-    border-radius: 6px;
+    border-radius: 8px;
   }
   ::selection {
     background: var(--color-leaf-soft);
@@ -75,13 +82,43 @@
   }
 }
 
+/* Fixed paper grain: one pointer-events-none layer, never on scrolling containers. */
+.grain::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Deep forest hero surface with a soft light from the top left. */
+.forest {
+  background:
+    radial-gradient(90% 120% at 0% 0%, rgb(159 220 181 / 0.16) 0%, transparent 55%),
+    radial-gradient(70% 90% at 100% 100%, rgb(31 111 67 / 0.45) 0%, transparent 60%),
+    var(--color-forest);
+  color: #fff;
+}
+
 /* Press feedback for anything clickable that opts in. */
 .press {
-  transition: transform 160ms var(--ease-out-soft), background-color 200ms var(--ease-out-soft),
-    border-color 200ms var(--ease-out-soft), color 200ms var(--ease-out-soft), box-shadow 200ms var(--ease-out-soft);
+  transition: transform 220ms var(--ease-spring), background-color 220ms var(--ease-out-soft),
+    border-color 220ms var(--ease-out-soft), color 220ms var(--ease-out-soft), box-shadow 260ms var(--ease-out-soft),
+    opacity 220ms var(--ease-out-soft);
 }
 .press:active:not(:disabled) {
   transform: scale(0.97);
+}
+
+/* Cards that lift on hover. */
+.lift {
+  transition: transform 420ms var(--ease-spring), box-shadow 420ms var(--ease-spring);
+}
+.lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lift);
 }
 
 /* The receipt roll: torn top edge drawn with a repeating gradient. */
@@ -92,6 +129,25 @@
     linear-gradient(45deg, transparent 5px, var(--color-receipt) 0) 0 0 / 10px 8px repeat-x;
 }
 
+/* Coupon perforation between the two halves of a ticket. */
+.perforation {
+  position: relative;
+  height: 0;
+  border-top: 2px dashed var(--color-line-strong);
+}
+.perforation::before,
+.perforation::after {
+  content: "";
+  position: absolute;
+  top: -12px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--color-paper);
+}
+.perforation::before { left: -12px; }
+.perforation::after { right: -12px; }
+
 @keyframes print-in {
   from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: none; }
@@ -100,12 +156,30 @@
   animation: print-in 260ms var(--ease-out-soft) both;
 }
 
+/* Entry: a heavy fade-up. Stagger with style={{ "--i": n }}. */
 @keyframes rise-in {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: none; }
+  from { opacity: 0; transform: translateY(14px); filter: blur(4px); }
+  to { opacity: 1; transform: none; filter: none; }
 }
 .rise-in {
-  animation: rise-in 420ms var(--ease-out-soft) both;
+  animation: rise-in 700ms var(--ease-spring) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+@keyframes fan-in {
+  from { opacity: 0; transform: translateY(30px) rotate(0deg) scale(0.96); }
+}
+.fan-in {
+  animation: fan-in 900ms var(--ease-spring) both;
+  animation-delay: calc(var(--i, 0) * 110ms + 150ms);
+}
+
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(159 220 181 / 0.7); }
+  50% { box-shadow: 0 0 0 5px rgb(159 220 181 / 0); }
+}
+.pulse-dot {
+  animation: pulse-dot 1.6s var(--ease-out-soft) infinite;
 }
 
 @keyframes shimmer {
@@ -114,11 +188,27 @@
 }
 .skeleton {
   border-radius: var(--radius-md);
-  background: linear-gradient(90deg, var(--color-sunken) 25%, #f6f6f5 50%, var(--color-sunken) 75%) 0 0 / 200% 100%;
+  background: linear-gradient(90deg, var(--color-sunken) 25%, #f5f6f3 50%, var(--color-sunken) 75%) 0 0 / 200% 100%;
   animation: shimmer 1.4s linear infinite;
 }
 
+@keyframes pop {
+  0% { transform: scale(0.92); opacity: 0; }
+  60% { transform: scale(1.02); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.pop {
+  animation: pop 520ms var(--ease-spring) both;
+}
+
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
 @media (prefers-reduced-motion: reduce) {
-  .print-in, .rise-in, .skeleton { animation: none; }
+  .print-in, .rise-in, .fan-in, .skeleton, .pulse-dot, .pop { animation: none; }
   .press:active:not(:disabled) { transform: none; }
+  .lift:hover { transform: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .backdrop-blur-xl, .backdrop-blur-md { backdrop-filter: none; }
 }

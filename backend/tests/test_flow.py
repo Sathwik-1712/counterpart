@@ -144,6 +144,7 @@ async def test_full_campaign_flow(client, scripted):
     r = await client.post(f"/api/campaigns/{cid}/publish", json={"asset_ids": [good["asset_id"]]})
     assert r.status_code == 200, r.text
     code = r.json()["published"][0]["code"]
+    assert (await client.get(f"/api/campaigns/{cid}")).json()["campaign"]["status"] == "active"
 
     # --- a customer scans and claims; staff redeem at the counter
     r = await client.post(f"/api/public/r/{code}/visit")

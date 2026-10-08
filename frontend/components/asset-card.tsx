@@ -1,12 +1,14 @@
 "use client";
 
-import { CaretDown, Check, DownloadSimple, PencilSimple, SealCheck, ShareNetwork, WarningOctagon, X } from "@phosphor-icons/react";
+import { CaretDown, Check, DeviceMobile, DownloadSimple, InstagramLogo, PencilSimple, SealCheck, ShareNetwork, Storefront, WarningOctagon, WhatsappLogo, X } from "@phosphor-icons/react";
 import clsx from "clsx";
 import { useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { Asset, Fact, Validation } from "@/lib/types";
 import { ChannelPreview } from "./previews";
-import { Button, Card, CHANNEL_LABEL, LANG_LABEL, segmentLabel, StatusPill } from "./ui";
+import { Button, CHANNEL_LABEL, LANG_LABEL, segmentLabel, stagger, StatusPill } from "./ui";
+
+const CHANNEL_ICON = { instagram_post: InstagramLogo, instagram_story: DeviceMobile, poster: Storefront, whatsapp: WhatsappLogo } as const;
 
 /** Owner edits plain text. Exact approved wording becomes a fact slot again;
  *  anything else (e.g. a different discount) stays literal and the guard blocks it. */
@@ -42,7 +44,7 @@ function GuardSummary({ v }: { v: Validation | null }) {
         <CaretDown size={14} className={clsx("mt-1 shrink-0 text-muted transition-transform", open && "rotate-180")} aria-hidden />
       </button>
       {open && (
-        <div className="mt-3 space-y-1.5 rounded-[var(--radius-md)] bg-sunken/60 p-3">
+        <div className="mt-3 space-y-1.5 rounded-[var(--radius-md)] bg-sunken/70 p-3.5">
           {v.checks.map((c, i) => (
             <p key={i} className={clsx("flex gap-2", c.passed ? "text-ink-2" : c.severity === "block" ? "text-kumkum" : "text-turmeric")}>
               {c.passed ? <Check size={14} className="mt-1 shrink-0 text-leaf" aria-hidden /> : <X size={14} className="mt-1 shrink-0" aria-hidden />}
@@ -68,7 +70,7 @@ async function renderPng(node: HTMLElement) {
   return blob;
 }
 
-export function AssetCard({ asset, facts, business, onChange }: { asset: Asset; facts: Fact[]; business: string; onChange: () => void }) {
+export function AssetCard({ asset, facts, business, onChange, i = 0 }: { asset: Asset; facts: Fact[]; business: string; onChange: () => void; i?: number }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({ headline: "", body: "" });
   const [busy, setBusy] = useState<string | null>(null);
@@ -142,67 +144,75 @@ export function AssetCard({ asset, facts, business, onChange }: { asset: Asset; 
     if (ok) setEditing(false);
   }
 
-  const picture = asset.channel !== "whatsapp";
+  const ChannelIcon = CHANNEL_ICON[asset.channel];
 
   return (
-    <Card as="article" className={clsx("rise-in flex flex-col overflow-hidden", asset.status === "invalid" && "ring-kumkum/40", asset.status === "stale" && "ring-turmeric/50")}>
-      <div className="flex items-start gap-3 px-4 pb-3 pt-4">
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">
-            {CHANNEL_LABEL[asset.channel]} <span className="font-normal text-muted">· {LANG_LABEL[asset.language]}</span>
+    <article
+      className={clsx(
+        "rise-in flex flex-col rounded-[var(--radius-xl)] bg-surface p-2 shadow-[var(--shadow-soft)] ring-1",
+        asset.status === "invalid" ? "ring-kumkum/40" : asset.status === "stale" ? "ring-turmeric/50" : "ring-line/80",
+      )}
+      style={stagger(i)}
+    >
+      <div className="flex items-center gap-3 px-3 pb-3 pt-2">
+        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sunken text-ink">
+          <ChannelIcon size={18} aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1 leading-tight">
+          <p className="truncate text-[14px] font-semibold">
+            {CHANNEL_LABEL[asset.channel]} <span className="font-normal text-muted">in {LANG_LABEL[asset.language]}</span>
           </p>
           <p className="truncate text-xs text-muted">
             For {segmentLabel(asset.segment).toLowerCase()}
-            {asset.variant && ` · variant ${asset.variant}`}
+            {asset.variant && `, variant ${asset.variant}`}
           </p>
         </div>
         <StatusPill status={asset.status} />
       </div>
 
-      <div className="px-4">
-        {editing ? (
-          <div className="space-y-3 rounded-[var(--radius-md)] bg-sunken/50 p-3">
-            {(["headline", "body"] as const).map((f) => (
-              <label key={f} className="block">
-                <span className="text-xs font-medium text-ink-2">{f === "headline" ? "Headline" : "Message"}</span>
-                <textarea
-                  value={draft[f]}
-                  onChange={(e) => setDraft({ ...draft, [f]: e.target.value })}
-                  rows={f === "body" ? 3 : 2}
-                  className="mt-1 w-full resize-y rounded-[var(--radius-md)] bg-surface px-3 py-2 text-[14px] text-ink shadow-[inset_0_0_0_1px_var(--color-line-strong)] outline-none focus:shadow-[inset_0_0_0_1.5px_var(--color-ink-2)]"
-                />
-              </label>
-            ))}
-            <p className="text-xs text-muted">The offer box and “show this at the counter” are added from the locked facts. To change the offer, tell Counterpart.</p>
-          </div>
-        ) : (
-          <div ref={postRef} className={clsx("overflow-hidden", picture ? "rounded-[var(--radius-md)]" : "rounded-[var(--radius-md)]")}>
-            <ChannelPreview asset={asset} business={business} />
-          </div>
-        )}
-      </div>
+      {editing ? (
+        <div className="space-y-3 rounded-[20px] bg-sunken/70 p-4">
+          {(["headline", "body"] as const).map((f) => (
+            <label key={f} className="block">
+              <span className="text-xs font-medium text-ink-2">{f === "headline" ? "Headline" : "Message"}</span>
+              <textarea
+                value={draft[f]}
+                onChange={(e) => setDraft({ ...draft, [f]: e.target.value })}
+                rows={f === "body" ? 4 : 2}
+                lang={asset.language}
+                className="mt-1.5 w-full resize-y rounded-[var(--radius-md)] bg-surface px-3.5 py-2.5 text-[15px] text-ink shadow-[inset_0_0_0_1px_var(--color-line-strong)] outline-none focus:shadow-[inset_0_0_0_2px_var(--color-leaf)]"
+              />
+            </label>
+          ))}
+          <p className="text-xs text-muted">The offer box and “show this at the counter” come from the locked offer. To change the offer, tell Counterpart.</p>
+        </div>
+      ) : (
+        <div ref={postRef} className="overflow-hidden rounded-[20px] ring-1 ring-black/5" lang={asset.language}>
+          <ChannelPreview asset={asset} business={business} />
+        </div>
+      )}
 
-      <div className="mt-auto space-y-3 px-4 pb-4 pt-4">
+      <div className="mt-auto space-y-3 px-3 pb-2 pt-4">
         {!editing && <GuardSummary v={v} />}
         {code && (
-          <p className="text-xs text-ink-2">
-            Tracking code <span className="font-receipt text-ink">{code}</span>
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+            <span className="rounded-full bg-sunken px-2.5 py-1 font-receipt text-[12px] tracking-wider text-ink">{code}</span>
             {asset.outcomes && (
-              <span className="text-muted">
-                {" "}
-                · {asset.outcomes.scan ?? 0} scans · {asset.outcomes.redeem ?? 0} redeemed
+              <span className="tabular-nums">
+                {asset.outcomes.scan ?? 0} scans, {asset.outcomes.redeem ?? 0} redeemed
               </span>
             )}
           </p>
         )}
         {error && <p className="text-sm text-kumkum">{error}</p>}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-line pt-3">
           {editing ? (
             <>
               <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
                 Cancel
               </Button>
-              <Button size="sm" variant="primary" onClick={saveEdit} disabled={busy !== null}>
+              <span className="flex-1" />
+              <Button size="sm" variant="accent" onClick={saveEdit} disabled={busy !== null}>
                 {busy === "save" ? "Checking…" : "Save and check"}
               </Button>
             </>
@@ -211,10 +221,11 @@ export function AssetCard({ asset, facts, business, onChange }: { asset: Asset; 
               {asset.status === "valid" && (
                 <Button
                   size="sm"
-                  variant="primary"
+                  variant="accent"
                   onClick={() => act("publish", () => api(`/campaigns/${asset.campaign_id}/publish`, { method: "POST", json: { asset_ids: [asset.id] } }))}
                   disabled={busy !== null}
                 >
+                  <Check size={14} weight="bold" aria-hidden />
                   {busy === "publish" ? "Publishing…" : "Approve and publish"}
                 </Button>
               )}
@@ -228,7 +239,7 @@ export function AssetCard({ asset, facts, business, onChange }: { asset: Asset; 
                 <DownloadSimple size={15} aria-hidden /> {busy === "download" ? "Saving…" : "Download"}
               </Button>
               {asset.status === "live" && (
-                <Button size="sm" variant="secondary" onClick={share} disabled={busy !== null}>
+                <Button size="sm" variant="primary" onClick={share} disabled={busy !== null}>
                   <ShareNetwork size={15} aria-hidden /> {busy === "share" ? "Preparing…" : "Share"}
                 </Button>
               )}
@@ -236,6 +247,6 @@ export function AssetCard({ asset, facts, business, onChange }: { asset: Asset; 
           )}
         </div>
       </div>
-    </Card>
+    </article>
   );
 }

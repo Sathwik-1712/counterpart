@@ -33,7 +33,7 @@ PATH: `export PATH=~/.local/opt/node/bin:~/.local/bin:$PATH`
 - Frontend: `cd frontend && npm run dev`; `npm run typecheck`; `npm run build`
 
 ## Design system (frontend)
-Tokens in `frontend/app/globals.css`: neutral stone greys, ONE accent leaf green; turmeric/kumkum are status only. Fonts: Geist (+ Geist Mono for the receipt), Noto Sans Kannada/Devanagari. Icons: Phosphor only. Shape rule: surfaces 16px, inputs 12px, buttons/chips pill. Posts are the hero; the receipt-roll work log is the one bold element. Design skills: `.claude/skills/redesign-existing-projects`, `design-taste-frontend`.
+Tokens in `frontend/app/globals.css`. "Forest" family: green-tinted bone paper, green-black ink, deep forest (`.forest`) only for hero moments (Today hero, campaign "current step", Counter terminal, brand voice, offer box on the QR page), ONE accent leaf green; turmeric/kumkum are status only. Shadows tinted forest, never black. Fonts: Geist (+ Geist Mono for codes and the receipt), Noto Sans Kannada/Devanagari; set `lang` on any element showing customer copy. Icons: Phosphor only. Shape rule: surfaces 22px, bezel shells 28px, inputs 14px, buttons/chips pill. Motion is CSS only (`.rise-in` with `stagger(i)`, `.fan-in`, `.lift`, `.pop`), all disabled under reduced motion. Real post pictures are the visual hero (Today post fan, campaign covers from `cover_url`). No em/en dashes in UI copy. Design skills: `.claude/skills/redesign-existing-projects`, `design-taste-frontend`, `high-end-visual-design`.
 
 ## Models (2026-10-09)
 - Gemini (OpenAI-compatible endpoint, `GEMINI_API_KEY`) is the default text provider; each id in `GEMINI_MODELS` is a provider name used in `ROLE_*` chains. Writer and checker start on different models. Agnes = images + last fallback.

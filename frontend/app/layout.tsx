@@ -13,12 +13,12 @@ export const metadata: Metadata = {
   icons: { icon: "/icon.svg" },
 };
 
-export const viewport: Viewport = { themeColor: "#f4f4f3" };
+export const viewport: Viewport = { themeColor: "#eff1ec" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${geist.variable} ${geistMono.variable} ${kannada.variable} ${devanagari.variable}`}>
-      <body>{children}</body>
+      <body className="grain">{children}</body>
     </html>
   );
 }

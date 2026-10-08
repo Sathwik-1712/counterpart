@@ -32,9 +32,18 @@ async def get_business(slug: str) -> dict[str, Any]:
             """select c.id, c.name, c.status, c.starts_on, c.ends_on, c.is_historical, c.created_at,
                       (select count(*) from assets a where a.campaign_id = c.id)::int as assets,
                       (select coalesce(sum(qty), 0) from outcome_events o
-                        where o.campaign_id = c.id and o.type = 'redeem')::int as redemptions
+                        where o.campaign_id = c.id and o.type = 'redeem')::int as redemptions,
+                      (select count(*) from assets a where a.campaign_id = c.id and a.status = 'live')::int as live,
+                      (select r.image_key from assets a join asset_revisions r
+                         on r.asset_id = a.id and r.n = a.current_revision
+                        where a.campaign_id = c.id and r.image_key is not null and a.status <> 'rejected'
+                        order by (a.channel = 'instagram_post') desc, a.created_at limit 1) as cover_key
                from campaigns c where c.business_id = %s order by c.created_at desc""",
             (b["id"],))
+        storage = get_storage()
+        for c in campaigns:
+            key = c.pop("cover_key")
+            c["cover_url"] = storage.url(key) if key else None
         inbox = await fetch_all(
             conn, """select * from inbox_items where business_id = %s and status = 'pending'
                      order by priority, created_at desc""", (b["id"],))

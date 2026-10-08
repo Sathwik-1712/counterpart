@@ -3,7 +3,7 @@
 import clsx from "clsx";
 import type { ExperimentStatus } from "@/lib/types";
 
-const pct = (x: number | undefined, digits = 0) => (x === undefined ? "–" : `${(x * 100).toFixed(digits)}%`);
+const pct = (x: number | undefined, digits = 0) => (x === undefined ? "-" : `${(x * 100).toFixed(digits)}%`);
 
 /** Posterior conversion per arm: dot = mean, line = 90% credible interval.
  *  One row per arm, labelled directly; the leader is highlighted, the rest stay grey. */
@@ -16,9 +16,9 @@ export function ExperimentPanel({ exp }: { exp: ExperimentStatus }) {
   const x = (v: number | undefined) => `${((v ?? 0) / scaleMax) * 100}%`;
 
   return (
-    <section className="rounded-lg border border-line bg-surface p-5" aria-label={`Experiment: ${exp.experiment.hypothesis}`}>
+    <section className="rounded-[var(--radius-lg)] bg-surface p-6 shadow-[var(--shadow-soft)] ring-1 ring-line/80" aria-label={`Experiment: ${exp.experiment.hypothesis}`}>
       <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h3 className="text-[15px]">{exp.experiment.hypothesis}</h3>
+        <h3 className="text-[17px] tracking-tight">{exp.experiment.hypothesis}</h3>
         <span className="text-xs text-muted">
           {exp.experiment.success_type} per {exp.experiment.trial_type}, prior from {exp.prior.from_campaign_assets} past pieces
         </span>

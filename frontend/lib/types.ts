@@ -61,6 +61,8 @@ export interface CampaignSummary {
   created_at: string;
   assets: number;
   redemptions: number;
+  live: number;
+  cover_url: string | null;
 }
 
 export interface Overview {

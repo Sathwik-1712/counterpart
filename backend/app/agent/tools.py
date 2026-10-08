@@ -566,6 +566,9 @@ async def publish_assets(ctx: ToolContext, a: PublishArgs) -> dict[str, Any]:
             tp = await services.issue_touchpoint(conn, asset)
             await conn.execute("update assets set status = 'live', updated_at = now() where id = %s", (aid,))
             out.append({"asset_id": aid, "code": tp["code"]})
+        # The first live piece starts the campaign.
+        await conn.execute(
+            "update campaigns set status = 'active' where id = %s and status in ('draft', 'planned')", (ctx.campaign_id,))
         await ledger.record(conn, ctx.business["id"], "assets.published", f"{len(out)} asset(s) went live",
                             actor=ctx.actor, campaign_id=ctx.campaign_id, payload={"assets": out})
     return {"published": out}

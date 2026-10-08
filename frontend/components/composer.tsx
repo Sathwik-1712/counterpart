@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Microphone, Stop } from "@phosphor-icons/react";
+import { ArrowUpRight, Microphone, Sparkle, Stop } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "./ui";
 
@@ -33,10 +33,17 @@ export function Composer({
   placeholder,
   submitLabel,
   onSubmit,
+  suggestions = [],
+  rows = 3,
+  className,
 }: {
   placeholder: string;
   submitLabel: string;
   onSubmit: (text: string) => Promise<void>;
+  /** Ready-made briefs the owner can tap to fill the box. */
+  suggestions?: string[];
+  rows?: number;
+  className?: string;
 }) {
   const [text, setText] = useState("");
   const [lang, setLang] = useState("en-IN");
@@ -94,51 +101,68 @@ export function Composer({
   }
 
   return (
-    <div className="rounded-[var(--radius-lg)] bg-surface p-3.5 shadow-[var(--shadow-soft)] ring-1 ring-line/70 transition-shadow focus-within:ring-ink-2/60">
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === "Enter" && submit()}
-        rows={3}
-        placeholder={listening ? "Listening…" : placeholder}
-        className="w-full resize-none bg-transparent text-[15px] outline-none placeholder:text-muted"
-        aria-label={placeholder}
-      />
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        {supported && (
-          <>
-            <button
-              type="button"
-              onClick={toggleMic}
-              aria-pressed={listening}
-              className={clsx(
-                "press inline-flex h-8 items-center gap-2 rounded-full px-3.5 text-[13px] font-medium",
-                listening ? "bg-kumkum text-white" : "bg-sunken text-ink hover:bg-line",
-              )}
-            >
-              {listening ? <Stop size={14} aria-hidden /> : <Microphone size={15} aria-hidden />}
-              {listening ? "Stop" : "Speak"}
-            </button>
-            <select
-              value={lang}
-              onChange={(e) => setLang(e.target.value)}
-              disabled={listening}
-              className="h-8 rounded-full bg-sunken px-3 text-[13px] text-ink-2 outline-none"
-              aria-label="Spoken language"
-            >
-              {LANGS.map((l) => (
-                <option key={l.code} value={l.code}>
-                  {l.label}
-                </option>
-              ))}
-            </select>
-          </>
-        )}
-        <span className="flex-1 text-xs text-muted">{note ?? (supported ? "" : "Type here. Voice needs Chrome, Edge or Safari.")}</span>
-        <Button variant="primary" size="sm" onClick={submit} disabled={busy || !text.trim()}>
-          {busy ? "Sending…" : submitLabel}
-        </Button>
+    <div className={className}>
+      <div className="rounded-[var(--radius-lg)] bg-surface p-4 shadow-[var(--shadow-soft)] ring-1 ring-ink/[0.08] transition-shadow duration-300 focus-within:shadow-[var(--shadow-lift)] focus-within:ring-leaf/50">
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === "Enter" && submit()}
+          rows={rows}
+          placeholder={listening ? "Listening…" : placeholder}
+          className="w-full resize-none bg-transparent text-[16px] leading-relaxed text-ink outline-none placeholder:text-muted"
+          aria-label={placeholder}
+        />
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {supported && (
+            <>
+              <button
+                type="button"
+                onClick={toggleMic}
+                aria-pressed={listening}
+                className={clsx(
+                  "press inline-flex h-9 items-center gap-2 rounded-full px-3.5 text-[13px] font-medium",
+                  listening ? "bg-kumkum text-white" : "bg-sunken text-ink hover:bg-line",
+                )}
+              >
+                {listening ? <Stop size={14} aria-hidden /> : <Microphone size={15} aria-hidden />}
+                {listening ? "Stop" : "Speak"}
+              </button>
+              <select
+                value={lang}
+                onChange={(e) => setLang(e.target.value)}
+                disabled={listening}
+                className="h-9 rounded-full bg-sunken px-3 text-[13px] text-ink-2 outline-none"
+                aria-label="Spoken language"
+              >
+                {LANGS.map((l) => (
+                  <option key={l.code} value={l.code}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+          <span className="min-w-0 flex-1 text-xs text-muted">{note ?? (supported ? "" : "Type here. Voice needs Chrome, Edge or Safari.")}</span>
+          <Button variant="primary" onClick={submit} disabled={busy || !text.trim()} trailing={<ArrowUpRight size={14} weight="bold" />}>
+            {busy ? "Sending…" : submitLabel}
+          </Button>
+        </div>
       </div>
+      {suggestions.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {suggestions.map((sug) => (
+            <button
+              key={sug}
+              type="button"
+              onClick={() => setText(sug)}
+              className="press inline-flex max-w-full items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-[13px] text-current ring-1 ring-current/15 hover:bg-white/20"
+            >
+              <Sparkle size={13} weight="fill" className="shrink-0 opacity-70" aria-hidden />
+              <span className="truncate">{sug}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,47 +1,14 @@
 "use client";
 
+import { ArrowUpRight, ClockCounterClockwise } from "@phosphor-icons/react";
 import Link from "next/link";
+import { CampaignCard } from "@/components/campaign-card";
 import { Shell } from "@/components/shell";
-import { SectionHeading, StatusPill } from "@/components/ui";
+import { Empty, PageHeader, SectionHeading, Skeleton, stagger, StatusPill } from "@/components/ui";
 import { BUSINESS, useResource } from "@/lib/api";
-import type { CampaignSummary, Overview } from "@/lib/types";
+import type { Overview } from "@/lib/types";
 
-function Table({ rows }: { rows: CampaignSummary[] }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[560px] text-sm">
-        <thead>
-          <tr className="border-b border-line text-left text-xs text-muted">
-            <th className="py-2 pr-4 font-medium">Campaign</th>
-            <th className="py-2 pr-4 font-medium">When</th>
-            <th className="py-2 pr-4 text-right font-medium">Pieces</th>
-            <th className="py-2 pr-4 text-right font-medium">Claimed</th>
-            <th className="py-2 font-medium">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((c) => (
-            <tr key={c.id} className="border-b border-line">
-              <td className="py-2.5 pr-4">
-                <Link href={`/campaigns/${c.id}`} className="font-medium hover:underline">
-                  {c.name}
-                </Link>
-              </td>
-              <td className="py-2.5 pr-4 text-ink-2">
-                {c.starts_on ? new Date(c.starts_on).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Not scheduled"}
-              </td>
-              <td className="py-2.5 pr-4 text-right tabular-nums">{c.assets}</td>
-              <td className="py-2.5 pr-4 text-right tabular-nums">{c.redemptions}</td>
-              <td className="py-2.5">
-                <StatusPill status={c.status} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
+const when = (d: string | null) => (d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Not scheduled");
 
 export default function Campaigns() {
   const { data } = useResource<Overview>(`/businesses/${BUSINESS}`);
@@ -49,14 +16,60 @@ export default function Campaigns() {
   const past = data?.campaigns.filter((c) => c.is_historical) ?? [];
   return (
     <Shell>
-      <h1 className="mb-6 text-[26px]">Campaigns</h1>
-      <section className="mb-10">
-        <SectionHeading title="This season" />
-        {current.length ? <Table rows={current} /> : <p className="text-sm text-muted">Start one from Today.</p>}
+      <PageHeader title="Campaigns" sub="Everything Counterpart is running for you, and what earlier campaigns taught it." />
+
+      <section className="mb-16" aria-labelledby="now-h">
+        <SectionHeading id="now-h" title="This season" />
+        {!data ? (
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            <Skeleton className="h-72" />
+            <Skeleton className="h-72" />
+          </div>
+        ) : current.length ? (
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {current.map((c, i) => (
+              <CampaignCard key={c.id} c={c} i={i} />
+            ))}
+          </div>
+        ) : (
+          <Empty>Start one from Today.</Empty>
+        )}
       </section>
-      <section>
-        <SectionHeading title="Past campaigns" aside={<span className="text-xs text-muted">Imported history, synthetic demo data</span>} />
-        <Table rows={past} />
+
+      <section aria-labelledby="past-h">
+        <SectionHeading id="past-h" title="Past campaigns" sub="Imported history, synthetic demo data. Counterpart learns from these." />
+        <div className="grid gap-3 md:grid-cols-2">
+          {past.map((c, i) => (
+            <Link
+              key={c.id}
+              href={`/campaigns/${c.id}`}
+              className="rise-in lift group flex items-center gap-4 rounded-[var(--radius-lg)] bg-surface p-5 shadow-[var(--shadow-soft)] ring-1 ring-line/80"
+              style={stagger(i)}
+            >
+              <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-sunken text-ink-2">
+                <ClockCounterClockwise size={20} aria-hidden />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[15px] font-semibold tracking-tight">{c.name}</p>
+                <p className="text-xs text-muted">{when(c.starts_on)}</p>
+              </div>
+              <dl className="flex gap-5 text-right">
+                <div>
+                  <dd className="text-[18px] font-semibold leading-none tabular-nums">{c.assets}</dd>
+                  <dt className="mt-1 text-[11px] text-muted">Pieces</dt>
+                </div>
+                <div>
+                  <dd className="text-[18px] font-semibold leading-none tabular-nums text-leaf">{c.redemptions}</dd>
+                  <dt className="mt-1 text-[11px] text-muted">Redeemed</dt>
+                </div>
+              </dl>
+              <span className="hidden sm:block">
+                <StatusPill status={c.status} />
+              </span>
+              <ArrowUpRight size={16} className="shrink-0 text-muted transition-transform duration-300 group-hover:translate-x-0.5 group-hover:text-ink" aria-hidden />
+            </Link>
+          ))}
+        </div>
       </section>
     </Shell>
   );

@@ -33,7 +33,12 @@ PATH: `export PATH=~/.local/opt/node/bin:~/.local/bin:$PATH`
 - Frontend: `cd frontend && npm run dev`; `npm run typecheck`; `npm run build`
 
 ## Design system (frontend)
-Tokens in `frontend/app/globals.css`: paper `#f2f3ef`, ink `#201a16`, leaf (verified/primary), turmeric (needs owner), kumkum (blocked). Fonts: Bricolage Grotesque (headings), Hanken Grotesk (UI), IBM Plex Mono (receipt log only), Noto Sans Kannada/Devanagari. The receipt-roll activity log is the one bold element; keep everything else quiet (hairlines, few cards, no gradients, sentence case, no all-caps labels outside the receipt).
+Tokens in `frontend/app/globals.css`: neutral stone greys, ONE accent leaf green; turmeric/kumkum are status only. Fonts: Geist (+ Geist Mono for the receipt), Noto Sans Kannada/Devanagari. Icons: Phosphor only. Shape rule: surfaces 16px, inputs 12px, buttons/chips pill. Posts are the hero; the receipt-roll work log is the one bold element. Design skills: `.claude/skills/redesign-existing-projects`, `design-taste-frontend`.
+
+## Models (2026-10-09)
+- Gemini (OpenAI-compatible endpoint, `GEMINI_API_KEY`) is the default text provider; each id in `GEMINI_MODELS` is a provider name used in `ROLE_*` chains. Writer and checker start on different models. Agnes = images + last fallback.
+- Gemini free tier: ~20 requests/day PER MODEL, no image quota, Pro models 0. 503 "high demand" is common; 503 and quota 429 fail over immediately (`openai_compat._raise_for`). Gemini 3 needs thought signatures echoed back: runtime re-sends the raw assistant message.
+- Posts = model headline + body only; the offer box (`rendered.offer`, required facts' locked wording) and CTA (`CTA_TEXT`) are system-rendered. PNG export happens in the browser (html-to-image) because server Pillow lacks raqm for Kannada shaping.
 
 ## Agnes behaviour seen live (2026-10-09)
 - Sends object/array tool arguments as JSON strings (runtime decodes on validation failure).

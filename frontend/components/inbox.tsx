@@ -12,9 +12,9 @@ const EFFECT: Record<string, string> = {
 };
 
 export function InboxList({ items, onChange, showCampaignLink = true }: { items: InboxItem[]; onChange?: () => void; showCampaignLink?: boolean }) {
-  if (!items.length) return <Empty>Nothing needs you right now.</Empty>;
+  if (!items.length) return <Empty>Nothing needs you right now. Counterpart will ask before anything reaches customers.</Empty>;
   return (
-    <ul className="divide-y divide-line rounded-lg border border-line bg-surface">
+    <ul className="space-y-3">
       {items.map((i) => (
         <InboxRow key={i.id} item={i} onChange={onChange} showCampaignLink={showCampaignLink} />
       ))}
@@ -41,13 +41,13 @@ function InboxRow({ item, onChange, showCampaignLink }: { item: InboxItem; onCha
   }
 
   return (
-    <li className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start">
+    <li className="rise-in flex flex-col gap-4 rounded-[var(--radius-lg)] bg-surface p-5 shadow-[var(--shadow-soft)] ring-1 ring-turmeric/35 sm:flex-row sm:items-start">
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex flex-wrap items-center gap-2">
           <Pill tone={item.kind === "approval" ? "turmeric" : "neutral"}>{item.kind === "approval" ? "Needs your OK" : "Suggestion"}</Pill>
           <span className="text-xs text-muted">{timeAgo(item.created_at)}</span>
         </div>
-        <p className="font-medium">{item.title}</p>
+        <p className="text-[15px] font-medium leading-snug">{item.title}</p>
         {item.body && <p className="mt-1 text-sm text-ink-2">{item.body}</p>}
         {tool && EFFECT[tool] && <p className="mt-1 text-sm text-ink-2">{EFFECT[tool]}</p>}
         {item.payload.evidence?.length ? (
@@ -89,9 +89,9 @@ const FINDING_TONE: Record<number, "kumkum" | "turmeric" | "neutral"> = { 1: "ku
 export function FindingsList({ findings }: { findings: Finding[] }) {
   if (!findings.length) return <Empty>Nothing unusual in your reviews, calendar or campaigns.</Empty>;
   return (
-    <ul className="space-y-2">
+    <ul className="divide-y divide-line rounded-[var(--radius-lg)] bg-surface px-4 shadow-[var(--shadow-soft)] ring-1 ring-line/70">
       {findings.map((f, i) => (
-        <li key={i} className="flex items-start gap-3 text-sm">
+        <li key={i} className="flex items-start gap-3 py-3 text-sm leading-snug">
           <span
             className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
               FINDING_TONE[f.priority] === "kumkum" ? "bg-kumkum" : FINDING_TONE[f.priority] === "turmeric" ? "bg-turmeric" : "bg-line-strong"

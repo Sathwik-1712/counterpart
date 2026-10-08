@@ -98,6 +98,8 @@ export interface WordingCheck {
   issues: { key: string; lang: Lang; wording: string; back_translation?: string; issue: string }[];
   back_translations: Record<string, Partial<Record<Lang, string>>>;
   note: string | null;
+  /** Facts with numbers the owner never gave (e.g. dates Counterpart picked). Locking confirms them. */
+  assumed?: { key: string; label: string; numbers: string[] }[];
 }
 
 export interface Segment {
@@ -125,7 +127,7 @@ export interface Validation {
 export interface Revision {
   n: number;
   content: { headline: Segment[]; body: Segment[]; cta: Segment[]; hashtags: string[] };
-  rendered: { headline: string; body: string; cta: string; hashtags: string[] } | null;
+  rendered: { headline: string; body: string; cta: string; hashtags: string[]; offer?: string[] } | null;
   facts_version: number | null;
   features: Record<string, any> | null;
   validation: Validation | null;

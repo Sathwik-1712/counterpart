@@ -21,6 +21,11 @@ def build_router(s: Settings) -> ModelRouter:
             name="agnes", base_url=s.agnes_base_url, api_key=key, model=s.agnes_image_model,
             limiter=RpmLimiter(s.agnes_image_rpm),
         )
+    if s.gemini_api_key:
+        key = s.gemini_api_key.get_secret_value()
+        for model in (m.strip() for m in s.gemini_models.split(",") if m.strip()):
+            llms[model] = OpenAICompatChat(name=model, base_url=s.gemini_base_url, api_key=key, model=model,
+                                           limiter=RpmLimiter(s.gemini_rpm), structured_output=True)
     if s.alt_llm_base_url and s.alt_llm_api_key and s.alt_llm_model:
         llms["alt"] = OpenAICompatChat(
             name="alt", base_url=s.alt_llm_base_url, api_key=s.alt_llm_api_key.get_secret_value(),

@@ -1,12 +1,12 @@
 "use client";
 
+import { CaretDown, Check, DownloadSimple, PencilSimple, SealCheck, ShareNetwork, WarningOctagon, X } from "@phosphor-icons/react";
 import clsx from "clsx";
-import { Check, ChevronDown, Pencil, ShieldAlert, ShieldCheck, X } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { Asset, Fact, Validation } from "@/lib/types";
 import { ChannelPreview } from "./previews";
-import { Button, CHANNEL_LABEL, LANG_LABEL, Pill, SEGMENT_LABEL, StatusPill } from "./ui";
+import { Button, Card, CHANNEL_LABEL, LANG_LABEL, segmentLabel, StatusPill } from "./ui";
 
 /** Owner edits plain text. Exact approved wording becomes a fact slot again;
  *  anything else (e.g. a different discount) stays literal and the guard blocks it. */
@@ -23,28 +23,34 @@ function GuardSummary({ v }: { v: Validation | null }) {
   const [open, setOpen] = useState(false);
   if (!v) return null;
   const blocking = v.checks.filter((c) => !c.passed && c.severity === "block");
-  const l3 = v.l3 === "passed" ? "Meaning checked" : v.l3 === "pending" ? "Meaning check pending" : v.l3 === "failed" ? "Meaning check failed" : "Meaning check skipped";
+  const l3 =
+    v.l3 === "passed" ? "Meaning checked" : v.l3 === "pending" ? "Meaning check waiting" : v.l3 === "failed" ? "Meaning check failed" : "Meaning not checked";
   return (
     <div className="text-sm">
-      <button onClick={() => setOpen(!open)} className="flex w-full items-center gap-2 text-left" aria-expanded={open}>
-        {v.passed ? <ShieldCheck size={16} className="text-leaf" aria-hidden /> : <ShieldAlert size={16} className="text-kumkum" aria-hidden />}
-        <span className={v.passed ? "text-leaf-ink" : "text-kumkum"}>
-          {v.passed ? "Matches the locked offer" : blocking[0]?.detail ?? "Blocked"}
+      <button onClick={() => setOpen(!open)} className="flex w-full items-start gap-2 text-left" aria-expanded={open}>
+        {v.passed ? (
+          <SealCheck size={18} weight="fill" className="mt-px shrink-0 text-leaf" aria-hidden />
+        ) : (
+          <WarningOctagon size={18} weight="fill" className="mt-px shrink-0 text-kumkum" aria-hidden />
+        )}
+        <span className="min-w-0 flex-1">
+          <span className={clsx("block", v.passed ? "text-leaf-ink" : "text-kumkum")}>
+            {v.passed ? "Matches the locked offer" : blocking[0]?.detail ?? "Blocked"}
+          </span>
+          <span className="block text-xs text-muted">{l3}</span>
         </span>
-        <span className="flex-1" />
-        <span className="text-xs text-muted">{l3}</span>
-        <ChevronDown size={14} className={clsx("text-muted transition-transform", open && "rotate-180")} aria-hidden />
+        <CaretDown size={14} className={clsx("mt-1 shrink-0 text-muted transition-transform", open && "rotate-180")} aria-hidden />
       </button>
       {open && (
-        <div className="mt-2 space-y-1.5 border-l-2 border-line pl-3">
+        <div className="mt-3 space-y-1.5 rounded-[var(--radius-md)] bg-sunken/60 p-3">
           {v.checks.map((c, i) => (
             <p key={i} className={clsx("flex gap-2", c.passed ? "text-ink-2" : c.severity === "block" ? "text-kumkum" : "text-turmeric")}>
-              {c.passed ? <Check size={14} className="mt-0.5 shrink-0 text-leaf" aria-hidden /> : <X size={14} className="mt-0.5 shrink-0" aria-hidden />}
+              {c.passed ? <Check size={14} className="mt-1 shrink-0 text-leaf" aria-hidden /> : <X size={14} className="mt-1 shrink-0" aria-hidden />}
               {c.detail}
             </p>
           ))}
           {v.back_translation && (
-            <p className="pt-1 text-ink-2">
+            <p className="border-t border-line pt-2 text-ink-2">
               <span className="text-muted">In plain English: </span>
               {v.back_translation}
             </p>
@@ -55,14 +61,23 @@ function GuardSummary({ v }: { v: Validation | null }) {
   );
 }
 
+async function renderPng(node: HTMLElement) {
+  const { toBlob } = await import("html-to-image");
+  const blob = await toBlob(node, { pixelRatio: Math.max(2, 1080 / node.offsetWidth), cacheBust: true });
+  if (!blob) throw new Error("Could not render the image.");
+  return blob;
+}
+
 export function AssetCard({ asset, facts, business, onChange }: { asset: Asset; facts: Fact[]; business: string; onChange: () => void }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState({ headline: "", body: "", cta: "" });
+  const [draft, setDraft] = useState({ headline: "", body: "" });
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const postRef = useRef<HTMLDivElement>(null);
   const rev = asset.revision;
   const v = rev?.validation ?? null;
   const code = asset.touchpoints?.[0]?.code;
+  const fileName = `kaapi-kone-${asset.channel}-${asset.language}${code ? `-${code}` : ""}.png`;
 
   async function act(name: string, fn: () => Promise<unknown>) {
     setBusy(name);
@@ -79,9 +94,40 @@ export function AssetCard({ asset, facts, business, onChange }: { asset: Asset; 
     }
   }
 
+  async function download() {
+    if (!postRef.current) return;
+    setBusy("download");
+    try {
+      const url = URL.createObjectURL(await renderPng(postRef.current));
+      Object.assign(document.createElement("a"), { href: url, download: fileName }).click();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function share() {
+    if (!postRef.current) return;
+    setBusy("share");
+    try {
+      const file = new File([await renderPng(postRef.current)], fileName, { type: "image/png" });
+      const text = [rev?.rendered?.headline, rev?.rendered?.body].filter(Boolean).join("\n");
+      if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], text });
+      else {
+        await navigator.clipboard?.writeText(text);
+        await download();
+      }
+    } catch (e) {
+      if ((e as Error).name !== "AbortError") setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
   function startEdit() {
-    const r = rev?.rendered;
-    setDraft({ headline: r?.headline ?? "", body: r?.body ?? "", cta: r?.cta ?? "" });
+    setDraft({ headline: rev?.rendered?.headline ?? "", body: rev?.rendered?.body ?? "" });
     setEditing(true);
   }
 
@@ -90,61 +136,67 @@ export function AssetCard({ asset, facts, business, onChange }: { asset: Asset; 
     const ok = await act("save", () =>
       api(`/assets/${asset.id}`, {
         method: "PATCH",
-        json: {
-          content: { headline: seg(draft.headline, "headline"), body: seg(draft.body, "body"), cta: seg(draft.cta, "cta"), hashtags: rev?.rendered?.hashtags ?? [] },
-        },
+        json: { content: { headline: seg(draft.headline, "headline"), body: seg(draft.body, "body"), cta: [], hashtags: rev?.rendered?.hashtags ?? [] } },
       }),
     );
     if (ok) setEditing(false);
   }
 
-  return (
-    <article className={clsx("flex flex-col rounded-lg border bg-surface", asset.status === "invalid" ? "border-kumkum/40" : asset.status === "stale" ? "border-turmeric/50" : "border-line")}>
-      <header className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2.5 text-sm">
-        <span className="font-medium">{CHANNEL_LABEL[asset.channel]}</span>
-        <span className="text-muted">{LANG_LABEL[asset.language]}</span>
-        <span className="text-muted">{SEGMENT_LABEL[asset.segment] ?? asset.segment}</span>
-        {asset.variant && <Pill>Variant {asset.variant}</Pill>}
-        <span className="flex-1" />
-        <StatusPill status={asset.status} />
-      </header>
+  const picture = asset.channel !== "whatsapp";
 
-      <div className="flex-1 p-4">
+  return (
+    <Card as="article" className={clsx("rise-in flex flex-col overflow-hidden", asset.status === "invalid" && "ring-kumkum/40", asset.status === "stale" && "ring-turmeric/50")}>
+      <div className="flex items-start gap-3 px-4 pb-3 pt-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">
+            {CHANNEL_LABEL[asset.channel]} <span className="font-normal text-muted">· {LANG_LABEL[asset.language]}</span>
+          </p>
+          <p className="truncate text-xs text-muted">
+            For {segmentLabel(asset.segment).toLowerCase()}
+            {asset.variant && ` · variant ${asset.variant}`}
+          </p>
+        </div>
+        <StatusPill status={asset.status} />
+      </div>
+
+      <div className="px-4">
         {editing ? (
-          <div className="space-y-2">
-            {(["headline", "body", "cta"] as const).map((f) => (
-              <label key={f} className="block text-xs text-muted">
-                {f === "cta" ? "Call to action" : f[0].toUpperCase() + f.slice(1)}
+          <div className="space-y-3 rounded-[var(--radius-md)] bg-sunken/50 p-3">
+            {(["headline", "body"] as const).map((f) => (
+              <label key={f} className="block">
+                <span className="text-xs font-medium text-ink-2">{f === "headline" ? "Headline" : "Message"}</span>
                 <textarea
                   value={draft[f]}
                   onChange={(e) => setDraft({ ...draft, [f]: e.target.value })}
-                  rows={f === "body" ? 4 : 1}
-                  className="mt-1 w-full resize-y rounded-md border border-line-strong px-2.5 py-1.5 text-[14px] text-ink outline-none focus:border-ink-2"
+                  rows={f === "body" ? 3 : 2}
+                  className="mt-1 w-full resize-y rounded-[var(--radius-md)] bg-surface px-3 py-2 text-[14px] text-ink shadow-[inset_0_0_0_1px_var(--color-line-strong)] outline-none focus:shadow-[inset_0_0_0_1.5px_var(--color-ink-2)]"
                 />
               </label>
             ))}
-            <p className="text-xs text-muted">Offer details must match the locked facts word for word. To change the offer, tell Counterpart instead.</p>
+            <p className="text-xs text-muted">The offer box and “show this at the counter” are added from the locked facts. To change the offer, tell Counterpart.</p>
           </div>
         ) : (
-          <ChannelPreview asset={asset} business={business} />
+          <div ref={postRef} className={clsx("overflow-hidden", picture ? "rounded-[var(--radius-md)]" : "rounded-[var(--radius-md)]")}>
+            <ChannelPreview asset={asset} business={business} />
+          </div>
         )}
       </div>
 
-      <footer className="space-y-3 border-t border-line px-4 py-3">
+      <div className="mt-auto space-y-3 px-4 pb-4 pt-4">
         {!editing && <GuardSummary v={v} />}
-        {rev?.features?.angle && !editing && <p className="text-xs text-muted">Angle: {rev.features.angle}</p>}
         {code && (
           <p className="text-xs text-ink-2">
-            Code <span className="font-receipt text-ink">{code}</span>
+            Tracking code <span className="font-receipt text-ink">{code}</span>
             {asset.outcomes && (
               <span className="text-muted">
-                , {asset.outcomes.scan ?? 0} scans, {asset.outcomes.redeem ?? 0} claimed
+                {" "}
+                · {asset.outcomes.scan ?? 0} scans · {asset.outcomes.redeem ?? 0} redeemed
               </span>
             )}
           </p>
         )}
         {error && <p className="text-sm text-kumkum">{error}</p>}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {editing ? (
             <>
               <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
@@ -156,20 +208,34 @@ export function AssetCard({ asset, facts, business, onChange }: { asset: Asset; 
             </>
           ) : (
             <>
-              {!["live", "retired", "rejected"].includes(asset.status) && (
-                <Button size="sm" variant="ghost" onClick={startEdit}>
-                  <Pencil size={13} aria-hidden /> Edit
+              {asset.status === "valid" && (
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={() => act("publish", () => api(`/campaigns/${asset.campaign_id}/publish`, { method: "POST", json: { asset_ids: [asset.id] } }))}
+                  disabled={busy !== null}
+                >
+                  {busy === "publish" ? "Publishing…" : "Approve and publish"}
                 </Button>
               )}
-              {asset.status === "valid" && (
-                <Button size="sm" variant="primary" onClick={() => act("publish", () => api(`/campaigns/${asset.campaign_id}/publish`, { method: "POST", json: { asset_ids: [asset.id] } }))} disabled={busy !== null}>
-                  {busy === "publish" ? "Publishing…" : "Approve and publish"}
+              {!["live", "retired", "rejected"].includes(asset.status) && (
+                <Button size="sm" variant="ghost" onClick={startEdit}>
+                  <PencilSimple size={14} aria-hidden /> Edit
+                </Button>
+              )}
+              <span className="flex-1" />
+              <Button size="sm" variant="ghost" onClick={download} disabled={busy !== null} aria-label="Download as image">
+                <DownloadSimple size={15} aria-hidden /> {busy === "download" ? "Saving…" : "Download"}
+              </Button>
+              {asset.status === "live" && (
+                <Button size="sm" variant="secondary" onClick={share} disabled={busy !== null}>
+                  <ShareNetwork size={15} aria-hidden /> {busy === "share" ? "Preparing…" : "Share"}
                 </Button>
               )}
             </>
           )}
         </div>
-      </footer>
-    </article>
+      </div>
+    </Card>
   );
 }

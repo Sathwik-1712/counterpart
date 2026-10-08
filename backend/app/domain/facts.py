@@ -45,11 +45,18 @@ class FactSheet(BaseModel):
 
 # Claims no small offer should make unless a locked fact says so. Merged with each campaign's forbidden_claims.
 BASELINE_FORBIDDEN: dict[str, list[str]] = {
-    "en": ["free", "unlimited", "all day", "guaranteed", "cheapest", "lowest price", "no conditions"],
-    "kn": ["ಉಚಿತ", "ಪುಕ್ಕಟೆ", "ಫ್ರೀ", "ಅನಿಯಮಿತ", "ಅಪರಿಮಿತ", "ದಿನವಿಡೀ", "ಇಡೀ ದಿನ", "ಗ್ಯಾರಂಟಿ"],
-    "hi": ["मुफ़्त", "मुफ्त", "फ्री", "फ़्री", "असीमित", "अनलिमिटेड", "पूरे दिन", "दिन भर", "गारंटी", "सबसे सस्ता"],
+    "en": ["free", "unlimited", "all day", "guaranteed", "cheapest", "lowest price", "no conditions",
+           # redemption mechanics that do not exist: customers show a code, scan a QR or tap a link
+           "dm", "dm us", "direct message", "inbox us", "order now", "order online", "home delivery", "delivery",
+           "call us", "book now", "promo code online"],
+    "kn": ["ಉಚಿತ", "ಪುಕ್ಕಟೆ", "ಫ್ರೀ", "ಅನಿಯಮಿತ", "ಅಪರಿಮಿತ", "ದಿನವಿಡೀ", "ಇಡೀ ದಿನ", "ಗ್ಯಾರಂಟಿ", "ಡೆಲಿವರಿ", "ಆರ್ಡರ್"],
+    "hi": ["मुफ़्त", "मुफ्त", "फ्री", "फ़्री", "असीमित", "अनलिमिटेड", "पूरे दिन", "दिन भर", "गारंटी", "सबसे सस्ता",
+           "डिलीवरी", "ऑर्डर"],
 }
 HARMLESS_IDIOMS = ("feel free", "sugar-free", "sugar free", "gluten-free", "hands-free")
+
+
+_SCRIPTS = {"kn": ("Kannada", r"[\u0C80-\u0CFF]"), "hi": ("Hindi (Devanagari)", r"[\u0900-\u097F]")}
 
 
 def wording_issues(sheet: FactSheet) -> list[dict[str, str]]:
@@ -61,13 +68,40 @@ def wording_issues(sheet: FactSheet) -> list[dict[str, str]]:
         for lang, wording in f.display.items():
             if lang == "en":
                 continue
-            if bad := malformed_words(wording):
+            if (script := _SCRIPTS.get(lang)) and re.search(r"[A-Za-z]", wording) and not re.search(script[1], wording):
+                issues.append({"key": f.key, "label": f.label, "lang": lang, "wording": wording,
+                               "issue": f"It is not written in {script[0]}; it was left in English."})
+            elif bad := malformed_words(wording):
                 issues.append({"key": f.key, "label": f.label, "lang": lang, "wording": wording,
                                "issue": f"Misspelt or broken letters: {', '.join(bad)}."})
             elif want is not None and sorted(numbers_in(wording)) != want:
                 issues.append({"key": f.key, "label": f.label, "lang": lang, "wording": wording,
                                "issue": f"Its numbers differ from the English ({', '.join(want) or 'none'})."})
     return issues
+
+
+def _num_values(text: str) -> set[float]:
+    out: set[float] = set()
+    for n in numbers_in(text):
+        for part in n.split(":"):
+            try:
+                out.add(float(part.replace(",", "")))
+            except ValueError:
+                pass
+    return out
+
+
+def assumed_facts(sheet: FactSheet, known_text: str) -> list[dict[str, Any]]:
+    """Facts carrying a number the owner never gave (not in their words, the menu or the margin check).
+    These are Counterpart's assumptions, e.g. offer dates it picked itself, and the owner must confirm them."""
+    known = _num_values(known_text)
+    out = []
+    for f in sheet.facts:
+        nums = _num_values(f.display.get("en") or str(f.value))
+        if unknown := sorted(nums - known):
+            out.append({"key": f.key, "label": f.label,
+                        "numbers": [str(int(n)) if n.is_integer() else str(n) for n in unknown]})
+    return out
 
 
 # ------------------------------------------------------------------ script sanity (Kannada, Devanagari)
@@ -195,7 +229,23 @@ def render(content: AssetContent, sheet: FactSheet, lang: str) -> dict[str, Any]
 
     out: dict[str, Any] = {f: SLOT.sub(sub, _join(getattr(content, f))) for f in TEXT_FIELDS}
     out["hashtags"] = list(content.hashtags)
+    # The offer box and the call to action are the system's, not the model's: exact locked wording, one fact per
+    # line, and the one real way to claim it. So required facts are never missing, doubled or misinflected.
+    out["offer"] = offer_lines(sheet, lang)
+    out["cta"] = CTA_TEXT.get(lang, CTA_TEXT["en"])
     return out
+
+
+CTA_TEXT = {"en": "Show this at the counter", "kn": "ಕೌಂಟರ್‌ನಲ್ಲಿ ಇದನ್ನು ತೋರಿಸಿ", "hi": "काउंटर पर यह दिखाएँ"}
+
+
+def offer_lines(sheet: FactSheet, lang: str) -> list[str]:
+    return [f.display[lang] for f in sheet.facts if f.required and lang in f.display]
+
+
+def depends_on(content: AssetContent, sheet: FactSheet) -> list[str]:
+    """Facts a piece shows: its slots plus every required fact (the offer box)."""
+    return sorted(set(slot_keys(content)) | {f.key for f in sheet.facts if f.required})
 
 
 # ------------------------------------------------------------------ guard
@@ -246,16 +296,31 @@ def deterministic_checks(
     checks.append(Check("L2", "known_facts_only", not unknown,
                         "All referenced facts exist." if not unknown else
                         f"References facts that do not exist: {', '.join(unknown)}", evidence=unknown))
-    untranslated = [k for k in used if (f := sheet.get(k)) and lang not in f.display]
+    untranslated = [k for k in dict.fromkeys([*used, *(f.key for f in sheet.facts if f.required)])
+                    if (f := sheet.get(k)) and lang not in f.display]
     checks.append(Check("L2", "approved_wording", not untranslated,
                         f"Every fact has owner-approved wording in '{lang}'." if not untranslated else
                         f"No approved '{lang}' wording for: {', '.join(untranslated)}", evidence=untranslated))
 
-    # L2: required facts present
-    missing = [f.key for f in sheet.facts if f.required and f.key not in used]
-    checks.append(Check("L2", "required_facts_present", not missing,
-                        "All required facts are stated." if not missing else
-                        f"Missing required facts: {', '.join(missing)}", evidence=missing))
+    # L2: words repeated across a slot edge ("{{discount}} off" when the wording already ends in "off"). Only at
+    # slot edges: reduplication elsewhere is idiomatic ("ಬಿಸಿ ಬಿಸಿ", piping hot).
+    doubled = []
+    for f in TEXT_FIELDS:
+        for seg in getattr(content, f):
+            for m in SLOT.finditer(seg.text):
+                fact = sheet.get(m.group(1))
+                words = (fact.display.get(lang) or "").casefold().split() if fact else []
+                if not words:
+                    continue
+                before = seg.text[:m.start()].casefold().split()
+                after = SLOT.sub(" ", seg.text[m.end():]).casefold().split()
+                if after and len(words[-1]) > 1 and after[0].strip(".,!?:;").startswith(words[-1].strip(".,!?:;")):
+                    doubled.append(words[-1])
+                elif before and before[-1].strip(".,!?:;") == words[0].strip(".,!?:;") and len(words[0]) > 1:
+                    doubled.append(words[0])
+    checks.append(Check("L2", "no_repeated_words", not doubled,
+                        "No doubled words." if not doubled else f"Says “{doubled[0]}” twice around an offer detail",
+                        evidence=doubled))
 
     # L2: forbidden claims, any language (customers code-switch). The campaign's own list plus a built-in one,
     # so blocking "free" in Kannada never depends on a model-written translation.

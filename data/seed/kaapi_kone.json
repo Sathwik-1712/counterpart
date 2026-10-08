@@ -5,138 +5,903 @@
     "name": "Kaapi Kone",
     "locality": "Jayanagar 4th Block",
     "city": "Bengaluru",
-    "languages": ["kn", "en", "hi"],
+    "languages": [
+      "kn",
+      "en",
+      "hi"
+    ],
     "profile": {
       "kind": "neighbourhood filter-coffee café",
       "address": "11th Main, Jayanagar 4th Block, Bengaluru",
-      "hours": {"open": "06:30", "close": "22:00"},
+      "hours": {
+        "open": "06:30",
+        "close": "22:00"
+      },
       "offer_window": "morning",
       "baseline_covers_per_window": 40,
-      "channels": {"whatsapp_subscribers": 640, "instagram_followers": 2300, "in_store": true},
-      "allowed_phrases": ["4th Block", "11th Main", "Jayanagar4thBlock"],
-      "owner": {"name": "Kavya", "languages": ["kn", "en"]},
+      "channels": {
+        "whatsapp_subscribers": 640,
+        "instagram_followers": 2300,
+        "in_store": true
+      },
+      "allowed_phrases": [
+        "4th Block",
+        "11th Main",
+        "Jayanagar4thBlock"
+      ],
+      "owner": {
+        "name": "Kavya",
+        "languages": [
+          "kn",
+          "en"
+        ]
+      },
       "menu": [
-        {"name": "Filter coffee", "price": 40, "unit_cost": 12},
-        {"name": "Masala chai", "price": 35, "unit_cost": 9},
-        {"name": "Masala dosa", "price": 90, "unit_cost": 32},
-        {"name": "Idli vada", "price": 70, "unit_cost": 22},
-        {"name": "Masala vada", "price": 30, "unit_cost": 9},
-        {"name": "Kesari bath", "price": 50, "unit_cost": 14},
-        {"name": "Bun butter jam", "price": 50, "unit_cost": 15},
-        {"name": "Mysore pak", "price": 35, "unit_cost": 14},
-        {"name": "Cold coffee", "price": 120, "unit_cost": 38}
+        {
+          "name": "Filter coffee",
+          "price": 40,
+          "unit_cost": 12
+        },
+        {
+          "name": "Masala chai",
+          "price": 35,
+          "unit_cost": 9
+        },
+        {
+          "name": "Masala dosa",
+          "price": 90,
+          "unit_cost": 32
+        },
+        {
+          "name": "Idli vada",
+          "price": 70,
+          "unit_cost": 22
+        },
+        {
+          "name": "Masala vada",
+          "price": 30,
+          "unit_cost": 9
+        },
+        {
+          "name": "Kesari bath",
+          "price": 50,
+          "unit_cost": 14
+        },
+        {
+          "name": "Bun butter jam",
+          "price": 50,
+          "unit_cost": 15
+        },
+        {
+          "name": "Mysore pak",
+          "price": 35,
+          "unit_cost": 14
+        },
+        {
+          "name": "Cold coffee",
+          "price": 120,
+          "unit_cost": 38
+        }
       ]
     }
   },
   "brand_dna": {
-    "voice": ["warm", "neighbourly", "a little nostalgic", "unhurried"],
+    "voice": [
+      "warm",
+      "neighbourly",
+      "a little nostalgic",
+      "unhurried"
+    ],
     "do": [
       "Talk like a regular at the counter, not like an advertisement",
       "Mention decoction, steel tumbler and davara, morning rituals",
       "Use 'kaapi' in Kannada and English copy"
     ],
-    "avoid": ["hype words such as amazing, epic, mind-blowing", "ALL CAPS", "the word 'grab'", "more than two emoji"],
+    "avoid": [
+      "hype words such as amazing, epic, mind-blowing",
+      "ALL CAPS",
+      "the word 'grab'",
+      "more than two emoji"
+    ],
     "signature_phrases": {
-      "en": ["Your morning, your tumbler."],
-      "kn": ["ಬನ್ನಿ, ಒಂದು ಕಾಫಿ ಕುಡಿಯೋಣ"],
-      "hi": ["सुबह की शुरुआत, फ़िल्टर कॉफ़ी के साथ"]
+      "en": [
+        "Your morning, your tumbler."
+      ],
+      "kn": [
+        "ಬನ್ನಿ, ಒಂದು ಕಾಫಿ ಕುಡಿಯೋಣ"
+      ],
+      "hi": [
+        "सुबह की शुरुआत, फ़िल्टर कॉफ़ी के साथ"
+      ]
     },
     "emoji_policy": "At most two; coffee or leaf only",
-    "palette": ["deep decoction brown", "brass", "banana-leaf green", "steel grey"],
-    "languages_priority": ["kn", "en", "hi"]
+    "palette": [
+      "deep decoction brown",
+      "brass",
+      "banana-leaf green",
+      "steel grey"
+    ],
+    "languages_priority": [
+      "kn",
+      "en",
+      "hi"
+    ],
+    "imagery": "Filter coffee always in a stainless-steel tumbler and davara with a little froth; food on a banana leaf or a steel plate; worn wooden counter and old Jayanagar café interiors; soft window light; candid, unstyled, real-looking, never glossy stock photography.",
+    "banned_words": [
+      "grab",
+      "amazing",
+      "epic",
+      "mind-blowing",
+      "power-up",
+      "fuel up",
+      "ultimate",
+      "you've got this",
+      "snack attack"
+    ],
+    "examples": [
+      {
+        "lang": "en",
+        "headline": "Exam week runs on decoction",
+        "body": "Close the textbook for twenty minutes. A steel tumbler of strong kaapi and a crisp dosa, the way Jayanagar has always done study breaks."
+      },
+      {
+        "lang": "en",
+        "headline": "Your 5 o'clock tumbler is waiting",
+        "body": "Same counter, same davara, same decoction your appa liked. Come in between classes."
+      },
+      {
+        "lang": "kn",
+        "headline": "ಪರೀಕ್ಷೆ ಓದಿಗೆ ಒಂದು ಕಾಫಿ ವಿರಾಮ",
+        "body": "ಪುಸ್ತಕ ಸ್ವಲ್ಪ ಮುಚ್ಚಿ, ಸ್ಟೀಲ್ ಲೋಟದಲ್ಲಿ ಬಿಸಿ ಬಿಸಿ ಫಿಲ್ಟರ್ ಕಾಫಿ ಕುಡಿಯಿರಿ. ಬನ್ನಿ, ಒಂದು ಕಾಫಿ ಕುಡಿಯೋಣ."
+      }
+    ]
   },
   "segments": [
-    {"key": "students", "data": {"name": "College students", "share": 0.35, "languages": ["en", "kn-Latn", "hi"], "channels": ["instagram_story", "instagram_post"], "peak": "8–10 am before class", "motivations": ["cheap and filling", "wifi", "friends"]}},
-    {"key": "regulars", "data": {"name": "Neighbourhood regulars", "share": 0.4, "languages": ["kn", "en"], "channels": ["whatsapp", "poster"], "peak": "6:30–9 am after the morning walk", "motivations": ["ritual", "strong decoction", "familiar faces"]}},
-    {"key": "office_goers", "data": {"name": "Office-goers", "share": 0.15, "languages": ["en", "kn"], "channels": ["instagram_post", "whatsapp"], "peak": "8:30–9:30 am", "motivations": ["speed", "takeaway"]}},
-    {"key": "families", "data": {"name": "Weekend families", "share": 0.1, "languages": ["kn", "en", "hi"], "channels": ["instagram_post", "whatsapp"], "peak": "weekend 9–11 am", "motivations": ["space to sit", "dosa"]}}
+    {
+      "key": "students",
+      "data": {
+        "name": "College students",
+        "share": 0.35,
+        "languages": [
+          "en",
+          "kn-Latn",
+          "hi"
+        ],
+        "channels": [
+          "instagram_story",
+          "instagram_post"
+        ],
+        "peak": "8–10 am before class",
+        "motivations": [
+          "cheap and filling",
+          "wifi",
+          "friends"
+        ]
+      }
+    },
+    {
+      "key": "regulars",
+      "data": {
+        "name": "Neighbourhood regulars",
+        "share": 0.4,
+        "languages": [
+          "kn",
+          "en"
+        ],
+        "channels": [
+          "whatsapp",
+          "poster"
+        ],
+        "peak": "6:30–9 am after the morning walk",
+        "motivations": [
+          "ritual",
+          "strong decoction",
+          "familiar faces"
+        ]
+      }
+    },
+    {
+      "key": "office_goers",
+      "data": {
+        "name": "Office-goers",
+        "share": 0.15,
+        "languages": [
+          "en",
+          "kn"
+        ],
+        "channels": [
+          "instagram_post",
+          "whatsapp"
+        ],
+        "peak": "8:30–9:30 am",
+        "motivations": [
+          "speed",
+          "takeaway"
+        ]
+      }
+    },
+    {
+      "key": "families",
+      "data": {
+        "name": "Weekend families",
+        "share": 0.1,
+        "languages": [
+          "kn",
+          "en",
+          "hi"
+        ],
+        "channels": [
+          "instagram_post",
+          "whatsapp"
+        ],
+        "peak": "weekend 9–11 am",
+        "motivations": [
+          "space to sit",
+          "dosa"
+        ]
+      }
+    }
   ],
   "events": [
-    {"key": "dasara_2026", "period_start": "2026-10-11", "period_end": "2026-10-20", "data": {"name": "Dasara holidays", "hook": "festive mornings, family visits", "note": "Dates from the public calendar; verify locally."}},
-    {"key": "midterms_2026", "period_start": "2026-10-26", "period_end": "2026-10-31", "data": {"name": "College mid-term exams (nearby colleges)", "hook": "early-morning study fuel", "note": "Synthetic"}},
-    {"key": "rajyotsava_2026", "period_start": "2026-11-01", "period_end": "2026-11-01", "data": {"name": "Karnataka Rajyotsava", "hook": "Kannada pride, local roots"}}
+    {
+      "key": "dasara_2026",
+      "period_start": "2026-10-11",
+      "period_end": "2026-10-20",
+      "data": {
+        "name": "Dasara holidays",
+        "hook": "festive mornings, family visits",
+        "note": "Dates from the public calendar; verify locally."
+      }
+    },
+    {
+      "key": "midterms_2026",
+      "period_start": "2026-10-26",
+      "period_end": "2026-10-31",
+      "data": {
+        "name": "College mid-term exams (nearby colleges)",
+        "hook": "early-morning study fuel",
+        "note": "Synthetic"
+      }
+    },
+    {
+      "key": "rajyotsava_2026",
+      "period_start": "2026-11-01",
+      "period_end": "2026-11-01",
+      "data": {
+        "name": "Karnataka Rajyotsava",
+        "hook": "Kannada pride, local roots"
+      }
+    }
   ],
   "interactions": [
-    {"d": 2, "source": "google_review", "language": "en", "segment": "regulars", "rating": 5, "body": "The decoction is still as strong as it was ten years ago. Steel tumbler, no nonsense. My morning is not complete without it.", "sentiment": 0.9, "themes": ["decoction_strength", "morning_ritual"]},
-    {"d": 3, "source": "google_review", "language": "kn", "segment": "regulars", "rating": 5, "body": "ಇಲ್ಲಿನ ಫಿಲ್ಟರ್ ಕಾಫಿ ಅಂದ್ರೆ ಮನೆಯ ನೆನಪು. ಡಿಕಾಕ್ಷನ್ ಸರಿಯಾಗಿ ಗಟ್ಟಿ.", "sentiment": 0.9, "themes": ["decoction_strength", "nostalgia"]},
-    {"d": 4, "source": "instagram_comment", "language": "kn-Latn", "segment": "students", "rating": null, "body": "Kaapi sakkath aagide guru, but morning rush alli 15 min wait aaytu", "sentiment": 0.1, "themes": ["decoction_strength", "queue_wait"]},
-    {"d": 25, "source": "google_review", "language": "en", "segment": "students", "rating": 4, "body": "Good wifi and cheap idli vada, perfect before class. Gets crowded after 9 though.", "sentiment": 0.5, "themes": ["student_wifi", "price_value", "queue_wait"]},
-    {"d": 6, "source": "whatsapp", "language": "kn", "segment": "regulars", "rating": null, "body": "ನಾಳೆ ಬೆಳಿಗ್ಗೆ ಮಸಾಲೆ ದೋಸೆ ಇದೆಯಾ? ಹಿಂದಿನ ವಾರದ ಆಫರ್ ತುಂಬಾ ಚೆನ್ನಾಗಿತ್ತು.", "sentiment": 0.6, "themes": ["snacks_quality", "offers"]},
-    {"d": 7, "source": "google_review", "language": "hi", "segment": "students", "rating": 4, "body": "फ़िल्टर कॉफ़ी बहुत बढ़िया है, और दाम भी ठीक हैं। बस बैठने की जगह कम है।", "sentiment": 0.4, "themes": ["decoction_strength", "price_value", "seating_space"]},
-    {"d": 23, "source": "zomato_review", "language": "en", "segment": "office_goers", "rating": 3, "body": "Coffee is excellent but the takeaway counter was slow at 9am. Lost 20 minutes.", "sentiment": -0.3, "themes": ["queue_wait", "takeaway"]},
-    {"d": 9, "source": "instagram_comment", "language": "en", "segment": "students", "rating": null, "body": "Your Mysore pak is dangerous before exams 😅", "sentiment": 0.7, "themes": ["snacks_quality"]},
-    {"d": 10, "source": "google_review", "language": "en", "segment": "families", "rating": 5, "body": "Took my parents on Sunday. Staff remembered how my father takes his coffee. That warmth is rare.", "sentiment": 0.95, "themes": ["staff_warmth", "nostalgia"]},
-    {"d": 11, "source": "google_review", "language": "kn", "segment": "regulars", "rating": 4, "body": "ಕಾಫಿ ಚೆನ್ನಾಗಿದೆ, ಆದರೆ ಬೆಳಿಗ್ಗೆ ಜನ ಜಾಸ್ತಿ, ಸ್ವಲ್ಪ ಕಾಯಬೇಕು.", "sentiment": 0.2, "themes": ["decoction_strength", "queue_wait"]},
-    {"d": 12, "source": "whatsapp", "language": "en", "segment": "office_goers", "rating": null, "body": "Can I pre-order 4 coffees for pickup at 8:45 tomorrow?", "sentiment": 0.2, "themes": ["takeaway", "pre_order"]},
-    {"d": 13, "source": "instagram_comment", "language": "kn-Latn", "segment": "students", "rating": null, "body": "Bun butter jam + kaapi combo beku please, exam time alli life saver", "sentiment": 0.6, "themes": ["snacks_quality", "offers"]},
-    {"d": 15, "source": "google_review", "language": "en", "segment": "regulars", "rating": 5, "body": "Old Bangalore in a cup. They still serve in davara-tumbler.", "sentiment": 0.9, "themes": ["nostalgia", "decoction_strength"]},
-    {"d": 16, "source": "google_review", "language": "en", "segment": "families", "rating": 3, "body": "Weekend mornings are packed and there is no parking on 11th Main.", "sentiment": -0.4, "themes": ["seating_space", "parking"]},
-    {"d": 17, "source": "zomato_review", "language": "hi", "segment": "office_goers", "rating": 4, "body": "कॉफ़ी तो कमाल की है, स्टाफ भी अच्छा है।", "sentiment": 0.7, "themes": ["decoction_strength", "staff_warmth"]},
-    {"d": 18, "source": "google_review", "language": "kn", "segment": "families", "rating": 5, "body": "ಭಾನುವಾರ ಬೆಳಿಗ್ಗೆ ಕುಟುಂಬದ ಜೊತೆ ಬಂದೆವು. ದೋಸೆ ಮತ್ತು ಕಾಫಿ ಎರಡೂ ಅದ್ಭುತ.", "sentiment": 0.9, "themes": ["snacks_quality", "decoction_strength"]},
-    {"d": 19, "source": "instagram_comment", "language": "en", "segment": "students", "rating": null, "body": "Is there a student discount? We come every day lol", "sentiment": 0.3, "themes": ["price_value", "offers"]},
-    {"d": 20, "source": "google_review", "language": "en", "segment": "office_goers", "rating": 2, "body": "Waited at the counter forever on a Monday morning. Great coffee, terrible queue.", "sentiment": -0.6, "themes": ["queue_wait"]},
-    {"d": 22, "source": "whatsapp", "language": "kn", "segment": "regulars", "rating": null, "body": "ಉಗಾದಿ ಹೋಳಿಗೆ ಮತ್ತೆ ಯಾವಾಗ? ನಮ್ಮ ಮನೆಯವರಿಗೆ ತುಂಬಾ ಇಷ್ಟ ಆಯ್ತು.", "sentiment": 0.8, "themes": ["snacks_quality", "offers", "nostalgia"]},
-    {"d": 24, "source": "google_review", "language": "en", "segment": "students", "rating": 5, "body": "Best place to study with a coffee. Wifi works, nobody rushes you.", "sentiment": 0.85, "themes": ["student_wifi", "staff_warmth"]},
-    {"d": 26, "source": "google_review", "language": "en", "segment": "regulars", "rating": 4, "body": "Prices went up a bit but still worth it for the decoction.", "sentiment": 0.3, "themes": ["price_value", "decoction_strength"]},
-    {"d": 27, "source": "instagram_comment", "language": "hi", "segment": "students", "rating": null, "body": "कोल्ड कॉफ़ी थोड़ी महंगी है यार, पर टेस्ट अच्छा है", "sentiment": 0.1, "themes": ["price_value", "snacks_quality"]},
-    {"d": 29, "source": "google_review", "language": "kn", "segment": "regulars", "rating": 5, "body": "ಸಿಬ್ಬಂದಿ ತುಂಬಾ ಆತ್ಮೀಯರು. ನಮ್ಮ ಅಜ್ಜನಿಗೂ ಇದೇ ಕಾಫಿ ಇಷ್ಟ.", "sentiment": 0.9, "themes": ["staff_warmth", "nostalgia"]},
-    {"d": 31, "source": "zomato_review", "language": "en", "segment": "families", "rating": 4, "body": "Masala dosa is crisp, chutney fresh. Seating is tight for a family of five.", "sentiment": 0.4, "themes": ["snacks_quality", "seating_space"]},
-    {"d": 34, "source": "google_review", "language": "en", "segment": "students", "rating": 5, "body": "Cheapest good breakfast near college. Idli vada + kaapi is the move.", "sentiment": 0.8, "themes": ["price_value", "snacks_quality"]},
-    {"d": 36, "source": "whatsapp", "language": "en", "segment": "regulars", "rating": null, "body": "Please don't stop the Sunday morning messages, I like knowing what's fresh.", "sentiment": 0.7, "themes": ["offers"]},
-    {"d": 38, "source": "google_review", "language": "kn", "segment": "regulars", "rating": 3, "body": "ಕಾಫಿ ಒಳ್ಳೆಯದು, ಆದರೆ ಬೆಲೆ ಸ್ವಲ್ಪ ಜಾಸ್ತಿ ಆಗಿದೆ.", "sentiment": -0.1, "themes": ["price_value"]},
-    {"d": 41, "source": "instagram_comment", "language": "kn-Latn", "segment": "students", "rating": null, "body": "Nimma kesari bath nodi nanna ajji nenapaytu 🥹", "sentiment": 0.85, "themes": ["nostalgia", "snacks_quality"]},
-    {"d": 44, "source": "google_review", "language": "en", "segment": "office_goers", "rating": 4, "body": "Quick takeaway if you come before 8:30. After that, good luck.", "sentiment": 0.2, "themes": ["takeaway", "queue_wait"]},
-    {"d": 47, "source": "google_review", "language": "hi", "segment": "families", "rating": 5, "body": "बेंगलुरु की असली फ़िल्टर कॉफ़ी यहीं मिलती है।", "sentiment": 0.9, "themes": ["decoction_strength", "nostalgia"]},
-    {"d": 50, "source": "google_review", "language": "en", "segment": "regulars", "rating": 5, "body": "Same table, same tumbler, same smile every morning for six years.", "sentiment": 0.95, "themes": ["morning_ritual", "staff_warmth"]},
-    {"d": 55, "source": "zomato_review", "language": "en", "segment": "students", "rating": 3, "body": "Loved the exam-week cold coffee deal but it ended too soon.", "sentiment": 0.2, "themes": ["offers", "price_value"]}
+    {
+      "d": 2,
+      "source": "google_review",
+      "language": "en",
+      "segment": "regulars",
+      "rating": 5,
+      "body": "The decoction is still as strong as it was ten years ago. Steel tumbler, no nonsense. My morning is not complete without it.",
+      "sentiment": 0.9,
+      "themes": [
+        "decoction_strength",
+        "morning_ritual"
+      ]
+    },
+    {
+      "d": 3,
+      "source": "google_review",
+      "language": "kn",
+      "segment": "regulars",
+      "rating": 5,
+      "body": "ಇಲ್ಲಿನ ಫಿಲ್ಟರ್ ಕಾಫಿ ಅಂದ್ರೆ ಮನೆಯ ನೆನಪು. ಡಿಕಾಕ್ಷನ್ ಸರಿಯಾಗಿ ಗಟ್ಟಿ.",
+      "sentiment": 0.9,
+      "themes": [
+        "decoction_strength",
+        "nostalgia"
+      ]
+    },
+    {
+      "d": 4,
+      "source": "instagram_comment",
+      "language": "kn-Latn",
+      "segment": "students",
+      "rating": null,
+      "body": "Kaapi sakkath aagide guru, but morning rush alli 15 min wait aaytu",
+      "sentiment": 0.1,
+      "themes": [
+        "decoction_strength",
+        "queue_wait"
+      ]
+    },
+    {
+      "d": 25,
+      "source": "google_review",
+      "language": "en",
+      "segment": "students",
+      "rating": 4,
+      "body": "Good wifi and cheap idli vada, perfect before class. Gets crowded after 9 though.",
+      "sentiment": 0.5,
+      "themes": [
+        "student_wifi",
+        "price_value",
+        "queue_wait"
+      ]
+    },
+    {
+      "d": 6,
+      "source": "whatsapp",
+      "language": "kn",
+      "segment": "regulars",
+      "rating": null,
+      "body": "ನಾಳೆ ಬೆಳಿಗ್ಗೆ ಮಸಾಲೆ ದೋಸೆ ಇದೆಯಾ? ಹಿಂದಿನ ವಾರದ ಆಫರ್ ತುಂಬಾ ಚೆನ್ನಾಗಿತ್ತು.",
+      "sentiment": 0.6,
+      "themes": [
+        "snacks_quality",
+        "offers"
+      ]
+    },
+    {
+      "d": 7,
+      "source": "google_review",
+      "language": "hi",
+      "segment": "students",
+      "rating": 4,
+      "body": "फ़िल्टर कॉफ़ी बहुत बढ़िया है, और दाम भी ठीक हैं। बस बैठने की जगह कम है।",
+      "sentiment": 0.4,
+      "themes": [
+        "decoction_strength",
+        "price_value",
+        "seating_space"
+      ]
+    },
+    {
+      "d": 23,
+      "source": "zomato_review",
+      "language": "en",
+      "segment": "office_goers",
+      "rating": 3,
+      "body": "Coffee is excellent but the takeaway counter was slow at 9am. Lost 20 minutes.",
+      "sentiment": -0.3,
+      "themes": [
+        "queue_wait",
+        "takeaway"
+      ]
+    },
+    {
+      "d": 9,
+      "source": "instagram_comment",
+      "language": "en",
+      "segment": "students",
+      "rating": null,
+      "body": "Your Mysore pak is dangerous before exams 😅",
+      "sentiment": 0.7,
+      "themes": [
+        "snacks_quality"
+      ]
+    },
+    {
+      "d": 10,
+      "source": "google_review",
+      "language": "en",
+      "segment": "families",
+      "rating": 5,
+      "body": "Took my parents on Sunday. Staff remembered how my father takes his coffee. That warmth is rare.",
+      "sentiment": 0.95,
+      "themes": [
+        "staff_warmth",
+        "nostalgia"
+      ]
+    },
+    {
+      "d": 11,
+      "source": "google_review",
+      "language": "kn",
+      "segment": "regulars",
+      "rating": 4,
+      "body": "ಕಾಫಿ ಚೆನ್ನಾಗಿದೆ, ಆದರೆ ಬೆಳಿಗ್ಗೆ ಜನ ಜಾಸ್ತಿ, ಸ್ವಲ್ಪ ಕಾಯಬೇಕು.",
+      "sentiment": 0.2,
+      "themes": [
+        "decoction_strength",
+        "queue_wait"
+      ]
+    },
+    {
+      "d": 12,
+      "source": "whatsapp",
+      "language": "en",
+      "segment": "office_goers",
+      "rating": null,
+      "body": "Can I pre-order 4 coffees for pickup at 8:45 tomorrow?",
+      "sentiment": 0.2,
+      "themes": [
+        "takeaway",
+        "pre_order"
+      ]
+    },
+    {
+      "d": 13,
+      "source": "instagram_comment",
+      "language": "kn-Latn",
+      "segment": "students",
+      "rating": null,
+      "body": "Bun butter jam + kaapi combo beku please, exam time alli life saver",
+      "sentiment": 0.6,
+      "themes": [
+        "snacks_quality",
+        "offers"
+      ]
+    },
+    {
+      "d": 15,
+      "source": "google_review",
+      "language": "en",
+      "segment": "regulars",
+      "rating": 5,
+      "body": "Old Bangalore in a cup. They still serve in davara-tumbler.",
+      "sentiment": 0.9,
+      "themes": [
+        "nostalgia",
+        "decoction_strength"
+      ]
+    },
+    {
+      "d": 16,
+      "source": "google_review",
+      "language": "en",
+      "segment": "families",
+      "rating": 3,
+      "body": "Weekend mornings are packed and there is no parking on 11th Main.",
+      "sentiment": -0.4,
+      "themes": [
+        "seating_space",
+        "parking"
+      ]
+    },
+    {
+      "d": 17,
+      "source": "zomato_review",
+      "language": "hi",
+      "segment": "office_goers",
+      "rating": 4,
+      "body": "कॉफ़ी तो कमाल की है, स्टाफ भी अच्छा है।",
+      "sentiment": 0.7,
+      "themes": [
+        "decoction_strength",
+        "staff_warmth"
+      ]
+    },
+    {
+      "d": 18,
+      "source": "google_review",
+      "language": "kn",
+      "segment": "families",
+      "rating": 5,
+      "body": "ಭಾನುವಾರ ಬೆಳಿಗ್ಗೆ ಕುಟುಂಬದ ಜೊತೆ ಬಂದೆವು. ದೋಸೆ ಮತ್ತು ಕಾಫಿ ಎರಡೂ ಅದ್ಭುತ.",
+      "sentiment": 0.9,
+      "themes": [
+        "snacks_quality",
+        "decoction_strength"
+      ]
+    },
+    {
+      "d": 19,
+      "source": "instagram_comment",
+      "language": "en",
+      "segment": "students",
+      "rating": null,
+      "body": "Is there a student discount? We come every day lol",
+      "sentiment": 0.3,
+      "themes": [
+        "price_value",
+        "offers"
+      ]
+    },
+    {
+      "d": 20,
+      "source": "google_review",
+      "language": "en",
+      "segment": "office_goers",
+      "rating": 2,
+      "body": "Waited at the counter forever on a Monday morning. Great coffee, terrible queue.",
+      "sentiment": -0.6,
+      "themes": [
+        "queue_wait"
+      ]
+    },
+    {
+      "d": 22,
+      "source": "whatsapp",
+      "language": "kn",
+      "segment": "regulars",
+      "rating": null,
+      "body": "ಉಗಾದಿ ಹೋಳಿಗೆ ಮತ್ತೆ ಯಾವಾಗ? ನಮ್ಮ ಮನೆಯವರಿಗೆ ತುಂಬಾ ಇಷ್ಟ ಆಯ್ತು.",
+      "sentiment": 0.8,
+      "themes": [
+        "snacks_quality",
+        "offers",
+        "nostalgia"
+      ]
+    },
+    {
+      "d": 24,
+      "source": "google_review",
+      "language": "en",
+      "segment": "students",
+      "rating": 5,
+      "body": "Best place to study with a coffee. Wifi works, nobody rushes you.",
+      "sentiment": 0.85,
+      "themes": [
+        "student_wifi",
+        "staff_warmth"
+      ]
+    },
+    {
+      "d": 26,
+      "source": "google_review",
+      "language": "en",
+      "segment": "regulars",
+      "rating": 4,
+      "body": "Prices went up a bit but still worth it for the decoction.",
+      "sentiment": 0.3,
+      "themes": [
+        "price_value",
+        "decoction_strength"
+      ]
+    },
+    {
+      "d": 27,
+      "source": "instagram_comment",
+      "language": "hi",
+      "segment": "students",
+      "rating": null,
+      "body": "कोल्ड कॉफ़ी थोड़ी महंगी है यार, पर टेस्ट अच्छा है",
+      "sentiment": 0.1,
+      "themes": [
+        "price_value",
+        "snacks_quality"
+      ]
+    },
+    {
+      "d": 29,
+      "source": "google_review",
+      "language": "kn",
+      "segment": "regulars",
+      "rating": 5,
+      "body": "ಸಿಬ್ಬಂದಿ ತುಂಬಾ ಆತ್ಮೀಯರು. ನಮ್ಮ ಅಜ್ಜನಿಗೂ ಇದೇ ಕಾಫಿ ಇಷ್ಟ.",
+      "sentiment": 0.9,
+      "themes": [
+        "staff_warmth",
+        "nostalgia"
+      ]
+    },
+    {
+      "d": 31,
+      "source": "zomato_review",
+      "language": "en",
+      "segment": "families",
+      "rating": 4,
+      "body": "Masala dosa is crisp, chutney fresh. Seating is tight for a family of five.",
+      "sentiment": 0.4,
+      "themes": [
+        "snacks_quality",
+        "seating_space"
+      ]
+    },
+    {
+      "d": 34,
+      "source": "google_review",
+      "language": "en",
+      "segment": "students",
+      "rating": 5,
+      "body": "Cheapest good breakfast near college. Idli vada + kaapi is the move.",
+      "sentiment": 0.8,
+      "themes": [
+        "price_value",
+        "snacks_quality"
+      ]
+    },
+    {
+      "d": 36,
+      "source": "whatsapp",
+      "language": "en",
+      "segment": "regulars",
+      "rating": null,
+      "body": "Please don't stop the Sunday morning messages, I like knowing what's fresh.",
+      "sentiment": 0.7,
+      "themes": [
+        "offers"
+      ]
+    },
+    {
+      "d": 38,
+      "source": "google_review",
+      "language": "kn",
+      "segment": "regulars",
+      "rating": 3,
+      "body": "ಕಾಫಿ ಒಳ್ಳೆಯದು, ಆದರೆ ಬೆಲೆ ಸ್ವಲ್ಪ ಜಾಸ್ತಿ ಆಗಿದೆ.",
+      "sentiment": -0.1,
+      "themes": [
+        "price_value"
+      ]
+    },
+    {
+      "d": 41,
+      "source": "instagram_comment",
+      "language": "kn-Latn",
+      "segment": "students",
+      "rating": null,
+      "body": "Nimma kesari bath nodi nanna ajji nenapaytu 🥹",
+      "sentiment": 0.85,
+      "themes": [
+        "nostalgia",
+        "snacks_quality"
+      ]
+    },
+    {
+      "d": 44,
+      "source": "google_review",
+      "language": "en",
+      "segment": "office_goers",
+      "rating": 4,
+      "body": "Quick takeaway if you come before 8:30. After that, good luck.",
+      "sentiment": 0.2,
+      "themes": [
+        "takeaway",
+        "queue_wait"
+      ]
+    },
+    {
+      "d": 47,
+      "source": "google_review",
+      "language": "hi",
+      "segment": "families",
+      "rating": 5,
+      "body": "बेंगलुरु की असली फ़िल्टर कॉफ़ी यहीं मिलती है।",
+      "sentiment": 0.9,
+      "themes": [
+        "decoction_strength",
+        "nostalgia"
+      ]
+    },
+    {
+      "d": 50,
+      "source": "google_review",
+      "language": "en",
+      "segment": "regulars",
+      "rating": 5,
+      "body": "Same table, same tumbler, same smile every morning for six years.",
+      "sentiment": 0.95,
+      "themes": [
+        "morning_ritual",
+        "staff_warmth"
+      ]
+    },
+    {
+      "d": 55,
+      "source": "zomato_review",
+      "language": "en",
+      "segment": "students",
+      "rating": 3,
+      "body": "Loved the exam-week cold coffee deal but it ended too soon.",
+      "sentiment": 0.2,
+      "themes": [
+        "offers",
+        "price_value"
+      ]
+    }
   ],
   "demo_new_reviews": [
-    {"d": 0, "source": "google_review", "language": "en", "segment": "office_goers", "rating": 2, "body": "Queue was out the door at 8:40. Gave up and left.", "sentiment": -0.8, "themes": ["queue_wait"]},
-    {"d": 0, "source": "google_review", "language": "kn", "segment": "regulars", "rating": 3, "body": "ಆಫರ್ ಚೆನ್ನಾಗಿದೆ, ಆದರೆ ಕೌಂಟರ್ ಹತ್ತಿರ ತುಂಬಾ ಕಾಯಬೇಕಾಯಿತು.", "sentiment": -0.3, "themes": ["queue_wait", "offers"]},
-    {"d": 1, "source": "instagram_comment", "language": "kn-Latn", "segment": "students", "rating": null, "body": "Offer super but 9 ganta mele line thumba doddadu", "sentiment": -0.2, "themes": ["queue_wait", "offers"]},
-    {"d": 1, "source": "zomato_review", "language": "en", "segment": "students", "rating": 3, "body": "Great deal, but we waited 25 minutes for two coffees.", "sentiment": -0.4, "themes": ["queue_wait", "offers"]}
+    {
+      "d": 0,
+      "source": "google_review",
+      "language": "en",
+      "segment": "office_goers",
+      "rating": 2,
+      "body": "Queue was out the door at 8:40. Gave up and left.",
+      "sentiment": -0.8,
+      "themes": [
+        "queue_wait"
+      ]
+    },
+    {
+      "d": 0,
+      "source": "google_review",
+      "language": "kn",
+      "segment": "regulars",
+      "rating": 3,
+      "body": "ಆಫರ್ ಚೆನ್ನಾಗಿದೆ, ಆದರೆ ಕೌಂಟರ್ ಹತ್ತಿರ ತುಂಬಾ ಕಾಯಬೇಕಾಯಿತು.",
+      "sentiment": -0.3,
+      "themes": [
+        "queue_wait",
+        "offers"
+      ]
+    },
+    {
+      "d": 1,
+      "source": "instagram_comment",
+      "language": "kn-Latn",
+      "segment": "students",
+      "rating": null,
+      "body": "Offer super but 9 ganta mele line thumba doddadu",
+      "sentiment": -0.2,
+      "themes": [
+        "queue_wait",
+        "offers"
+      ]
+    },
+    {
+      "d": 1,
+      "source": "zomato_review",
+      "language": "en",
+      "segment": "students",
+      "rating": 3,
+      "body": "Great deal, but we waited 25 minutes for two coffees.",
+      "sentiment": -0.4,
+      "themes": [
+        "queue_wait",
+        "offers"
+      ]
+    }
   ],
   "history": [
     {
-      "name": "Monsoon kaapi & bajji", "days_ago_start": 95, "days_ago_end": 88,
-      "goal": {"statement": "Bring regulars back during the rains", "kpi": {"metric": "redemptions", "target": 50, "window_days": 7}},
+      "name": "Monsoon kaapi & bajji",
+      "days_ago_start": 95,
+      "days_ago_end": 88,
+      "goal": {
+        "statement": "Bring regulars back during the rains",
+        "kpi": {
+          "metric": "redemptions",
+          "target": 50,
+          "window_days": 7
+        }
+      },
       "assets": [
-        {"segment": "regulars", "channel": "whatsapp", "language": "kn", "variant": "A", "hook": "nostalgia",
-         "text": "ಮಳೆ ಬಂತು, ಬಿಸಿ ಕಾಫಿ ಮತ್ತು ಬಜ್ಜಿ ಕಾಯ್ತಿದೆ. ಬನ್ನಿ, ಒಂದು ಕಾಫಿ ಕುಡಿಯೋಣ.",
-         "outcomes": {"impression": 610, "scan": 96, "redeem": 41}},
-        {"segment": "regulars", "channel": "whatsapp", "language": "en", "variant": "B", "hook": "value",
-         "text": "Rainy day combo: kaapi and bajji at a special price this week.",
-         "outcomes": {"impression": 600, "scan": 58, "redeem": 19}}
+        {
+          "segment": "regulars",
+          "channel": "whatsapp",
+          "language": "kn",
+          "variant": "A",
+          "hook": "nostalgia",
+          "text": "ಮಳೆ ಬಂತು, ಬಿಸಿ ಕಾಫಿ ಮತ್ತು ಬಜ್ಜಿ ಕಾಯ್ತಿದೆ. ಬನ್ನಿ, ಒಂದು ಕಾಫಿ ಕುಡಿಯೋಣ.",
+          "outcomes": {
+            "impression": 610,
+            "scan": 96,
+            "redeem": 41
+          }
+        },
+        {
+          "segment": "regulars",
+          "channel": "whatsapp",
+          "language": "en",
+          "variant": "B",
+          "hook": "value",
+          "text": "Rainy day combo: kaapi and bajji at a special price this week.",
+          "outcomes": {
+            "impression": 600,
+            "scan": 58,
+            "redeem": 19
+          }
+        }
       ]
     },
     {
-      "name": "Exam-week cold coffee", "days_ago_start": 210, "days_ago_end": 203,
-      "goal": {"statement": "Fill evenings with students during exams", "kpi": {"metric": "redemptions", "target": 60, "window_days": 7}},
+      "name": "Exam-week cold coffee",
+      "days_ago_start": 210,
+      "days_ago_end": 203,
+      "goal": {
+        "statement": "Fill evenings with students during exams",
+        "kpi": {
+          "metric": "redemptions",
+          "target": 60,
+          "window_days": 7
+        }
+      },
       "assets": [
-        {"segment": "students", "channel": "instagram_story", "language": "en", "variant": "A", "hook": "urgency",
-         "text": "Exam week survival kit: cold coffee deal, this week only.",
-         "outcomes": {"impression": 2100, "scan": 180, "redeem": 52}},
-        {"segment": "students", "channel": "poster", "language": "en", "variant": "B", "hook": "value",
-         "text": "Students: cold coffee for less, all exam week.",
-         "outcomes": {"scan": 64, "redeem": 22}}
+        {
+          "segment": "students",
+          "channel": "instagram_story",
+          "language": "en",
+          "variant": "A",
+          "hook": "urgency",
+          "text": "Exam week survival kit: cold coffee deal, this week only.",
+          "outcomes": {
+            "impression": 2100,
+            "scan": 180,
+            "redeem": 52
+          }
+        },
+        {
+          "segment": "students",
+          "channel": "poster",
+          "language": "en",
+          "variant": "B",
+          "hook": "value",
+          "text": "Students: cold coffee for less, all exam week.",
+          "outcomes": {
+            "scan": 64,
+            "redeem": 22
+          }
+        }
       ]
     },
     {
-      "name": "Ugadi holige breakfast", "days_ago_start": 185, "days_ago_end": 182,
-      "goal": {"statement": "Festival breakfast for families", "kpi": {"metric": "redemptions", "target": 40, "window_days": 3}},
+      "name": "Ugadi holige breakfast",
+      "days_ago_start": 185,
+      "days_ago_end": 182,
+      "goal": {
+        "statement": "Festival breakfast for families",
+        "kpi": {
+          "metric": "redemptions",
+          "target": 40,
+          "window_days": 3
+        }
+      },
       "assets": [
-        {"segment": "regulars", "channel": "whatsapp", "language": "kn", "variant": null, "hook": "community",
-         "text": "ಉಗಾದಿ ಹಬ್ಬದ ಶುಭಾಶಯಗಳು! ಹೋಳಿಗೆ ಮತ್ತು ಫಿಲ್ಟರ್ ಕಾಫಿ ಬೆಳಗಿನ ತಿಂಡಿ.",
-         "outcomes": {"impression": 620, "scan": 88, "redeem": 37}},
-        {"segment": "families", "channel": "instagram_post", "language": "kn", "variant": null, "hook": "community",
-         "text": "ಹಬ್ಬದ ಬೆಳಿಗ್ಗೆ, ಕುಟುಂಬದ ಜೊತೆ ಹೋಳಿಗೆ ಮತ್ತು ಕಾಫಿ.",
-         "outcomes": {"impression": 1500, "scan": 70, "redeem": 18}}
+        {
+          "segment": "regulars",
+          "channel": "whatsapp",
+          "language": "kn",
+          "variant": null,
+          "hook": "community",
+          "text": "ಉಗಾದಿ ಹಬ್ಬದ ಶುಭಾಶಯಗಳು! ಹೋಳಿಗೆ ಮತ್ತು ಫಿಲ್ಟರ್ ಕಾಫಿ ಬೆಳಗಿನ ತಿಂಡಿ.",
+          "outcomes": {
+            "impression": 620,
+            "scan": 88,
+            "redeem": 37
+          }
+        },
+        {
+          "segment": "families",
+          "channel": "instagram_post",
+          "language": "kn",
+          "variant": null,
+          "hook": "community",
+          "text": "ಹಬ್ಬದ ಬೆಳಿಗ್ಗೆ, ಕುಟುಂಬದ ಜೊತೆ ಹೋಳಿಗೆ ಮತ್ತು ಕಾಫಿ.",
+          "outcomes": {
+            "impression": 1500,
+            "scan": 70,
+            "redeem": 18
+          }
+        }
       ]
     }
   ],
   "memories": [
-    {"kind": "learning", "content": "Kannada WhatsApp messages to regulars converted about twice as well as English ones (41 of 96 clicks claimed vs 19 of 58) in the monsoon campaign.", "scope": {"segment": "regulars", "channel": "whatsapp", "language": "kn"}, "confidence": 0.7, "evidence": {"campaign": "Monsoon kaapi & bajji"}},
-    {"kind": "learning", "content": "Students acted on exam-week urgency in Instagram stories; the value-led poster near colleges did less.", "scope": {"segment": "students", "channel": "instagram_story", "hook": "urgency"}, "confidence": 0.55, "evidence": {"campaign": "Exam-week cold coffee"}},
-    {"kind": "brand_rule", "content": "Never use the word 'grab'. The owner rewrote it four times in past posts.", "scope": {}, "confidence": 0.9, "evidence": {"edit_signals": 4}}
+    {
+      "kind": "learning",
+      "content": "Kannada WhatsApp messages to regulars converted about twice as well as English ones (41 of 96 clicks claimed vs 19 of 58) in the monsoon campaign.",
+      "scope": {
+        "segment": "regulars",
+        "channel": "whatsapp",
+        "language": "kn"
+      },
+      "confidence": 0.7,
+      "evidence": {
+        "campaign": "Monsoon kaapi & bajji"
+      }
+    },
+    {
+      "kind": "learning",
+      "content": "Students acted on exam-week urgency in Instagram stories; the value-led poster near colleges did less.",
+      "scope": {
+        "segment": "students",
+        "channel": "instagram_story",
+        "hook": "urgency"
+      },
+      "confidence": 0.55,
+      "evidence": {
+        "campaign": "Exam-week cold coffee"
+      }
+    },
+    {
+      "kind": "brand_rule",
+      "content": "Never use the word 'grab'. The owner rewrote it four times in past posts.",
+      "scope": {},
+      "confidence": 0.9,
+      "evidence": {
+        "edit_signals": 4
+      }
+    }
   ]
 }

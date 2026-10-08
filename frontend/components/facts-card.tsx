@@ -1,13 +1,24 @@
 "use client";
 
-import { Check, Lock, LockOpen, TriangleAlert } from "lucide-react";
+import { Check, Lock, LockOpen, WarningCircle } from "@phosphor-icons/react";
+import clsx from "clsx";
 import { useState } from "react";
 import { api } from "@/lib/api";
 import type { FactsVersion, Lang } from "@/lib/types";
-import { Button, LANG_LABEL, Pill } from "./ui";
+import { Button, Card, LANG_LABEL, Pill } from "./ui";
 
 /** The offer facts: what customers are told to expect. One locked version at a time. */
-export function FactsCard({ campaignId, versions, onChange }: { campaignId: string; versions: FactsVersion[]; onChange: () => void }) {
+export function FactsCard({
+  campaignId,
+  versions,
+  onChange,
+  compact = false,
+}: {
+  campaignId: string;
+  versions: FactsVersion[];
+  onChange: () => void;
+  compact?: boolean;
+}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const draft = versions.find((v) => v.status === "draft");
@@ -17,12 +28,19 @@ export function FactsCard({ campaignId, versions, onChange }: { campaignId: stri
 
   if (!shown) {
     return (
-      <section className="rounded-lg border border-dashed border-line-strong p-5 text-sm text-muted">
-        Counterpart is writing down the offer from your brief. It will appear here for you to check and lock.
-      </section>
+      <Card className="p-5">
+        <h2 className="text-[17px]">The offer</h2>
+        <p className="mt-2 text-sm text-muted">Counterpart is writing the offer down from your brief. It appears here for you to check and lock.</p>
+      </Card>
     );
   }
   const langs = Array.from(new Set(shown.facts.flatMap((f) => Object.keys(f.display)))) as Lang[];
+  const isDraft = shown.status === "draft";
+  const check = shown.wording_check;
+  const mismatched = new Set((check?.status === "failed" ? check.issues : []).map((i) => `${i.key}:${i.lang}`));
+  const assumed = new Set((check?.assumed ?? []).map((a) => a.key));
+  const label = (key: string) => shown.facts.find((f) => f.key === key)?.label ?? key;
+  const canLock = !!check && check.status !== "failed";
 
   async function lock() {
     setBusy(true);
@@ -37,68 +55,54 @@ export function FactsCard({ campaignId, versions, onChange }: { campaignId: stri
     }
   }
 
-  const isDraft = shown.status === "draft";
-  const check = shown.wording_check;
-  const mismatched = new Set((check?.status === "failed" ? check.issues : []).map((i) => `${i.key}:${i.lang}`));
-  const label = (key: string) => shown.facts.find((f) => f.key === key)?.label ?? key;
-  const canLock = !!check && check.status !== "failed";
   return (
-    <section className={`rounded-lg border bg-surface ${isDraft ? "border-turmeric/50" : "border-line"}`} aria-labelledby="facts-h">
-      <div className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-3">
-        {isDraft ? <LockOpen size={16} className="text-turmeric" aria-hidden /> : <Lock size={16} className="text-leaf" aria-hidden />}
-        <h2 id="facts-h" className="text-[16px]">
-          Offer facts
+    <Card className={clsx("overflow-hidden", isDraft && "ring-turmeric/40")} aria-labelledby="facts-h">
+      <div className="flex flex-wrap items-center gap-2.5 px-5 pb-3 pt-5">
+        {isDraft ? <LockOpen size={18} className="text-turmeric" aria-hidden /> : <Lock size={18} weight="fill" className="text-leaf" aria-hidden />}
+        <h2 id="facts-h" className="text-[17px]">
+          The offer
         </h2>
-        <Pill tone={isDraft ? "turmeric" : "leaf"}>{isDraft ? `Draft v${shown.version}, not locked` : `Locked v${shown.version}`}</Pill>
-        <span className="flex-1" />
-        {isDraft && (
-          <Button variant="primary" size="sm" onClick={lock} disabled={busy || !canLock}>
-            <Lock size={14} aria-hidden />
-            {busy ? "Locking…" : !check ? "Checking wording…" : check.status === "failed" ? "Fix wording to lock" : "Lock these facts"}
-          </Button>
-        )}
+        <Pill tone={isDraft ? "turmeric" : "leaf"}>{isDraft ? `Draft ${shown.version}, not locked` : `Locked, version ${shown.version}`}</Pill>
       </div>
-      {isDraft && shown.change_reason && <p className="px-5 pt-3 text-sm text-ink-2">{shown.change_reason}</p>}
-      <div className="overflow-x-auto px-5 py-3">
-        <table className="w-full min-w-[520px] text-sm">
-          <thead>
-            <tr className="text-left text-xs text-muted">
-              <th className="py-1.5 pr-4 font-medium">Fact</th>
-              {langs.map((l) => (
-                <th key={l} className="py-1.5 pr-4 font-medium">
-                  {LANG_LABEL[l] ?? l}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {shown.facts.map((f) => (
-              <tr key={f.key} className="border-t border-line align-top">
-                <td className="py-2 pr-4">
-                  <span className="font-medium">{f.label}</span>
-                  {!f.required && <span className="ml-1 text-xs text-muted">optional</span>}
-                </td>
-                {langs.map((l) => {
-                  const bad = isDraft && mismatched.has(`${f.key}:${l}`);
-                  return (
-                    <td key={l} className={`py-2 pr-4 ${bad ? "text-kumkum underline decoration-dotted underline-offset-4" : ""}`}>
-                      {f.display[l] ?? <span className="text-kumkum">missing</span>}
-                      {isDraft && l !== "en" && check?.back_translations[f.key]?.[l] && (
-                        <span className="mt-0.5 block text-xs text-muted">reads as “{check.back_translations[f.key][l]}”</span>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {isDraft && shown.change_reason && !compact && <p className="px-5 pb-2 text-sm text-ink-2">{shown.change_reason}</p>}
+
+      <ul className={clsx("divide-y divide-line px-5", !compact && "md:grid md:grid-cols-2 md:gap-x-8 md:divide-y-0")}>
+        {shown.facts.map((f) => (
+          <li key={f.key} className={clsx("py-3", !compact && "md:border-t md:border-line")}>
+            <p className="flex items-center gap-1.5 text-xs font-medium text-muted">
+              {f.label.charAt(0) + f.label.slice(1).toLowerCase()}
+              {!f.required && <span className="font-normal">· optional</span>}
+            </p>
+            {isDraft && assumed.has(f.key) && (
+              <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-turmeric-soft px-2 py-0.5 text-xs font-medium text-turmeric">
+                <WarningCircle size={13} aria-hidden /> Counterpart assumed this. Check it.
+              </p>
+            )}
+            <div className="mt-1 space-y-1">
+              {langs.map((l) => {
+                const bad = isDraft && mismatched.has(`${f.key}:${l}`);
+                const back = isDraft && l !== "en" ? check?.back_translations[f.key]?.[l] : null;
+                return (
+                  <div key={l} className="flex gap-2">
+                    <span className="w-12 shrink-0 pt-0.5 text-[11px] text-muted">{LANG_LABEL[l] ?? l}</span>
+                    <span className="min-w-0">
+                      <span className={clsx("text-[14px]", l === "en" && "font-medium", bad && "text-kumkum underline decoration-dotted underline-offset-4")}>
+                        {f.display[l] ?? <span className="text-kumkum">missing</span>}
+                      </span>
+                      {back && !compact && <span className="block text-xs text-muted">reads as “{back}”</span>}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </li>
+        ))}
+      </ul>
+
       {isDraft && check?.status === "failed" && (
-        <div className="border-t border-line px-5 py-3 text-sm" role="alert">
+        <div className="mx-5 mb-3 rounded-[var(--radius-md)] bg-kumkum-soft p-3 text-sm" role="alert">
           <p className="flex items-center gap-1.5 font-medium text-kumkum">
-            <TriangleAlert size={14} aria-hidden />
-            A translation says something different from the English
+            <WarningCircle size={15} weight="fill" aria-hidden />A translation says something different from the English
           </p>
           <ul className="mt-1.5 space-y-1 text-ink-2">
             {check.issues.map((i) => (
@@ -112,28 +116,37 @@ export function FactsCard({ campaignId, versions, onChange }: { campaignId: stri
         </div>
       )}
       {isDraft && check?.status === "passed" && (
-        <p className="flex items-center gap-1.5 border-t border-line px-5 py-2.5 text-sm text-leaf">
-          <Check size={14} aria-hidden />
+        <p className="flex items-center gap-1.5 px-5 pb-1 text-sm text-leaf">
+          <Check size={14} weight="bold" aria-hidden />
           Every translation was read back into English and means the same.
         </p>
       )}
       {isDraft && check?.status === "unchecked" && (
-        <p className="border-t border-line px-5 py-2.5 text-sm text-turmeric">
-          Numbers match across languages, but no model checked the meaning. Read the translations before locking.
-        </p>
+        <p className="px-5 pb-1 text-sm text-turmeric">Numbers match across languages, but no model checked the meaning. Read the translations before locking.</p>
       )}
-      {Object.values(shown.forbidden_claims).some((v) => v?.length) && (
-        <p className="border-t border-line px-5 py-3 text-sm text-ink-2">
-          <span className="text-muted">Never say: </span>
+
+      {Object.values(shown.forbidden_claims).some((v) => v?.length) && !compact && (
+        <p className="px-5 pt-2 text-sm text-ink-2">
+          <span className="text-muted">Never says: </span>
           {Object.values(shown.forbidden_claims).flat().join(", ")}
         </p>
       )}
       {history.length > 0 && (
-        <p className="border-t border-line px-5 py-2.5 text-xs text-muted">
+        <p className="px-5 pt-2 text-xs text-muted">
           Earlier versions: {history.map((h) => `v${h.version}${h.change_reason ? ` (${h.change_reason})` : ""}`).join("; ")}
         </p>
       )}
-      {error && <p className="px-5 pb-3 text-sm text-kumkum">{error}</p>}
-    </section>
+      {error && <p className="px-5 pt-2 text-sm text-kumkum">{error}</p>}
+      {isDraft ? (
+        <div className="px-5 pb-5 pt-4">
+          <Button variant="primary" onClick={lock} disabled={busy || !canLock} className="w-full sm:w-auto">
+            <Lock size={15} aria-hidden />
+            {busy ? "Locking…" : !check ? "Checking wording…" : check.status === "failed" ? "Fix wording to lock" : assumed.size ? "Confirm and lock" : "Lock the offer"}
+          </Button>
+        </div>
+      ) : (
+        <div className="pb-4" />
+      )}
+    </Card>
   );
 }

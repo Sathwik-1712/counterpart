@@ -136,11 +136,14 @@ class ModelRouter:
     async def chat_json(
         self, role: str, messages: list[dict[str, Any]], schema: type[M], *, retries: int = 1, **kw: Any
     ) -> tuple[M, ChatResult]:
-        """Structured output via instructions + validation (Agnes has no JSON mode)."""
+        """Structured output: providers with a JSON-schema mode (Gemini) get it enforced; others (Agnes) get the
+        schema as an instruction. Either way the reply is validated, with one repair attempt."""
+        json_schema = schema.model_json_schema()
+        kw.setdefault("response_schema", json_schema)
         instruction = {
             "role": "system",
             "content": "Reply with one JSON object only, no prose and no code fences. It must validate "
-            f"against this JSON Schema:\n{json.dumps(schema.model_json_schema(), ensure_ascii=False)}",
+            f"against this JSON Schema:\n{json.dumps(json_schema, ensure_ascii=False)}",
         }
         convo = [*messages, instruction]
         last_error = ""

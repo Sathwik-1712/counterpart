@@ -128,10 +128,14 @@ async def run(ctx: ToolContext, trigger: str) -> dict[str, Any]:
                     continue
                 final = reply
                 break
-            messages.append({
-                "role": "assistant", "content": res.content or "",
-                "tool_calls": [{"id": c.id, "type": "function", "function": {"name": c.name, "arguments": c.arguments}}
-                               for c in res.tool_calls]})
+            # Send back the provider's own message when we have it: Gemini 3 attaches thought signatures to tool
+            # calls (extra_content) and rejects the next turn without them.
+            raw = res.raw_message if res.raw_message.get("tool_calls") else None
+            messages.append({"role": "assistant", "content": res.content or "", "tool_calls": raw["tool_calls"]} if raw
+                            else {"role": "assistant", "content": res.content or "",
+                                  "tool_calls": [{"id": c.id, "type": "function",
+                                                  "function": {"name": c.name, "arguments": c.arguments}}
+                                                 for c in res.tool_calls]})
             for call in res.tool_calls:
                 out = await execute(ctx, call.name, call.arguments)
                 steps.append({"tool": call.name, "ok": out.get("ok"), "saved_output": res.replayed})

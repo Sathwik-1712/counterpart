@@ -7,6 +7,7 @@ Each tool declares an effect class. The policy layer (runtime.execute) uses it:
 Preconditions run before anything else and explain themselves to the agent.
 """
 
+import asyncio
 import json
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -257,6 +258,7 @@ async def lock_facts(ctx: ToolContext, a: LockArgs) -> dict[str, Any]:
 
 
 class PlanArgs(BaseModel):
+    name: str = Field(description="Short campaign name for the owner, 2-5 words, e.g. 'Midterm study break'.")
     goal: dict[str, Any] = Field(description="{statement, kpi: {metric, target, window_days}}")
     plan: dict[str, Any] = Field(description="{cells: [{segment, channel, language, rationale}], hypotheses: [...]}")
     intent: dict[str, Any] = Field(description="{core_message, cta, must_say, must_not_say, tone}")
@@ -267,7 +269,7 @@ class PlanArgs(BaseModel):
 async def set_campaign_plan(ctx: ToolContext, a: PlanArgs) -> dict[str, Any]:
     async with connection() as conn:
         c = await services.update_campaign_plan(conn, ctx.campaign_id,  # type: ignore[arg-type]
-                                                goal=a.goal, plan=a.plan, intent=a.intent)
+                                                goal=a.goal, plan=a.plan, intent=a.intent, name=a.name)
         await ledger.record(conn, ctx.business["id"], "campaign.planned",
                             f"Plan saved: {len(a.plan.get('cells', []))} audience/channel/language cells",
                             actor=ctx.actor, campaign_id=c["id"], payload={"plan": a.plan})
@@ -344,7 +346,6 @@ async def generate_copy(ctx: ToolContext, a: GenerateArgs) -> dict[str, Any]:
                             ensure_ascii=False, default=str),
         learnings=json.dumps([{"id": f"learning:{r['id']}", "text": r["content"]} for r in learnings],
                              ensure_ascii=False, default=str),
-        required=", ".join(f"{{{{{f.key}}}}}" for f in sheet.facts if f.required),
     )
     cells = []
     for i, c in enumerate(a.cells):
@@ -383,39 +384,76 @@ async def generate_copy(ctx: ToolContext, a: GenerateArgs) -> dict[str, Any]:
                 stored[g.cell] = {"asset_id": str(asset["id"]), "channel": spec["channel"],
                                   "language": spec["language"], "status": rev["asset_status"],
                                   "blocked_by": [c["detail"] for c in rev["validation"]["checks"]
-                                                 if not c["passed"] and c["severity"] == "block"]}
+                                                 if not c["passed"] and c["severity"] == "block"],
+                                  "reads_now": rev.get("rendered")}
         return stored
+
+    async def repair(problems: dict[int, list[str]], reason: str) -> None:
+        """One rewrite of the given pieces, showing the model its text as customers would read it."""
+        fix = [cells[i] | {"your_previous_version": written[i].content.model_dump(),
+                           "how_it_reads_after_slots_are_filled": results[i].get("reads_now"), "problems": why}
+               for i, why in problems.items()]
+        try:
+            fixed, _ = await ask({"fix_these": fix, "how": REPAIR_HINT})
+        except (ProviderError, ValueError):
+            return  # the drafts stay as they are, marked invalid
+        for i, r in (await store([g for g in fixed.assets if g.cell in problems], reason)).items():
+            results[i] = r | {"first_draft_blocked_by": problems[i]}
+
+    async def meaning_check(cell_ids: list[int]) -> None:
+        ids = {results[i]["asset_id"]: i for i in cell_ids if results[i]["status"] == "valid"}
+        if not ids:
+            return
+        audited = (await services.audit_assets(ctx.router, connection, list(ids))).get("results", {})
+        async with connection() as conn:
+            for asset_id, i in ids.items():
+                if asset_id in audited:
+                    results[i]["meaning_check"] = audited[asset_id].get("l3")
+                    rev = await services.current_revision(conn, asset_id)
+                    results[i]["status"] = "valid" if audited[asset_id]["passed"] else "invalid"
+                    results[i]["blocked_by"] = [c["detail"] for c in (rev or {}).get("validation", {}).get("checks", [])
+                                                if not c["passed"] and c["severity"] == "block"]
 
     # 2. write, store and guard
     out, res = await ask({"write_these": cells})
     results = await store(out.assets, "angle")
-
-    # 3. one repair round inside the tool: the guard's exact reasons go back to the model
-    blocked = {i: r["blocked_by"] for i, r in results.items() if r["blocked_by"]}
-    if blocked:
-        fix = [cells[i] | {"your_previous_version": written[i].content.model_dump(), "problems": why}
-               for i, why in blocked.items()]
-        try:
-            fixed, _ = await ask({"fix_these": fix, "how": REPAIR_HINT})
-            for i, r in (await store([g for g in fixed.assets if g.cell in blocked], "fixed")).items():
-                results[i] = r | {"first_draft_blocked_by": blocked[i]}
-        except (ProviderError, ValueError):
-            pass  # the first drafts stay as they are, marked invalid
+    # 3. rules first: the guard's exact reasons go back once
+    if blocked := {i: r["blocked_by"] for i, r in results.items() if r["blocked_by"]}:
+        await repair(blocked, "fixed")
+    # 4. the meaning check always runs, by the verification model (not the writer); failures get one more rewrite
+    await meaning_check(list(results))
+    if failed := {i: r["blocked_by"] for i, r in results.items() if r.get("meaning_check") == "failed"}:
+        await repair(failed, "reworded")
+        await meaning_check(list(failed))
+    # 5. every passing picture-led piece gets its picture now, in parallel (the system writes the offer onto it)
+    items = " and ".join(f.display.get("en", "") for f in sheet.facts if f.type == "item") or "the café's food"
+    todo = [(i, r) for i, r in results.items() if r["status"] == "valid" and r["channel"] in VISUAL_CHANNELS
+            and not (existing.get(a.cells[i].asset_id or "") or {}).get("image_key")]
+    pictures = await asyncio.gather(*(make_visual(ctx, r["asset_id"], f"{items}, for {cells[i]['segment']}: "
+                                                  f"{cells[i]['angle']}") for i, r in todo), return_exceptions=True)
+    for (_, r), pic in zip(todo, pictures, strict=True):
+        r["picture"] = "made" if isinstance(pic, dict) else f"failed: {str(pic)[:120]}"
+    for r in results.values():
+        r.pop("reads_now", None)
     return {"assets": [results[i] for i in sorted(results)], "model": res.model, "saved_output": res.replayed}
 
 
-REPAIR_HINT = ("Each piece failed the fact guard for the listed problems. Rewrite it so it passes, keeping the same "
-               "cell number, angle and language: put every offer detail (numbers, days, times, prices, conditions) "
-               "only as {{slots}}; include every required slot; avoid forbidden words; stay well under max_chars, "
-               "which counts the text after slots are replaced by their wording.")
+VISUAL_CHANNELS = {"instagram_post", "instagram_story", "poster"}
+
+
+REPAIR_HINT = ("Each piece failed a check for the listed problems. Rewrite it so it passes, keeping the same cell "
+               "number, angle and language. how_it_reads_after_slots_are_filled shows what customers would see "
+               "(the offer box and call to action are added by the system). Make your headline and body read "
+               "naturally; state no offer details yourself (no numbers, days, times, prices or conditions); avoid "
+               "forbidden words; stay well under max_chars.")
 
 
 class AssetIds(BaseModel):
     asset_ids: list[str] = Field(min_length=1)
 
 
-@tool("validate_assets", "Run the meaning check (back-translation + every customer promise vs the facts) "
-      "on assets that passed the deterministic guard.", AssetIds, "internal", [needs_locked_facts])
+@tool("validate_assets", "Re-run the meaning check (back-translation + every customer promise vs the facts) "
+      "on assets that passed the deterministic guard. generate_copy already runs it once.", AssetIds, "internal", [needs_locked_facts])
 async def validate_assets(ctx: ToolContext, a: AssetIds) -> dict[str, Any]:
     return await services.audit_assets(ctx.router, connection, a.asset_ids)
 
@@ -426,31 +464,41 @@ RATIOS = {"poster": "3:4", "instagram_post": "1:1", "instagram_story": "9:16", "
 class VisualArgs(BaseModel):
     asset_id: str
     concept: str = Field(description="What the picture shows. No text, letters or numbers will be drawn.")
+    replace: bool = Field(False, description="Make a new picture even if the piece already has one.")
 
 
 @tool("generate_visual", "Create the background picture for an asset. Offer text is overlaid exactly by the "
       "system, never drawn by the image model.", VisualArgs, "internal", [needs_locked_facts])
 async def generate_visual(ctx: ToolContext, a: VisualArgs) -> dict[str, Any]:
+    if not a.replace:
+        async with connection() as conn:
+            rev = await services.current_revision(conn, a.asset_id)
+        if rev and rev.get("image_key"):  # generate_copy already made one
+            return {"image_key": rev["image_key"], "note": "This piece already has a picture; pass replace=true for a new one."}
+    return await make_visual(ctx, a.asset_id, a.concept)
+
+
+async def make_visual(ctx: ToolContext, asset_id: str, concept: str) -> dict[str, Any]:
     from app.storage import get_storage
 
     async with connection() as conn:
-        asset = await services.get_asset(conn, a.asset_id)
+        asset = await services.get_asset(conn, asset_id)
         brand = await services.active_brand(conn, ctx.business["id"])
-    palette = ", ".join((brand or {}).get("dna", {}).get("palette", [])) if brand else ""
-    prompt = (f"{a.concept}. Photographic, warm natural light, {ctx.business['locality']} {ctx.business['city']} "
-              f"neighbourhood café feel. Colour accents: {palette}. Leave calm empty space in the upper third for a "
-              "headline. Absolutely no text, letters, numbers, logos or watermarks.")
+    dna = (brand or {}).get("dna", {})
+    prompt = (f"{concept}. {dna.get('imagery', 'Photographic, warm natural light.')} {ctx.business['locality']}, "
+              f"{ctx.business['city']}. Colour accents: {', '.join(dna.get('palette', []))}. Keep the lower third "
+              "calm and uncluttered for an offer box. Absolutely no text, letters, numbers, logos or watermarks.")
     img = await ctx.router.image(prompt, size="1K", ratio=RATIOS[asset["channel"]])
     ext = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}.get(img.mime, "bin")
-    key = await get_storage().put(f"{ctx.business['slug']}/{a.asset_id}/{asset['current_revision']}.{ext}",
+    key = await get_storage().put(f"{ctx.business['slug']}/{asset_id}/{asset['current_revision']}.{ext}",
                                   img.data, img.mime)
     async with connection() as conn:
         await conn.execute(
             "update asset_revisions set image_key = %s where asset_id = %s and n = %s",
-            (key, a.asset_id, asset["current_revision"]))
+            (key, asset_id, asset["current_revision"]))
         await ledger.record(conn, ctx.business["id"], "asset.visual", f"Made a new picture for the {services.asset_label(asset)}",
                             actor=ctx.actor, campaign_id=ctx.campaign_id,
-                            payload={"asset_id": a.asset_id, "image_key": key, "saved_output": img.replayed})
+                            payload={"asset_id": asset_id, "image_key": key, "saved_output": img.replayed})
     return {"image_key": key, "saved_output": img.replayed}
 
 

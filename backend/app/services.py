@@ -8,8 +8,10 @@ Rules that make the system trustworthy live here, not in prompts:
     against the currently locked fact version.
 """
 
+import json
 import secrets
 from dataclasses import asdict
+from datetime import date
 from typing import Any
 from uuid import UUID
 
@@ -21,16 +23,17 @@ from app.domain.facts import (
     AssetContent,
     Check,
     FactSheet,
+    assumed_facts,
+    depends_on,
     deterministic_checks,
     render,
     report,
-    slot_keys,
     wording_issues,
 )
 from app.domain.impact import affected_assets, changed_fact_keys, forbidden_changed
 from app.domain.stats import Arm, decide, prior_from_history
 from app.providers.base import ProviderError
-from app.providers.router import ModelRouter, NoProviderAvailable
+from app.providers.router import ModelRouter
 
 
 class NotFound(Exception):
@@ -84,14 +87,15 @@ async def create_campaign(conn: Conn, business_id: UUID | str, *, name: str, bri
 
 
 async def update_campaign_plan(conn: Conn, campaign_id: UUID | str, *, goal: dict | None, plan: dict | None,
-                               intent: dict | None) -> dict[str, Any]:
+                               intent: dict | None, name: str | None = None) -> dict[str, Any]:
     row = await fetch_one(
         conn,
         """update campaigns set goal = coalesce(%s, goal), plan = coalesce(%s, plan),
-           intent = coalesce(%s, intent), status = case when status = 'draft' then 'planned' else status end,
+           intent = coalesce(%s, intent), name = coalesce(%s, name),
+           status = case when status = 'draft' then 'planned' else status end,
            updated_at = now() where id = %s returning *""",
         (jsonb(goal) if goal else None, jsonb(plan) if plan else None, jsonb(intent) if intent else None,
-         campaign_id),
+         (name or "").strip()[:60] or None, campaign_id),
     )
     if not row:
         raise NotFound("campaign not found")
@@ -175,9 +179,28 @@ async def store_wording_check(conn: Conn, campaign: dict[str, Any], draft: dict[
     summary = {"passed": "Checked the translated offer wording: it means the same as the English",
                "unchecked": "Translated offer wording not checked by a model; numbers match",
                "failed": "Translated offer wording does not match: " + wording_issue_text(check["issues"])}
-    await ledger.record(conn, campaign["business_id"], "facts.wording_checked", summary[check["status"]],
+    text = summary[check["status"]]
+    if check.get("assumed"):
+        text += ". Counterpart assumed, owner to confirm: " + ", ".join(
+            f"{a['label'].lower()} ({', '.join(a['numbers'])})" for a in check["assumed"])
+    await ledger.record(conn, campaign["business_id"], "facts.wording_checked", text,
                         actor="system", campaign_id=campaign["id"], payload=check)
     return True
+
+
+async def owner_known_text(conn: Conn, campaign: dict[str, Any]) -> str:
+    """Everything the owner said or the system computed for this campaign: brief, owner messages, menu, margin checks.
+    Numbers outside this text in a facts draft are Counterpart's assumptions."""
+    business = await get_business_by_id(conn, campaign["business_id"])
+    rows = await fetch_all(
+        conn, """select summary, payload from ledger_events where campaign_id = %s
+                 and (type = 'owner.said' or type = 'tool.evaluate_offer')""", (campaign["id"],))
+    profile = business.get("profile") or {}
+    parts = [campaign.get("brief") or "", " ".join(profile.get("allowed_phrases") or []),
+             " ".join(f"{m['name']} {m['price']}" for m in profile.get("menu") or [])]  # prices, not costs
+    parts += [r["summary"] + " " + json.dumps(r["payload"].get("result") or {}, default=str) for r in rows]
+    parts.append(f"{date.today().year} {date.today().year + 1}")  # the year itself is never an assumption
+    return " ".join(parts)
 
 
 async def check_fact_wording(router: ModelRouter, conn_factory: Any, campaign_id: str) -> dict[str, Any] | None:
@@ -185,6 +208,7 @@ async def check_fact_wording(router: ModelRouter, conn_factory: Any, campaign_id
     async with conn_factory() as conn:
         campaign = await get_campaign(conn, campaign_id)
         draft = await facts_row(conn, campaign_id, "draft")
+        known = await owner_known_text(conn, campaign)
     if not draft:
         return None
     if draft.get("wording_check"):
@@ -195,6 +219,7 @@ async def check_fact_wording(router: ModelRouter, conn_factory: Any, campaign_id
         check = wording_result(sheet, issues, translations)
     except (ProviderError, ValueError) as e:
         check = wording_result(sheet, None, note=f"The meaning check could not run ({str(e)[:120]}).")
+    check["assumed"] = assumed_facts(sheet, known)
     async with conn_factory() as conn:
         await store_wording_check(conn, campaign, draft, check)
     return check
@@ -289,7 +314,13 @@ async def add_revision(
     business = await get_business_by_id(conn, campaign["business_id"])
     brand = await active_brand(conn, business["id"])
     allowed = tuple(business["profile"].get("allowed_phrases") or [])
+    if banned := (brand or {}).get("dna", {}).get("banned_words"):  # brand voice rules, enforced like claims
+        sheet = sheet.model_copy(update={"forbidden_claims": {**sheet.forbidden_claims, "brand": list(banned)}})
 
+    if image_key is None:  # a rewrite keeps the piece's picture
+        prev = await fetch_one(conn, "select image_key from asset_revisions where asset_id = %s and n = %s",
+                               (asset["id"], asset.get("current_revision")))
+        image_key = (prev or {}).get("image_key")
     checks = deterministic_checks(content, sheet, lang=asset["language"], channel=asset["channel"],
                                   allowed_phrases=allowed)
     validation = report(checks, facts_version=sheet.version,
@@ -302,7 +333,7 @@ async def add_revision(
                image_key, features, validation, created_by, reason)
            values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning *""",
         (asset["id"], nxt["n"], jsonb(content.model_dump()), jsonb(render(content, sheet, asset["language"])),  # type: ignore[index]
-         slot_keys(content), sheet.version, brand["version"] if brand else None, image_key,
+         depends_on(content, sheet), sheet.version, brand["version"] if brand else None, image_key,
          jsonb(features) if features else None, jsonb(validation), created_by, reason),
     )
     assert rev
@@ -354,7 +385,7 @@ async def audit_assets(router: ModelRouter, conn_factory: Any, asset_ids: list[s
     try:
         l3, translations = await audit_mod.audit(router, items, sheet, campaign.get("intent"))
         l3_failed = False
-    except NoProviderAvailable as e:
+    except (ProviderError, ValueError) as e:  # includes NoProviderAvailable; the assets stay unaudited
         l3, translations, l3_failed = {}, {}, str(e)
 
     results = {}
@@ -367,11 +398,12 @@ async def audit_assets(router: ModelRouter, conn_factory: Any, asset_ids: list[s
                 v["l3"] = "pending"  # verifier unreachable: stays unapprovable until audited
             else:
                 l3_checks: list[Check] = l3[ref]
-                v["checks"] += [asdict(c) for c in l3_checks]
+                # a re-run replaces the previous meaning check instead of piling up on it
+                v["checks"] = [c for c in v["checks"] if c["layer"] != "L3"] + [asdict(c) for c in l3_checks]
                 l3_ok = all(c.passed for c in l3_checks)
                 v["l3"] = "passed" if l3_ok else "failed"
                 v["back_translation"] = translations.get(ref)
-                v["passed"] = v["passed"] and l3_ok
+                v["passed"] = all(c["passed"] for c in v["checks"] if c["severity"] == "block")
             await conn.execute("update asset_revisions set validation = %s where id = %s",
                                (jsonb(v), r["revision_id"]))
             await conn.execute(

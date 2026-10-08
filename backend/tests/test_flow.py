@@ -10,7 +10,7 @@ from app.agent import runtime
 from app.agent.tools import ToolContext
 from app.config import get_settings
 from app.db import connection
-from tests.fakes import calls, text
+from tests.fakes import ProviderError, calls, text
 
 FACTS = [
     {"key": "discount", "label": "Discount", "type": "percent", "value": 20,
@@ -102,7 +102,8 @@ async def test_full_campaign_flow(client, scripted):
          "features": {"hook": "urgency", "cta_strength": 3, "tone": "brisk"}},
     ]}
     still_wrong = {"assets": [gen["assets"][1] | {"cell": 1}]}
-    scripted.push(text(json.dumps(gen, ensure_ascii=False)), text(json.dumps(still_wrong, ensure_ascii=False)))
+    scripted.push(text(json.dumps(gen, ensure_ascii=False)), text(json.dumps(still_wrong, ensure_ascii=False)),
+                  ProviderError("verifier down"))  # automatic meaning check unavailable -> pending; run below
     res = await runtime.execute(ctx, "generate_copy", {"cells": [
         {"segment": "regulars", "channel": "whatsapp", "language": "en", "variant": "A", "angle": "nostalgia"},
         {"segment": "regulars", "channel": "whatsapp", "language": "en", "variant": "B", "angle": "urgency"}]})
@@ -111,7 +112,8 @@ async def test_full_campaign_flow(client, scripted):
     # the model typed "8 to 11 am": blocked, sent back once with the reason, still wrong -> stays invalid
     assert good["status"] == "valid" and bad["status"] == "invalid"
     assert any("8, 11" in d for d in bad["first_draft_blocked_by"])
-    repair = json.loads(next(m["content"] for m in scripted.requests[-1]["messages"] if "fix_these" in m["content"]))
+    repair = json.loads(next(m["content"] for req in scripted.requests for m in req["messages"]
+                             if "fix_these" in (m["content"] or "")))
     assert [f["cell"] for f in repair["fix_these"]] == [1] and "8, 11" in repair["fix_these"][0]["problems"][0]
 
     # --- meaning check (L3) on the valid one
@@ -195,7 +197,7 @@ def test_json_encoded_string_args_are_decoded():
     # Seen live from Agnes: object/array arguments arrive as JSON text.
     from app.agent.tools import REGISTRY
     model = REGISTRY["set_campaign_plan"].args
-    args = runtime._validate_args(model, {"goal": '{"statement": "x"}', "plan": '{"cells": []}',
+    args = runtime._validate_args(model, {"name": "Test", "goal": '{"statement": "x"}', "plan": '{"cells": []}',
                                           "intent": {"tone": "warm"}})
     assert args.plan == {"cells": []}  # type: ignore[attr-defined]
     assert runtime._unwrap_json_strings({"plan": "{not json"})["plan"] == "{not json"
@@ -222,7 +224,6 @@ async def test_mistranslated_fact_cannot_be_locked(client, scripted):
 
 
 async def test_wording_check_without_a_model_is_marked_unchecked(client, scripted):
-    from tests.fakes import ProviderError
     r = await client.post("/api/businesses/kaapi-kone/campaigns", json={"brief": "weekday combo", "run_agent": False})
     ctx = await ctx_for(client, r.json()["id"])
     scripted.push(ProviderError("down"))
@@ -255,6 +256,7 @@ async def test_generation_repairs_a_blocked_piece_once(client, scripted):
                                      "features": feats}]})),
         text(json.dumps({"assets": [{"cell": 0, "content": content("{{discount}} on {{combo}}, {{days}}. {{dine_in}}"),
                                      "features": feats}]})),
+        ProviderError("verifier down"),
     )
     res = await runtime.execute(ctx, "generate_copy", {"cells": [
         {"segment": "students", "channel": "whatsapp", "language": "en", "angle": "value"}]})
@@ -262,3 +264,18 @@ async def test_generation_repairs_a_blocked_piece_once(client, scripted):
     assert piece["status"] == "valid" and piece["first_draft_blocked_by"]
     # rewriting an existing piece needs only its id and an angle
     assert runtime.REGISTRY["generate_copy"].args.model_validate({"cells": [{"asset_id": piece["asset_id"], "angle": "x"}]})
+
+
+async def test_numbers_the_owner_never_gave_are_flagged_as_assumed(client, scripted):
+    r = await client.post("/api/businesses/kaapi-kone/campaigns",
+                          json={"brief": "20% off filter coffee and vada this weekend, dine-in only", "run_agent": False})
+    ctx = await ctx_for(client, r.json()["id"])
+    invented = FACTS + [{"key": "dates", "label": "Dates", "type": "date_range", "value": "12-30 Oct",
+                         "display": {"en": "12 to 30 October", "kn": "ಅಕ್ಟೋಬರ್ 12 ರಿಂದ 30"}}]
+    scripted.push(wording(keys=[f["key"] for f in invented]))
+    res = await runtime.execute(ctx, "draft_offer_facts", {"facts": invented, "forbidden_claims": {}, "reason": "b"})
+    assert res["ok"]
+    camp = (await client.get(f"/api/campaigns/{ctx.campaign_id}")).json()
+    assumed = camp["facts"][0]["wording_check"]["assumed"]
+    # 20 came from the owner; 12 did not (30 happens to be a menu price, so only 12 is listed)
+    assert [a["key"] for a in assumed] == ["dates"] and "12" in assumed[0]["numbers"]

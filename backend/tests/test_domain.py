@@ -67,10 +67,13 @@ def test_allowed_business_phrases_pass_but_bare_numbers_do_not():
         deterministic_checks(c, SHEET, lang="en", channel="instagram_post", allowed_phrases=phrases))
 
 
-def test_missing_required_unknown_slot_forbidden_claim():
+def test_unknown_slot_forbidden_claim_and_system_offer_box():
     c = content("{{discount}} all day, plus {{free_cookie}}!")
     f = failed(deterministic_checks(c, SHEET, lang="en", channel="whatsapp"))
-    assert {"required_facts_present", "known_facts_only", "no_forbidden_claims"} <= f
+    assert {"known_facts_only", "no_forbidden_claims"} <= f
+    # required facts are never "missing": the system's offer box states them in the approved wording
+    r = render(content("Your kaapi, your table."), SHEET, "kn")
+    assert r["offer"] == ["೨೦% ರಿಯಾಯಿತಿ", "ಈ ಶನಿವಾರ ಮತ್ತು ಭಾನುವಾರ", "ಕೆಫೆಯಲ್ಲಿ ಮಾತ್ರ"] and r["cta"] == "ಕೌಂಟರ್‌ನಲ್ಲಿ ಇದನ್ನು ತೋರಿಸಿ"
 
 
 def test_forbidden_claim_word_boundary():
@@ -156,3 +159,25 @@ def test_visual_limits_count_visible_letters():
     from app.domain.facts import visible_len
     assert visible_len("ಮಸಾಲೆ ದೋಸೆ") == 6 and len("ಮಸಾಲೆ ದೋಸೆ") == 10  # vowel signs are not extra letters
     assert visible_len("Kaapi") == 5
+
+
+def test_invented_redemption_steps_are_blocked():
+    c = content("{{discount}} on kaapi, {{days}}. {{dine_in}}. DM us for the code!")
+    assert "no_forbidden_claims" in failed(deterministic_checks(c, SHEET, lang="en", channel="whatsapp"))
+
+
+def test_doubled_words_around_slots_are_blocked():
+    sheet = SHEET.model_copy(update={"facts": [SHEET.facts[0].model_copy(update={"display": {
+        "en": "20% off", "kn": "೨೦% ರಿಯಾಯಿತಿ"}})] + SHEET.facts[1:]})
+    for lang, body in (("en", "Get {{discount}} off, {{days}}. {{dine_in}}."),
+                       ("kn", "{{discount}} ರಿಯಾಯಿತಿ, {{days}}. {{dine_in}}.")):
+        assert "no_repeated_words" in failed(deterministic_checks(content(body), sheet, lang=lang, channel="whatsapp"))
+    ok = content("Get {{discount}} on kaapi, {{days}}. {{dine_in}}.")
+    assert "no_repeated_words" not in failed(deterministic_checks(ok, sheet, lang="en", channel="whatsapp"))
+
+
+def test_translation_left_in_english_is_flagged():
+    sheet = FactSheet.model_validate({"version": 1, "facts": [
+        {"key": "discount", "label": "Discount", "type": "percent", "value": 15,
+         "display": {"en": "15% off", "hi": "15% off", "kn": "ಶೇಕಡಾ 15 ರಷ್ಟು ರಿಯಾಯಿತಿ"}}]})
+    assert [(i["lang"], "English" in i["issue"]) for i in wording_issues(sheet)] == [("hi", True)]

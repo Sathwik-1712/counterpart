@@ -27,6 +27,8 @@ class AssetAudit(BaseModel):
     claims: list[ClaimCheck]
     intent_preserved: bool
     intent_notes: str = ""
+    reads_naturally: bool = True
+    language_issue: str = ""
 
 
 class AuditResult(BaseModel):
@@ -38,8 +40,13 @@ For each asset: translate it to plain English, then list EVERY promise a custome
 (discount, price, dates, times, items included, conditions, free things, delivery, availability,
 speed or quality guarantees). A promise is supported only if the fact sheet states it or it is
 harmless brand language that promises nothing measurable. Exaggerations of the offer
-("all day", "everything", "free") are NOT supported. Then judge whether the asset keeps the
-campaign intent (core message, call to action, tone). Be strict: when unsure, mark unsupported."""
+("all day", "everything", "free") are NOT supported. So is anything that contradicts or goes beyond the facts in
+time, place, action or product: "tonight" or "morning" when the offer is 4 to 7 pm; "order" or "delivery" when
+customers must show the post at the counter; "sweet" for a savoury dish. Then judge whether the asset keeps the
+campaign intent (core message, call to action, tone). Be strict: when unsure, mark unsupported.
+Finally judge, as a native speaker of the asset's language, whether it reads naturally: no repeated words, no
+phrase said twice, no dangling fragments, correct grammar and spelling. If not, set reads_naturally false and
+name the exact problem in language_issue (one sentence)."""
 
 
 async def audit(
@@ -69,6 +76,8 @@ async def audit(
                   evidence=[c.claim for c in bad]),
             Check("L3", "intent_preserved", a.intent_preserved,
                   a.intent_notes or ("Keeps the campaign intent." if a.intent_preserved else "Drifts from intent.")),
+            Check("L3", "reads_naturally", a.reads_naturally,
+                  "Reads naturally." if a.reads_naturally else (a.language_issue or "Does not read naturally.")),
         ]
         translations[a.ref] = a.back_translation
     missing = {i["ref"] for i in items} - set(checks)

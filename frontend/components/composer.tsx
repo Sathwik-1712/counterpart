@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Mic, Square } from "lucide-react";
+import { Microphone, Stop } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "./ui";
 
@@ -94,7 +94,7 @@ export function Composer({
   }
 
   return (
-    <div className="rounded-lg border border-line-strong bg-surface p-3 focus-within:border-ink-2">
+    <div className="rounded-[var(--radius-lg)] bg-surface p-3.5 shadow-[var(--shadow-soft)] ring-1 ring-line/70 transition-shadow focus-within:ring-ink-2/60">
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -112,18 +112,18 @@ export function Composer({
               onClick={toggleMic}
               aria-pressed={listening}
               className={clsx(
-                "inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-medium",
-                listening ? "bg-kumkum text-white" : "border border-line-strong text-ink hover:border-ink-2",
+                "press inline-flex h-8 items-center gap-2 rounded-full px-3.5 text-[13px] font-medium",
+                listening ? "bg-kumkum text-white" : "bg-sunken text-ink hover:bg-line",
               )}
             >
-              {listening ? <Square size={14} aria-hidden /> : <Mic size={15} aria-hidden />}
+              {listening ? <Stop size={14} aria-hidden /> : <Microphone size={15} aria-hidden />}
               {listening ? "Stop" : "Speak"}
             </button>
             <select
               value={lang}
               onChange={(e) => setLang(e.target.value)}
               disabled={listening}
-              className="h-9 rounded-md border border-line bg-transparent px-2 text-sm text-ink-2"
+              className="h-8 rounded-full bg-sunken px-3 text-[13px] text-ink-2 outline-none"
               aria-label="Spoken language"
             >
               {LANGS.map((l) => (
@@ -135,7 +135,7 @@ export function Composer({
           </>
         )}
         <span className="flex-1 text-xs text-muted">{note ?? (supported ? "" : "Type here. Voice needs Chrome, Edge or Safari.")}</span>
-        <Button variant="primary" onClick={submit} disabled={busy || !text.trim()}>
+        <Button variant="primary" size="sm" onClick={submit} disabled={busy || !text.trim()}>
           {busy ? "Sending…" : submitLabel}
         </Button>
       </div>

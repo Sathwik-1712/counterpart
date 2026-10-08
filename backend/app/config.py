@@ -28,16 +28,26 @@ class Settings(BaseSettings):
     agnes_text_rpm: int = 10
     agnes_image_rpm: int = 10
 
+    # Google Gemini through its OpenAI-compatible endpoint. Each listed model becomes a provider named by its id,
+    # so roles can chain several models (the free tier gives each model its own small daily quota).
+    gemini_api_key: SecretStr | None = None
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai"
+    gemini_models: str = ("gemini-3.7-flash,gemini-3.8-flash,gemini-3.6-flash,gemini-3.5-flash,"
+                          "gemini-3.5-flash-lite,gemini-3.1-flash-lite")
+    gemini_rpm: int = 10
+
     # Optional second OpenAI-compatible LLM (independent verifier / live model swap).
     alt_llm_base_url: str | None = None
     alt_llm_api_key: SecretStr | None = None
     alt_llm_model: str | None = None
     alt_llm_rpm: int = 30
 
-    # Role -> provider chain. Names: "agnes", "alt". The replay cache sits in front of every chain.
-    role_reasoning: str = "agnes"
-    role_generation: str = "agnes"
-    role_verification: str = "agnes"
+    # Role -> provider chain; unconfigured names are skipped. Names: Gemini model ids, "agnes", "alt".
+    # The writer and the checker start on different models, so a model never checks its own copy.
+    # The replay cache sits in front of every chain.
+    role_reasoning: str = "gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.5-flash,agnes"
+    role_generation: str = "gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash,gemini-3.5-flash-lite,agnes"
+    role_verification: str = "gemini-3.8-flash,gemini-3.6-flash,gemini-3.5-flash,gemini-3.1-flash-lite,agnes"
     role_image: str = "agnes"
 
     # Record/replay of model outputs. Replayed outputs are always labelled in the UI.

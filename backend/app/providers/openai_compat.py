@@ -16,6 +16,9 @@ from app.providers.ratelimit import RpmLimiter, with_backoff
 
 
 def _raise_for(resp: httpx.Response) -> None:
+    # Overloaded model or exhausted quota: retrying the same model wastes seconds; fail over to the next one.
+    if resp.status_code == 503 or (resp.status_code == 429 and "exceeded your current quota" in resp.text):
+        raise ProviderError(f"{resp.status_code}: {resp.text[:160]}")
     if resp.status_code == 429:
         ra = resp.headers.get("retry-after")
         raise RateLimited(float(ra) if ra and ra.replace(".", "", 1).isdigit() else None)
@@ -38,12 +41,14 @@ class OpenAICompatChat:
         price_out: float = 0.0,
         timeout: float = 120.0,
         client: httpx.AsyncClient | None = None,
+        structured_output: bool = False,
     ):
         self.name = name
         self.model = model
         self.limiter = limiter
         self.price_in = price_in
         self.price_out = price_out
+        self.structured_output = structured_output  # supports response_format json_schema (Gemini; not Agnes)
         self._client = client or httpx.AsyncClient(
             base_url=base_url.rstrip("/"),
             headers={"Authorization": f"Bearer {api_key}"},
@@ -58,8 +63,11 @@ class OpenAICompatChat:
         tool_choice: str | dict[str, Any] | None = None,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        response_schema: dict[str, Any] | None = None,
     ) -> ChatResult:
         body: dict[str, Any] = {"model": self.model, "messages": messages}
+        if response_schema and self.structured_output:
+            body["response_format"] = {"type": "json_schema", "json_schema": {"name": "output", "schema": response_schema}}
         if tools:
             body["tools"] = tools
             if tool_choice is not None:

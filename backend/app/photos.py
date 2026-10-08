@@ -198,7 +198,7 @@ async def import_google(business: dict[str, Any], query: str | None = None) -> i
     q = query or f"{business['name']}, {business['locality']}, {business['city']}"
     async with httpx.AsyncClient(timeout=20, follow_redirects=True) as c:
         r = await c.post("https://places.googleapis.com/v1/places:searchText",
-                         headers={"X-Goog-Api-Key": k, "X-Goog-FieldMask": "places.id,places.displayName,places.photos"},
+                         headers={"X-Goog-Api-Key": k, "X-Goog-FieldMask": "places.id,places.photos"},
                          json={"textQuery": q, "maxResultCount": 1})
         if r.status_code != 200:
             raise RuntimeError(f"Google Places search failed: {r.text[:200]}")

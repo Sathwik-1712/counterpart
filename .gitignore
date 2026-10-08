@@ -1,0 +1,21 @@
+# secrets
+.env
+.env.*
+!.env.example
+# local data (dev Postgres, generated files)
+data/pg/
+data/storage/
+# record/replay outputs: commit deliberately when preparing the demo fallback
+data/replay/
+# python
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+# node
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+# os
+.DS_Store

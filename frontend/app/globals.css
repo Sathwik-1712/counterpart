@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+/* Counterpart tokens. Steel-tumbler paper, decoction ink, banana-leaf green for
+   "verified / go", turmeric for "needs you", kumkum red for "blocked". */
+@theme {
+  --color-paper: #f2f3ef;
+  --color-surface: #ffffff;
+  --color-ink: #201a16;
+  --color-ink-2: #4f4a44;
+  --color-muted: #827e76;
+  --color-line: #dcddd6;
+  --color-line-strong: #c4c5bd;
+
+  --color-leaf: #2e6a3c;
+  --color-leaf-ink: #1f4a29;
+  --color-leaf-soft: #e2ece2;
+  --color-turmeric: #9a6508;
+  --color-turmeric-soft: #f6ead0;
+  --color-kumkum: #a8321e;
+  --color-kumkum-soft: #f5e0db;
+  --color-receipt: #fbfbf8;
+
+  --font-sans: var(--font-hanken), var(--font-kannada), var(--font-devanagari), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-hanken), ui-sans-serif, sans-serif;
+  --font-receipt: var(--font-plex-mono), ui-monospace, monospace;
+
+  --text-2xs: 0.6875rem;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-leaf);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+  ::selection {
+    background: var(--color-leaf-soft);
+  }
+}
+
+/* The receipt roll: torn top edge drawn with a repeating gradient. */
+.receipt-edge {
+  height: 8px;
+  background:
+    linear-gradient(-45deg, transparent 5px, var(--color-receipt) 0) 0 0 / 10px 8px repeat-x,
+    linear-gradient(45deg, transparent 5px, var(--color-receipt) 0) 0 0 / 10px 8px repeat-x;
+}
+
+@keyframes print-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+.print-in {
+  animation: print-in 260ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .print-in { animation: none; }
+}

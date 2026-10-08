@@ -174,23 +174,30 @@ async def talk_to_agent(campaign_id: str, body: AgentMessage, request: Request,
 
 
 @api.put("/campaigns/{campaign_id}/facts/draft")
-async def edit_draft_facts(campaign_id: str, body: DraftFactsArgs) -> dict[str, Any]:
+async def edit_draft_facts(campaign_id: str, body: DraftFactsArgs, request: Request) -> dict[str, Any]:
     async with connection() as conn:
         c = await services.get_campaign(conn, campaign_id)
-        return await services.save_draft_facts(conn, c, facts=[f.model_dump() for f in body.facts],
-                                               forbidden_claims=body.forbidden_claims, reason=body.reason,
-                                               actor="owner")
+        row = await services.save_draft_facts(conn, c, facts=[f.model_dump() for f in body.facts],
+                                              forbidden_claims=body.forbidden_claims, reason=body.reason,
+                                              actor="owner")
+    row["wording_check"] = await services.check_fact_wording(get_router(request), connection, campaign_id)
+    return row
 
 
 @api.post("/campaigns/{campaign_id}/facts/lock")
-async def lock_facts(campaign_id: str) -> dict[str, Any]:
+async def lock_facts(campaign_id: str, request: Request, bg: BackgroundTasks, resume: bool = True) -> dict[str, Any]:
+    await services.check_fact_wording(get_router(request), connection, campaign_id)  # no-op if already checked
     async with connection() as conn:
         c = await services.get_campaign(conn, campaign_id)
+        b = await services.get_business_by_id(conn, c["business_id"])
         res = await services.lock_facts(conn, c, actor="owner")
         # a direct owner lock settles any pending agent request to lock
         await conn.execute(
             """update inbox_items set status = 'approved', decided_at = now(), decision = '{"via": "direct"}'
                where campaign_id = %s and status = 'pending' and payload->>'tool' = 'lock_facts'""", (campaign_id,))
+    if resume:
+        bg.add_task(runtime.run, tool_context(request, b, campaign_id),
+                    f"The owner locked offer facts v{res['facts']['version']}. Carry on with the campaign.")
     return res
 
 
@@ -270,17 +277,25 @@ async def experiment(experiment_id: str) -> dict[str, Any]:
 class Decision(BaseModel):
     approve: bool
     note: str | None = None
+    resume: bool = Field(True, description="Let the agent carry on with the campaign after the decision.")
 
 
 @api.post("/inbox/{item_id}/decision")
-async def decide(item_id: str, body: Decision, request: Request) -> dict[str, Any]:
+async def decide(item_id: str, body: Decision, request: Request, bg: BackgroundTasks) -> dict[str, Any]:
     async with connection() as conn:
-        item = await fetch_one(conn, "select business_id from inbox_items where id = %s", (item_id,))
+        item = await fetch_one(conn, "select business_id, campaign_id, title from inbox_items where id = %s",
+                               (item_id,))
         if not item:
             raise services.NotFound("inbox item not found")
         b = await services.get_business_by_id(conn, item["business_id"])
-    return await runtime.decide_inbox(tool_context(request, b, None, actor="owner"), item_id,
-                                      approve=body.approve, note=body.note)
+    res = await runtime.decide_inbox(tool_context(request, b, None, actor="owner"), item_id,
+                                     approve=body.approve, note=body.note)
+    if body.resume and item["campaign_id"]:  # an employee carries on once the owner has decided
+        verdict = "approved" if body.approve else "declined"
+        bg.add_task(runtime.run, tool_context(request, b, str(item["campaign_id"])),
+                    f"The owner {verdict}: {item['title']}" + (f" Note: {body.note}" if body.note else "")
+                    + ". Carry on with the campaign.")
+    return res
 
 
 class CounterRedeem(BaseModel):

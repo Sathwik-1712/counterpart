@@ -16,9 +16,20 @@ from uuid import UUID
 from app import ledger
 from app.db import Conn, fetch_all, fetch_one, jsonb
 from app.domain import audit as audit_mod
-from app.domain.facts import AssetContent, Check, FactSheet, deterministic_checks, render, report, slot_keys
+from app.domain.facts import (
+    LANG_NAMES,
+    AssetContent,
+    Check,
+    FactSheet,
+    deterministic_checks,
+    render,
+    report,
+    slot_keys,
+    wording_issues,
+)
 from app.domain.impact import affected_assets, changed_fact_keys, forbidden_changed
 from app.domain.stats import Arm, decide, prior_from_history
+from app.providers.base import ProviderError
 from app.providers.router import ModelRouter, NoProviderAvailable
 
 
@@ -115,7 +126,8 @@ async def save_draft_facts(
     if draft:
         row = await fetch_one(
             conn,
-            "update offer_facts set facts = %s, forbidden_claims = %s, change_reason = %s where id = %s returning *",
+            """update offer_facts set facts = %s, forbidden_claims = %s, change_reason = %s, wording_check = null
+               where id = %s returning *""",
             (jsonb(facts), jsonb(forbidden_claims), reason, draft["id"]),
         )
     else:
@@ -134,11 +146,70 @@ async def save_draft_facts(
     return row
 
 
+def wording_issue_text(issues: list[dict[str, Any]]) -> str:
+    return "; ".join(f"{LANG_NAMES.get(i['lang'], i['lang'])} {i.get('label', i['key']).lower()}: “{i['wording']}”"
+                     + (f" reads as “{i['back_translation']}”" if i.get("back_translation") else "")
+                     + f". {i['issue']}" for i in issues)
+
+
+def wording_result(sheet: FactSheet, llm_issues: list[dict[str, Any]] | None,
+                   translations: dict[str, Any] | None = None, note: str | None = None) -> dict[str, Any]:
+    """Deterministic number comparison always; the LLM back-translation when it ran (llm_issues is not None)."""
+    issues = wording_issues(sheet)
+    seen = {(i["key"], i["lang"]) for i in issues}
+    issues += [i for i in llm_issues or [] if (i["key"], i["lang"]) not in seen]
+    status = "failed" if issues else ("passed" if llm_issues is not None else "unchecked")
+    return {"status": status, "issues": issues, "back_translations": translations or {}, "note": note}
+
+
+async def store_wording_check(conn: Conn, campaign: dict[str, Any], draft: dict[str, Any],
+                              check: dict[str, Any]) -> bool:
+    """Saves the result only if the draft still has the wording that was checked."""
+    row = await fetch_one(
+        conn,
+        "update offer_facts set wording_check = %s where id = %s and status = 'draft' and facts = %s returning id",
+        (jsonb(check), draft["id"], jsonb(draft["facts"])),
+    )
+    if not row:
+        return False
+    summary = {"passed": "Checked the translated offer wording: it means the same as the English",
+               "unchecked": "Translated offer wording not checked by a model; numbers match",
+               "failed": "Translated offer wording does not match: " + wording_issue_text(check["issues"])}
+    await ledger.record(conn, campaign["business_id"], "facts.wording_checked", summary[check["status"]],
+                        actor="system", campaign_id=campaign["id"], payload=check)
+    return True
+
+
+async def check_fact_wording(router: ModelRouter, conn_factory: Any, campaign_id: str) -> dict[str, Any] | None:
+    """Translation check on the facts draft, once per draft wording. The LLM call runs outside any transaction."""
+    async with conn_factory() as conn:
+        campaign = await get_campaign(conn, campaign_id)
+        draft = await facts_row(conn, campaign_id, "draft")
+    if not draft:
+        return None
+    if draft.get("wording_check"):
+        return draft["wording_check"]
+    sheet = _sheet(draft)
+    try:
+        issues, translations = await audit_mod.audit_fact_wording(router, sheet)
+        check = wording_result(sheet, issues, translations)
+    except (ProviderError, ValueError) as e:
+        check = wording_result(sheet, None, note=f"The meaning check could not run ({str(e)[:120]}).")
+    async with conn_factory() as conn:
+        await store_wording_check(conn, campaign, draft, check)
+    return check
+
+
 async def lock_facts(conn: Conn, campaign: dict[str, Any], *, actor: ledger.Actor) -> dict[str, Any]:
     """Lock the draft. If it replaces a locked version, mark dependent assets stale."""
     draft = await facts_row(conn, campaign["id"], "draft")
     if not draft:
         raise Conflict("There is no draft of the offer facts to lock.")
+    check = draft.get("wording_check")
+    if not check:
+        raise Conflict("The translated wording has not been checked yet.")
+    if check["status"] == "failed":
+        raise Conflict("Fix the translated wording first: " + wording_issue_text(check["issues"]))
     previous = await facts_row(conn, campaign["id"], "locked")
     if previous:
         await conn.execute("update offer_facts set status = 'superseded' where id = %s", (previous["id"],))

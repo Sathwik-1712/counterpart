@@ -5,7 +5,8 @@ through {{slot}} tokens, and rendering substitutes the owner-approved display
 string for that language. On top of that:
 
   L1  any digit the model authored itself (outside a slot) blocks the asset,
-      across Latin, Kannada and Devanagari numerals;
+      across Latin, Kannada and Devanagari numerals; so do malformed
+      Kannada/Devanagari letter sequences;
   L2  every slot must exist and have an approved display string, every
       required fact must be present, and no forbidden claim may appear;
   L3  (domain/audit.py) an LLM back-translates and checks every customer
@@ -42,6 +43,81 @@ class FactSheet(BaseModel):
         return next((f for f in self.facts if f.key == key), None)
 
 
+# Claims no small offer should make unless a locked fact says so. Merged with each campaign's forbidden_claims.
+BASELINE_FORBIDDEN: dict[str, list[str]] = {
+    "en": ["free", "unlimited", "all day", "guaranteed", "cheapest", "lowest price", "no conditions"],
+    "kn": ["ಉಚಿತ", "ಪುಕ್ಕಟೆ", "ಫ್ರೀ", "ಅನಿಯಮಿತ", "ಅಪರಿಮಿತ", "ದಿನವಿಡೀ", "ಇಡೀ ದಿನ", "ಗ್ಯಾರಂಟಿ"],
+    "hi": ["मुफ़्त", "मुफ्त", "फ्री", "फ़्री", "असीमित", "अनलिमिटेड", "पूरे दिन", "दिन भर", "गारंटी", "सबसे सस्ता"],
+}
+HARMLESS_IDIOMS = ("feel free", "sugar-free", "sugar free", "gluten-free", "hands-free")
+
+
+def wording_issues(sheet: FactSheet) -> list[dict[str, str]]:
+    """Deterministic checks of each translated fact wording: well-formed script, same numbers as the English."""
+    issues = []
+    for f in sheet.facts:
+        base = f.display.get("en")
+        want = sorted(numbers_in(base)) if base is not None else None
+        for lang, wording in f.display.items():
+            if lang == "en":
+                continue
+            if bad := malformed_words(wording):
+                issues.append({"key": f.key, "label": f.label, "lang": lang, "wording": wording,
+                               "issue": f"Misspelt or broken letters: {', '.join(bad)}."})
+            elif want is not None and sorted(numbers_in(wording)) != want:
+                issues.append({"key": f.key, "label": f.label, "lang": lang, "wording": wording,
+                               "issue": f"Its numbers differ from the English ({', '.join(want) or 'none'})."})
+    return issues
+
+
+# ------------------------------------------------------------------ script sanity (Kannada, Devanagari)
+# Models writing Indic scripts sometimes emit sequences no word can contain: a vowel sign or anusvara right
+# after a virama ("ಪೂರ್ಾಹ್ನ"), a vowel sign at the start of a word, or Latin letters inside a word ("ಮಾಸala").
+# Checked per character class, so it needs no dictionary.
+
+_PREV_OK = {"M": "CN", "L": "CNM", "H": "CN", "A": "CNMLV", "N": "C", "Z": "H"}
+_WORD = re.compile(r"[^\s.,!?;:()\[\]{}\"'“”‘’\-–—/+#@|]+")
+
+
+def _cls(cp: int) -> str | None:
+    if 0x0C80 <= cp <= 0x0CFF:  # Kannada
+        if 0x0C95 <= cp <= 0x0CB9 or cp == 0x0CDE:
+            return "C"
+        if 0x0C85 <= cp <= 0x0C94 or cp in (0x0CE0, 0x0CE1):
+            return "V"
+        if 0x0CBE <= cp <= 0x0CCC or cp in (0x0CE2, 0x0CE3):
+            return "M"
+        return {0x0CD5: "L", 0x0CD6: "L", 0x0CCD: "H", 0x0C81: "A", 0x0C82: "A", 0x0C83: "A", 0x0CBC: "N"}.get(cp, "O")
+    if 0x0900 <= cp <= 0x097F:  # Devanagari
+        if 0x0915 <= cp <= 0x0939 or 0x0958 <= cp <= 0x095F or 0x0978 <= cp <= 0x097F:
+            return "C"
+        if 0x0904 <= cp <= 0x0914 or cp in (0x0960, 0x0961) or 0x0972 <= cp <= 0x0977:
+            return "V"
+        if 0x093E <= cp <= 0x094C or cp in (0x093A, 0x093B, 0x094E, 0x094F, 0x0955, 0x0956, 0x0957, 0x0962, 0x0963):
+            return "M"
+        return {0x094D: "H", 0x0900: "A", 0x0901: "A", 0x0902: "A", 0x0903: "A", 0x093C: "N"}.get(cp, "O")
+    if cp in (0x200C, 0x200D):  # ZWNJ / ZWJ only after a virama
+        return "Z"
+    return None
+
+
+def malformed_words(text: str) -> list[str]:
+    bad: list[str] = []
+    for word in _WORD.findall(unicodedata.normalize("NFC", text)):
+        classes = [_cls(ord(ch)) for ch in word]
+        indic = any(c in ("C", "V", "M") for c in classes)
+        if indic and re.search(r"[A-Za-z]", word):
+            bad.append(word)
+            continue
+        prev: str | None = None
+        for c in classes:
+            if c in _PREV_OK and (prev is None or prev not in _PREV_OK[c]):
+                bad.append(word)
+                break
+            prev = c
+    return list(dict.fromkeys(bad))
+
+
 class Segment(BaseModel):
     text: str
     sources: list[str] = []  # "fact:discount", "insight:<id>", "brand:<rule>", "learning:<id>"
@@ -63,6 +139,16 @@ CHANNEL_LIMITS: dict[str, dict[str, int]] = {
     "poster": {"headline": 40, "body": 160, "cta": 40, "hashtags": 2},
 }
 
+# Text drawn on a picture: limits are about space, so combining marks (Indic vowel signs, viramas) don't count.
+# Caption limits (WhatsApp, Instagram post) are platform limits and count every character.
+VISUAL_CHANNELS = {"instagram_story", "poster"}
+
+
+def visible_len(text: str) -> int:
+    return sum(1 for ch in unicodedata.normalize("NFC", text) if unicodedata.category(ch) not in ("Mn", "Mc", "Cf"))
+
+
+LANG_NAMES = {"en": "English", "kn": "Kannada", "hi": "Hindi"}
 CHANNEL_NAMES = {"whatsapp": "WhatsApp", "instagram_post": "an Instagram post",
                  "instagram_story": "an Instagram story", "poster": "a counter poster"}
 
@@ -148,6 +234,13 @@ def deterministic_checks(
                         "Every number comes from an approved fact." if not stray else
                         f"It says {', '.join(stray)}, which is not in the locked offer", evidence=stray))
 
+    # L1: well-formed Kannada/Devanagari in what the model wrote (code-mixed copy is checked in every script)
+    broken = malformed_words(" ".join(SLOT.sub(" ", s.text) for f in TEXT_FIELDS for s in getattr(content, f))
+                             + " " + " ".join(content.hashtags))
+    checks.append(Check("L1", "well_formed_script", not broken,
+                        "Every word is correctly formed." if not broken else
+                        f"Misspelt or broken letters: {', '.join(broken)}", evidence=broken))
+
     # L2: slots exist and are translated
     unknown = [k for k in used if sheet.get(k) is None]
     checks.append(Check("L2", "known_facts_only", not unknown,
@@ -164,12 +257,18 @@ def deterministic_checks(
                         "All required facts are stated." if not missing else
                         f"Missing required facts: {', '.join(missing)}", evidence=missing))
 
-    # L2: forbidden claims, any language (customers code-switch)
+    # L2: forbidden claims, any language (customers code-switch). The campaign's own list plus a built-in one,
+    # so blocking "free" in Kannada never depends on a model-written translation.
     full = " ".join([rendered[f] for f in TEXT_FIELDS] + rendered["hashtags"])
     hay = unicodedata.normalize("NFC", full).casefold()
+    for idiom in HARMLESS_IDIOMS:
+        hay = hay.replace(idiom, " ")
+    offered = unicodedata.normalize("NFC", " ".join(v for f in sheet.facts for v in f.display.values())).casefold()
     hits = []
-    for phrases in sheet.forbidden_claims.values():
+    for phrases in [*sheet.forbidden_claims.values(), *BASELINE_FORBIDDEN.values()]:
         for p in phrases:
+            if p in hits or unicodedata.normalize("NFC", p).casefold() in offered:
+                continue  # a phrase the locked offer itself uses (e.g. a genuine "buy one, get one free")
             needle = unicodedata.normalize("NFC", p).casefold()
             pattern = rf"(?<!\w){re.escape(needle)}(?!\w)" if needle.isascii() else re.escape(needle)
             if needle and re.search(pattern, hay):
@@ -180,7 +279,8 @@ def deterministic_checks(
 
     # Channel limits
     limits = CHANNEL_LIMITS.get(channel, {})
-    over = [f"{f} {len(rendered[f])}/{limits[f]}" for f in TEXT_FIELDS if f in limits and len(rendered[f]) > limits[f]]
+    size = visible_len if channel in VISUAL_CHANNELS else len
+    over = [f"{f} {size(rendered[f])}/{limits[f]}" for f in TEXT_FIELDS if f in limits and size(rendered[f]) > limits[f]]
     if "hashtags" in limits and len(content.hashtags) > limits["hashtags"]:
         over.append(f"hashtags {len(content.hashtags)}/{limits['hashtags']}")
     checks.append(Check("channel", "fits_channel", not over,

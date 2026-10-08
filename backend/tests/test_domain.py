@@ -1,5 +1,14 @@
 from app.domain.economics import offer_economics
-from app.domain.facts import AssetContent, FactSheet, deterministic_checks, normalize_digits, render, report
+from app.domain.facts import (
+    AssetContent,
+    FactSheet,
+    deterministic_checks,
+    malformed_words,
+    normalize_digits,
+    render,
+    report,
+    wording_issues,
+)
 from app.domain.impact import affected_assets, changed_fact_keys
 from app.domain.stats import Arm, decide, prior_from_history, thompson_allocate
 
@@ -109,3 +118,41 @@ def test_offer_economics():
     assert e["offer_price"] == 104 and e["margin_after"] == 58
     assert e["break_even_extra_covers"] == round(40 * 84 / 58 - 40, 1)
     assert offer_economics(items, discount_pct=70, baseline_covers=40)["verdict"] == "loss_making"
+
+
+def test_builtin_forbidden_claims_cover_kannada_and_hindi():
+    bare = SHEET.model_copy(update={"forbidden_claims": {}})  # campaign list empty or badly translated
+    for body in ("{{discount}} ಉಚಿತ ಕಾಫಿ, {{days}}. {{dine_in}}.", "{{discount}}, मुफ्त चाय! {{days}}. {{dine_in}}.",
+                 "{{discount}}, unlimited refills, {{days}}. {{dine_in}}."):
+        lang = "en" if "unlimited" in body else ("kn" if "ಉ" in body else "hi")
+        assert "no_forbidden_claims" in failed(deterministic_checks(content(body), bare, lang=lang, channel="whatsapp"))
+    ok = content("Feel free to drop in: {{discount}}, {{days}}. {{dine_in}}.")
+    assert "no_forbidden_claims" not in failed(deterministic_checks(ok, bare, lang="en", channel="whatsapp"))
+
+
+def test_fact_wording_numbers_must_match_english():
+    assert wording_issues(SHEET) == []  # Kannada digits count as the same numbers
+    bad = FactSheet.model_validate({"version": 1, "facts": [
+        {"key": "time", "label": "Time", "type": "time_range", "value": "16:00-19:00",
+         "display": {"en": "Weekdays, 4 to 7 pm", "kn": "ಸಂಜೆ 4 ರಿಂದ 8"}}]})
+    assert [(i["key"], i["lang"]) for i in wording_issues(bad)] == [("time", "kn")]
+
+
+def test_broken_indic_letters_are_caught():
+    # all three seen live from the model, plus Hindi equivalents
+    assert malformed_words("ಸೋಮವಾರ–ಶುಕ್ರವಾರ, ಪೂರ್ಾಹ್ನ 4–7") == ["ಪೂರ್ಾಹ್ನ"]   # vowel sign after a virama
+    assert malformed_words("27 ಅಕ್ಟೋಬರ್ಂದ") == ["ಅಕ್ಟೋಬರ್ಂದ"]                 # anusvara after a virama
+    assert malformed_words("ಫಿಲ್ಟರ್ ಕಾಫಿ + ಮಾಸala ಡೋಸಾ") == ["ಮಾಸala"]        # Latin inside a Kannada word
+    assert malformed_words("ि चाय") == ["ि"] and malformed_words("मुफ़्त चाय, हैं") == []
+    assert malformed_words("ಅಕ್ಟೋಬರ್\u200cನಿಂದ ಸ್ಟೂಡೆಂಟ್ ID, ೨೦% ರಿಯಾಯಿತಿ") == []
+    sheet = SHEET.model_copy(update={"facts": [SHEET.facts[0].model_copy(update={"display": {"en": "20% off",
+                                                                                             "kn": "20% ರಿಯಾಯಿತ್ಿ"}})]})
+    assert "Misspelt" in wording_issues(sheet)[0]["issue"]
+    c = content("{{discount}} ಮಾಸala ದೋಸೆ, {{days}}. {{dine_in}}.")
+    assert "well_formed_script" in failed(deterministic_checks(c, SHEET, lang="kn", channel="whatsapp"))
+
+
+def test_visual_limits_count_visible_letters():
+    from app.domain.facts import visible_len
+    assert visible_len("ಮಸಾಲೆ ದೋಸೆ") == 6 and len("ಮಸಾಲೆ ದೋಸೆ") == 10  # vowel signs are not extra letters
+    assert visible_len("Kaapi") == 5

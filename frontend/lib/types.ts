@@ -89,6 +89,15 @@ export interface FactsVersion {
   forbidden_claims: Partial<Record<Lang, string[]>>;
   change_reason: string | null;
   locked_at: string | null;
+  wording_check: WordingCheck | null;
+}
+
+/** Each translated fact wording read back into English and compared before locking. */
+export interface WordingCheck {
+  status: "passed" | "failed" | "unchecked";
+  issues: { key: string; lang: Lang; wording: string; back_translation?: string; issue: string }[];
+  back_translations: Record<string, Partial<Record<Lang, string>>>;
+  note: string | null;
 }
 
 export interface Segment {

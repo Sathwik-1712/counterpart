@@ -59,7 +59,7 @@ class Settings(BaseSettings):
 
     # Agent budgets per run.
     agent_max_steps: int = 8
-    agent_max_llm_calls: int = 6
+    agent_max_llm_calls: int = 8
 
 
 @lru_cache

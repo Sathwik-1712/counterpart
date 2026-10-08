@@ -84,8 +84,12 @@ async def main() -> None:
                 intent={"core_message": "A slow, proper filter-coffee morning at a good price",
                         "cta": "Come in this weekend morning", "tone": ["warm", "neighbourly"]})
             camp = await services.get_campaign(conn, camp["id"])
-            await services.save_draft_facts(conn, camp, facts=FACTS, forbidden_claims=FORBIDDEN,
-                                            reason="Checked: 20% keeps a healthy margin on this combo", actor="agent")
+            draft = await services.save_draft_facts(conn, camp, facts=FACTS, forbidden_claims=FORBIDDEN,
+                                                    reason="Checked: 20% keeps a healthy margin on this combo",
+                                                    actor="agent")
+            # no model here: record the deterministic (numbers-only) wording check, shown as "not checked by a model"
+            await services.store_wording_check(conn, camp, draft,
+                                               services.wording_result(services._sheet(draft), None))
             await services.lock_facts(conn, camp, actor="owner")
             assets = []
             for seg, ch, lang, variant, hook, content in PIECES:

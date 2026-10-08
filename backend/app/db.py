@@ -1,5 +1,6 @@
 """Thin async Postgres access. Plain SQL, dict rows, one pool per process."""
 
+import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -60,5 +61,9 @@ async def fetch_all(conn: Conn, sql: str, params: Any = None) -> list[dict[str, 
     return await cur.fetchall()
 
 
+def _dumps(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, default=str)  # UUIDs, datetimes, Decimals from rows
+
+
 def jsonb(value: Any) -> Jsonb:
-    return Jsonb(value)
+    return Jsonb(value, dumps=_dumps)

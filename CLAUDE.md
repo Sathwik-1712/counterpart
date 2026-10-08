@@ -16,6 +16,10 @@ HR26 Agnes hackathon, problem HR26-AI-02 (Marketing Campaigns). Product: an agen
 ## Invariants (do not weaken)
 - Model output never contains offer values; only `{{fact_key}}` slots. L1 blocks any digit authored outside slots (allowed_phrases in business profile are the only exception).
 - Locked offer facts change only by locking a new version; DB trigger enforces it. Seed/reset purges use `set local counterpart.allow_purge = 'on'`.
+- Facts drafts carry `wording_check` (reset on every save): deterministic script sanity + same numbers as English, then an LLM back-translation. Locking is refused while it is `failed` or missing; `unchecked` (no model) is allowed and shown.
+- L1 also blocks malformed Kannada/Devanagari letter sequences and Latin-inside-Indic words (`facts.malformed_words`). Built-in `BASELINE_FORBIDDEN` (en/kn/hi) applies on top of each campaign's list.
+- `generate_copy` does one in-tool repair round with the guard's exact reasons. Story/poster limits count visible letters (`visible_len`).
+- Owner decisions and direct locks resume the agent in the background (`resume`, default true; tests pass false).
 - Tools with effect `customer_facing` or `fact` become inbox approvals unless `ctx.approved`.
 - Asset approval requires validation passed against the CURRENT locked facts version and L3 not pending/failed (`services.approvable`).
 - No LLM call inside an open DB transaction (read → call model → write).
@@ -30,6 +34,12 @@ PATH: `export PATH=~/.local/opt/node/bin:~/.local/bin:$PATH`
 
 ## Design system (frontend)
 Tokens in `frontend/app/globals.css`: paper `#f2f3ef`, ink `#201a16`, leaf (verified/primary), turmeric (needs owner), kumkum (blocked). Fonts: Bricolage Grotesque (headings), Hanken Grotesk (UI), IBM Plex Mono (receipt log only), Noto Sans Kannada/Devanagari. The receipt-roll activity log is the one bold element; keep everything else quiet (hairlines, few cards, no gradients, sentence case, no all-caps labels outside the receipt).
+
+## Agnes behaviour seen live (2026-10-09)
+- Sends object/array tool arguments as JSON strings (runtime decodes on validation failure).
+- Sometimes announces the next step in prose and stops (runtime nudges once).
+- Kannada output is unreliable (invented words, wrong meaning such as "night" for pm, "cancellation" for off) and its own back-translation check is lenient. The guard catches much of it; how to get correct Kannada is an open team decision.
+- Playwright plugin needs Google Chrome (not installed). Use the cached Chromium: `uv run --no-project --with playwright==1.63.0 python script.py`.
 
 ## Agnes API facts (checked 2026-10-08)
 - Base `https://apihub.agnes-ai.com/v1`; chat is OpenAI-compatible with `tools`; no JSON mode (use `router.chat_json`).

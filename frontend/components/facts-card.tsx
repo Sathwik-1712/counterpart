@@ -1,6 +1,6 @@
 "use client";
 
-import { Lock, LockOpen } from "lucide-react";
+import { Check, Lock, LockOpen, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { api } from "@/lib/api";
 import type { FactsVersion, Lang } from "@/lib/types";
@@ -38,6 +38,10 @@ export function FactsCard({ campaignId, versions, onChange }: { campaignId: stri
   }
 
   const isDraft = shown.status === "draft";
+  const check = shown.wording_check;
+  const mismatched = new Set((check?.status === "failed" ? check.issues : []).map((i) => `${i.key}:${i.lang}`));
+  const label = (key: string) => shown.facts.find((f) => f.key === key)?.label ?? key;
+  const canLock = !!check && check.status !== "failed";
   return (
     <section className={`rounded-lg border bg-surface ${isDraft ? "border-turmeric/50" : "border-line"}`} aria-labelledby="facts-h">
       <div className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-3">
@@ -48,9 +52,9 @@ export function FactsCard({ campaignId, versions, onChange }: { campaignId: stri
         <Pill tone={isDraft ? "turmeric" : "leaf"}>{isDraft ? `Draft v${shown.version}, not locked` : `Locked v${shown.version}`}</Pill>
         <span className="flex-1" />
         {isDraft && (
-          <Button variant="primary" size="sm" onClick={lock} disabled={busy}>
+          <Button variant="primary" size="sm" onClick={lock} disabled={busy || !canLock}>
             <Lock size={14} aria-hidden />
-            {busy ? "Locking…" : "Lock these facts"}
+            {busy ? "Locking…" : !check ? "Checking wording…" : check.status === "failed" ? "Fix wording to lock" : "Lock these facts"}
           </Button>
         )}
       </div>
@@ -74,16 +78,50 @@ export function FactsCard({ campaignId, versions, onChange }: { campaignId: stri
                   <span className="font-medium">{f.label}</span>
                   {!f.required && <span className="ml-1 text-xs text-muted">optional</span>}
                 </td>
-                {langs.map((l) => (
-                  <td key={l} className="py-2 pr-4">
-                    {f.display[l] ?? <span className="text-kumkum">missing</span>}
-                  </td>
-                ))}
+                {langs.map((l) => {
+                  const bad = isDraft && mismatched.has(`${f.key}:${l}`);
+                  return (
+                    <td key={l} className={`py-2 pr-4 ${bad ? "text-kumkum underline decoration-dotted underline-offset-4" : ""}`}>
+                      {f.display[l] ?? <span className="text-kumkum">missing</span>}
+                      {isDraft && l !== "en" && check?.back_translations[f.key]?.[l] && (
+                        <span className="mt-0.5 block text-xs text-muted">reads as “{check.back_translations[f.key][l]}”</span>
+                      )}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {isDraft && check?.status === "failed" && (
+        <div className="border-t border-line px-5 py-3 text-sm" role="alert">
+          <p className="flex items-center gap-1.5 font-medium text-kumkum">
+            <TriangleAlert size={14} aria-hidden />
+            A translation says something different from the English
+          </p>
+          <ul className="mt-1.5 space-y-1 text-ink-2">
+            {check.issues.map((i) => (
+              <li key={`${i.key}:${i.lang}`}>
+                {LANG_LABEL[i.lang] ?? i.lang} {label(i.key).toLowerCase()}: “{i.wording}”
+                {i.back_translation && <> reads as “{i.back_translation}”</>}. {i.issue}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1.5 text-muted">Ask Counterpart to correct it, for example “fix the Kannada time”.</p>
+        </div>
+      )}
+      {isDraft && check?.status === "passed" && (
+        <p className="flex items-center gap-1.5 border-t border-line px-5 py-2.5 text-sm text-leaf">
+          <Check size={14} aria-hidden />
+          Every translation was read back into English and means the same.
+        </p>
+      )}
+      {isDraft && check?.status === "unchecked" && (
+        <p className="border-t border-line px-5 py-2.5 text-sm text-turmeric">
+          Numbers match across languages, but no model checked the meaning. Read the translations before locking.
+        </p>
+      )}
       {Object.values(shown.forbidden_claims).some((v) => v?.length) && (
         <p className="border-t border-line px-5 py-3 text-sm text-ink-2">
           <span className="text-muted">Never say: </span>

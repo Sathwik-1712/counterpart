@@ -75,3 +75,58 @@ async def audit(
     for ref in missing:  # the auditor skipped an asset: that is a failure, not a pass
         checks[ref] = [Check("L3", "claims_supported", False, "Auditor returned no result for this asset.")]
     return checks, translations
+
+
+# ------------------------------------------------------------------ fact wording (before lock)
+
+
+class WordingCheck(BaseModel):
+    key: str
+    language: str
+    back_translation: str
+    same_meaning: bool
+    issue: str | None = None
+
+
+class WordingResult(BaseModel):
+    checks: list[WordingCheck]
+
+
+WORDING_SYSTEM = """You check the translated wording of a small business's offer before the owner locks it.
+For each item, translate `wording` into plain, literal English. Then decide whether it means exactly the same
+as `english` (and `value`). Any difference a customer could act on is a mismatch: days, dates, times, amounts,
+items, who qualifies, conditions. Ignore style, word order and politeness. Be strict.
+Reply with JSON: {"checks": [{"key", "language", "back_translation", "same_meaning", "issue"}]}.
+`issue` is null when the meaning is the same, otherwise ONE short sentence naming the difference."""
+
+
+async def audit_fact_wording(router: ModelRouter, sheet: FactSheet) -> tuple[list[dict[str, str]], dict[str, dict]]:
+    """Back-translate every non-English fact wording -> (issues, back-translations by key and language)."""
+    labels = {f.key: f.label for f in sheet.facts}
+    items = [{"key": f.key, "language": lang, "wording": text, "english": f.display.get("en"), "value": f.value}
+             for f in sheet.facts for lang, text in f.display.items() if lang != "en"]
+    if not items:
+        return [], {}
+    result, _ = await router.chat_json(
+        "verification",
+        [{"role": "system", "content": WORDING_SYSTEM},
+         {"role": "user", "content": json.dumps({"items": items}, ensure_ascii=False)}],
+        WordingResult,
+        temperature=0,
+    )
+    got = {(c.key, c.language): c for c in result.checks}
+    issues: list[dict[str, str]] = []
+    translations: dict[str, dict] = {}
+    for it in items:
+        c = got.get((it["key"], it["language"]))
+        if c is None:  # skipped by the checker: a failure, not a pass
+            issues.append({"key": it["key"], "label": labels[it["key"]], "lang": it["language"],
+                           "wording": it["wording"], "issue": "The checker returned no result for this wording."})
+            continue
+        translations.setdefault(c.key, {})[c.language] = c.back_translation
+        if not c.same_meaning:
+            issue = (c.issue or "It does not mean the same as the English.").strip()
+            issues.append({"key": c.key, "label": labels.get(c.key, c.key), "lang": c.language,
+                           "wording": it["wording"], "back_translation": c.back_translation,
+                           "issue": issue if len(issue) <= 220 else issue[:217].rsplit(" ", 1)[0] + "…"})
+    return issues, translations

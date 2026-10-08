@@ -12,7 +12,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app import ledger, services
 from app.agent import situation
@@ -20,7 +20,8 @@ from app.agent.prompts import GENERATION_SYSTEM
 from app.config import Settings
 from app.db import connection, fetch_all, fetch_one, jsonb
 from app.domain.economics import offer_economics
-from app.domain.facts import AssetContent
+from app.domain.facts import CHANNEL_LIMITS, AssetContent
+from app.providers.base import ProviderError
 from app.providers.router import ModelRouter
 
 Effect = Literal["read", "internal", "customer_facing", "fact"]
@@ -89,7 +90,12 @@ async def needs_locked_facts(ctx: ToolContext, _: Any) -> str | None:
 async def needs_draft_facts(ctx: ToolContext, _: Any) -> str | None:
     async with connection() as conn:
         draft = await services.facts_row(conn, ctx.campaign_id, "draft") if ctx.campaign_id else None
-    return None if draft else "There is no facts draft to lock. Call draft_offer_facts or revise_offer_facts first."
+    if not draft:
+        return "There is no facts draft to lock. Call draft_offer_facts or revise_offer_facts first."
+    if (draft.get("wording_check") or {}).get("status") == "failed":
+        return ("The translated wording does not match the English; correct it with draft_offer_facts first: "
+                + services.wording_issue_text(draft["wording_check"]["issues"]))
+    return None
 
 
 class NoArgs(BaseModel):
@@ -168,7 +174,10 @@ class FactIn(BaseModel):
     label: str
     type: Literal["percent", "price", "date_range", "time_range", "item", "condition", "text"]
     value: Any
-    display: dict[str, str] = Field(description="Exact customer-facing wording per language code (en, kn, hi).")
+    display: dict[str, str] = Field(description=(
+        "Exact customer-facing wording per language code (en, kn, hi). It is inserted mid-sentence, so write a "
+        "short phrase, not a sentence or label: lowercase start (except names), no full stop, no 'Label:' prefix. "
+        "Good: '15% off', 'filter coffee + masala dosa', '4 to 7 pm', 'Monday to Friday', 'with a valid college ID'."))
     required: bool = True
 
 
@@ -179,6 +188,11 @@ class DraftFactsArgs(BaseModel):
     reason: str | None = None
 
 
+async def _wording(ctx: ToolContext) -> dict[str, Any] | None:
+    check = await services.check_fact_wording(ctx.router, connection, ctx.campaign_id)  # type: ignore[arg-type]
+    return check and {"status": check["status"], "issues": check["issues"]}
+
+
 @tool("draft_offer_facts", "Write the offer down as structured facts with per-language wording. "
       "The owner reviews and locks them.", DraftFactsArgs, "internal", [needs_campaign])
 async def draft_offer_facts(ctx: ToolContext, a: DraftFactsArgs) -> dict[str, Any]:
@@ -186,7 +200,7 @@ async def draft_offer_facts(ctx: ToolContext, a: DraftFactsArgs) -> dict[str, An
         campaign = await services.get_campaign(conn, ctx.campaign_id)  # type: ignore[arg-type]
         row = await services.save_draft_facts(conn, campaign, facts=[f.model_dump() for f in a.facts],
                                               forbidden_claims=a.forbidden_claims, reason=a.reason, actor=ctx.actor)
-    return {"draft_version": row["version"]}
+    return {"draft_version": row["version"], "wording_check": await _wording(ctx)}
 
 
 class FactPatch(BaseModel):
@@ -222,7 +236,7 @@ async def revise_offer_facts(ctx: ToolContext, a: ReviseFactsArgs) -> dict[str, 
         row = await services.save_draft_facts(conn, campaign, facts=list(facts.values()),
                                               forbidden_claims=sheet.forbidden_claims, reason=a.reason,
                                               actor=ctx.actor)
-    return {"draft_version": row["version"], "changed": [p.key for p in a.changes]}
+    return {"draft_version": row["version"], "changed": [p.key for p in a.changes], "wording_check": await _wording(ctx)}
 
 
 class LockArgs(BaseModel):
@@ -232,6 +246,7 @@ class LockArgs(BaseModel):
 @tool("lock_facts", "Lock the drafted offer facts so all copy uses them. Needs the owner.", LockArgs, "fact",
       [needs_draft_facts])
 async def lock_facts(ctx: ToolContext, a: LockArgs) -> dict[str, Any]:
+    await services.check_fact_wording(ctx.router, connection, ctx.campaign_id)  # type: ignore[arg-type]
     async with connection() as conn:
         campaign = await services.get_campaign(conn, ctx.campaign_id)  # type: ignore[arg-type]
         res = await services.lock_facts(conn, campaign, actor=ctx.actor)
@@ -263,12 +278,19 @@ async def set_campaign_plan(ctx: ToolContext, a: PlanArgs) -> dict[str, Any]:
 
 
 class Cell(BaseModel):
-    segment: str
-    channel: Channel
-    language: Language
+    segment: str | None = None
+    channel: Channel | None = None
+    language: Language | None = None
     variant: str | None = Field(None, description="'A'/'B' when this cell is an experiment arm.")
     angle: str = Field(description="The idea or hook this piece leads with.")
-    asset_id: str | None = Field(None, description="Set to rewrite an existing (stale/invalid) asset.")
+    asset_id: str | None = Field(None, description="Set to rewrite an existing (stale/invalid) asset; segment, "
+                                                   "channel and language then come from it.")
+
+    @model_validator(mode="after")
+    def _new_cells_are_complete(self) -> "Cell":
+        if not self.asset_id and not (self.segment and self.channel and self.language):
+            raise ValueError("a new cell needs segment, channel and language (or asset_id to rewrite one)")
+        return self
 
 
 class GenerateArgs(BaseModel):
@@ -308,8 +330,10 @@ async def generate_copy(ctx: ToolContext, a: GenerateArgs) -> dict[str, Any]:
             if c.asset_id:
                 existing[c.asset_id] = await services.get_asset(conn, c.asset_id)
     assert sheet
+    langs = sorted({c.language for c in a.cells if c.language} | {e["language"] for e in existing.values()})
     facts_text = "\n".join(
-        f"- {{{{{f.key}}}}}: {f.label} — means “{f.display.get('en', '')}”" + (" (required)" if f.required else "")
+        f"- {{{{{f.key}}}}} ({f.label}{', required' if f.required else ''}) is replaced by exactly: "
+        + " | ".join(f"{lang}: “{f.display[lang]}”" for lang in langs if lang in f.display)
         for f in sheet.facts)
     system = GENERATION_SYSTEM.format(
         business_name=ctx.business["name"], locality=ctx.business["locality"], city=ctx.business["city"],
@@ -325,38 +349,65 @@ async def generate_copy(ctx: ToolContext, a: GenerateArgs) -> dict[str, Any]:
     cells = []
     for i, c in enumerate(a.cells):
         src = existing.get(c.asset_id) if c.asset_id else None
-        cells.append({"cell": i, "segment": src["segment"] if src else c.segment,
-                      "channel": src["channel"] if src else c.channel,
-                      "language": src["language"] if src else c.language,
-                      "variant": c.variant, "angle": c.angle})
+        channel = src["channel"] if src else c.channel
+        cells.append({"cell": i, "segment": src["segment"] if src else c.segment, "channel": channel,
+                      "language": src["language"] if src else c.language, "variant": c.variant, "angle": c.angle,
+                      "max_chars": CHANNEL_LIMITS.get(channel, {})})  # type: ignore[arg-type]
 
-    # 2. model call (no transaction held)
-    out, res = await ctx.router.chat_json(
-        "generation",
-        [{"role": "system", "content": system},
-         {"role": "user", "content": json.dumps({"write_these": cells}, ensure_ascii=False)}],
-        GenerationOut, temperature=0.7,
-    )
+    async def ask(payload: dict[str, Any]) -> tuple[GenerationOut, Any]:  # no transaction held
+        return await ctx.router.chat_json(
+            "generation",
+            [{"role": "system", "content": system},
+             {"role": "user", "content": json.dumps(payload, ensure_ascii=False)}],
+            GenerationOut, temperature=0.7)
 
-    # 3. store + guard (one transaction)
-    created = []
-    async with connection() as conn:
-        for g in out.assets:
-            if g.cell >= len(cells):
-                continue
-            spec = cells[g.cell]
-            asset = existing.get(a.cells[g.cell].asset_id or "") or await services.create_asset(
-                conn, campaign["id"], segment=spec["segment"], channel=spec["channel"],
-                language=spec["language"], variant=spec["variant"])
-            rev = await services.add_revision(
-                conn, asset, g.content, created_by="agent", reason=f"angle: {spec['angle']}",
-                verifier_available=ctx.router.available("verification"),
-                features=g.features.model_dump() | {"angle": spec["angle"]})
-            created.append({"asset_id": str(asset["id"]), "channel": spec["channel"], "language": spec["language"],
-                            "status": rev["asset_status"],
-                            "blocked_by": [c["detail"] for c in rev["validation"]["checks"]
-                                           if not c["passed"] and c["severity"] == "block"]})
-    return {"assets": created, "model": res.model, "saved_output": res.replayed}
+    assets_by_cell: dict[int, dict[str, Any]] = {}
+    written: dict[int, Generated] = {}
+
+    async def store(generated: list[Generated], reason: str) -> dict[int, dict[str, Any]]:
+        stored = {}
+        async with connection() as conn:
+            for g in generated:
+                if g.cell >= len(cells):
+                    continue
+                spec = cells[g.cell]
+                asset = assets_by_cell.get(g.cell) or existing.get(a.cells[g.cell].asset_id or "") or \
+                    await services.create_asset(conn, campaign["id"], segment=spec["segment"],
+                                                channel=spec["channel"], language=spec["language"],
+                                                variant=spec["variant"])
+                assets_by_cell[g.cell], written[g.cell] = asset, g
+                rev = await services.add_revision(
+                    conn, asset, g.content, created_by="agent", reason=f"{reason}: {spec['angle']}",
+                    verifier_available=ctx.router.available("verification"),
+                    features=g.features.model_dump() | {"angle": spec["angle"]})
+                stored[g.cell] = {"asset_id": str(asset["id"]), "channel": spec["channel"],
+                                  "language": spec["language"], "status": rev["asset_status"],
+                                  "blocked_by": [c["detail"] for c in rev["validation"]["checks"]
+                                                 if not c["passed"] and c["severity"] == "block"]}
+        return stored
+
+    # 2. write, store and guard
+    out, res = await ask({"write_these": cells})
+    results = await store(out.assets, "angle")
+
+    # 3. one repair round inside the tool: the guard's exact reasons go back to the model
+    blocked = {i: r["blocked_by"] for i, r in results.items() if r["blocked_by"]}
+    if blocked:
+        fix = [cells[i] | {"your_previous_version": written[i].content.model_dump(), "problems": why}
+               for i, why in blocked.items()]
+        try:
+            fixed, _ = await ask({"fix_these": fix, "how": REPAIR_HINT})
+            for i, r in (await store([g for g in fixed.assets if g.cell in blocked], "fixed")).items():
+                results[i] = r | {"first_draft_blocked_by": blocked[i]}
+        except (ProviderError, ValueError):
+            pass  # the first drafts stay as they are, marked invalid
+    return {"assets": [results[i] for i in sorted(results)], "model": res.model, "saved_output": res.replayed}
+
+
+REPAIR_HINT = ("Each piece failed the fact guard for the listed problems. Rewrite it so it passes, keeping the same "
+               "cell number, angle and language: put every offer detail (numbers, days, times, prices, conditions) "
+               "only as {{slots}}; include every required slot; avoid forbidden words; stay well under max_chars, "
+               "which counts the text after slots are replaced by their wording.")
 
 
 class AssetIds(BaseModel):

@@ -40,7 +40,7 @@ async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }
   const out = new Headers();
   res.headers.forEach((v, k) => !HOP_BY_HOP.has(k) && out.set(k, v));
   const response = new NextResponse(res.body, { status: res.status, headers: out });
-  if (fresh) setSession(response, fresh);
+  if (fresh) setSession(req, response, fresh);
   return response;
 }
 

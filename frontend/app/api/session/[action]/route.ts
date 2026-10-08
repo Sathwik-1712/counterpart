@@ -38,6 +38,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ action: st
     return NextResponse.json({ detail }, { status: r.status });
   }
   const res = NextResponse.json({ ok: true, user: (body as Session).user });
-  setSession(res, body as Session);
+  setSession(req, res, body as Session);
   return res;
 }

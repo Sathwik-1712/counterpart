@@ -1,6 +1,6 @@
 // Server-only session helpers. Supabase Auth tokens live in httpOnly cookies set by this Next.js server; browser
 // code never sees them. The backend verifies the access token on every owner request.
-import type { NextResponse } from "next/server";
+import type { NextRequest, NextResponse } from "next/server";
 
 export const BACKEND = process.env.BACKEND_URL ?? "http://localhost:8000";
 export const ACCESS = "cp_at";
@@ -13,9 +13,13 @@ export interface Session {
   user: { id: string; email: string | null };
 }
 
-const secure = process.env.NODE_ENV === "production";
+/** Secure cookies only over https: Safari (and any browser on a LAN address) drops them on plain http. */
+function isHttps(req: NextRequest) {
+  return (req.headers.get("x-forwarded-proto") ?? req.nextUrl.protocol.replace(":", "")) === "https";
+}
 
-export function setSession(res: NextResponse, s: Session) {
+export function setSession(req: NextRequest, res: NextResponse, s: Session) {
+  const secure = isHttps(req);
   res.cookies.set(ACCESS, s.access_token, { httpOnly: true, secure, sameSite: "lax", path: "/", maxAge: s.expires_in });
   res.cookies.set(REFRESH, s.refresh_token, { httpOnly: true, secure, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
 }

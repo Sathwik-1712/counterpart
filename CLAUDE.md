@@ -25,7 +25,7 @@ HR26 Agnes hackathon, problem HR26-AI-02 (Marketing Campaigns). Product: an agen
 ## Commands
 PATH: `export PATH=~/.local/opt/node/bin:~/.local/bin:$PATH`
 - Backend: `cd backend && uv run uvicorn app.main:app --reload --port 8000`; tests `uv run pytest`; lint `uv run ruff check .`
-- DB: `uv run python -m scripts.migrate [--reset]`, `scripts.seed`, `scripts.sample_campaign`, local PG `scripts.dev_db`
+- DB: `uv run python -m scripts.migrate [--reset]`, `scripts.seed`, `scripts.set_db_password` (hidden prompt, URL-encodes, tests, writes .env), `scripts.sample_campaign`, local PG `scripts.dev_db`
 - Frontend: `cd frontend && npm run dev`; `npm run typecheck`; `npm run build`
 
 ## Design system (frontend)

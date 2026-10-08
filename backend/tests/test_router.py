@@ -49,3 +49,31 @@ async def test_chat_json_repairs_once(tmp_path):
 
 def test_extract_json_tolerates_prose():
     assert extract_json('Here you go: {"a": 1} thanks') == {"a": 1}
+
+
+async def test_models_out_of_quota_or_hanging_are_skipped_for_a_while(tmp_path):
+    import httpx
+
+    a, b = ScriptedLLM("a"), ScriptedLLM("b")
+    a.push(ProviderError("429: You exceeded your current quota"))
+    b.push(text("first"), text("second"))
+    router = make(tmp_path, "off", a, b)
+    msgs = [{"role": "user", "content": "x"}]
+    assert (await router.chat("reasoning", msgs)).content == "first"
+    assert (await router.chat("reasoning", msgs)).content == "second"
+    assert len(a.requests) == 1  # the exhausted model was not asked again
+    assert "a" in router.status()["resting"]
+
+    c, d = ScriptedLLM("c"), ScriptedLLM("d")
+    c.push(httpx.ReadTimeout("no answer"))
+    d.push(text("ok"))
+    r2 = make(tmp_path, "off", c, d)
+    assert (await r2.chat("reasoning", msgs)).content == "ok"
+    assert r2.status()["resting"]["c"] > 200
+
+    e = ScriptedLLM("e")  # when every model is resting, they are still tried rather than giving up
+    e.push(ProviderError("503 high demand"), text("back"))
+    r3 = make(tmp_path, "off", e)
+    with pytest.raises(NoProviderAvailable):
+        await r3.chat("reasoning", msgs)
+    assert (await r3.chat("reasoning", msgs)).content == "back"

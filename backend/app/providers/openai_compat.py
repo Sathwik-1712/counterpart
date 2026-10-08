@@ -23,7 +23,7 @@ def _raise_for(resp: httpx.Response) -> None:
         ra = resp.headers.get("retry-after")
         raise RateLimited(float(ra) if ra and ra.replace(".", "", 1).isdigit() else None)
     if resp.status_code >= 500:
-        raise RateLimited(None)  # transient: back off and retry
+        raise ProviderError(f"{resp.status_code}: {resp.text[:160]}")  # server error: let the next model try
     if resp.status_code >= 400:
         raise ProviderError(f"{resp.status_code}: {resp.text[:300]}")
 
@@ -39,7 +39,7 @@ class OpenAICompatChat:
         limiter: RpmLimiter,
         price_in: float = 0.0,
         price_out: float = 0.0,
-        timeout: float = 120.0,
+        timeout: float = 75.0,  # one call can write several posts; a model that hangs is rested afterwards
         client: httpx.AsyncClient | None = None,
         structured_output: bool = False,
     ):
@@ -113,7 +113,7 @@ class OpenAICompatImage:
         api_key: str,
         model: str,
         limiter: RpmLimiter,
-        timeout: float = 180.0,
+        timeout: float = 120.0,
         client: httpx.AsyncClient | None = None,
     ):
         self.name = name

@@ -42,11 +42,20 @@ speed or quality guarantees). A promise is supported only if the fact sheet stat
 harmless brand language that promises nothing measurable. Exaggerations of the offer
 ("all day", "everything", "free") are NOT supported. So is anything that contradicts or goes beyond the facts in
 time, place, action or product: "tonight" or "morning" when the offer is 4 to 7 pm; "order" or "delivery" when
-customers must show the post at the counter; "sweet" for a savoury dish. Then judge whether the asset keeps the
-campaign intent (core message, call to action, tone). Be strict: when unsure, mark unsupported.
+customers must show the post at the counter; "sweet" for a savoury dish. Be strict: when unsure, mark unsupported.
+The offer lines and the call to action ("Show this at the counter" in the asset's language) are added by the system
+from the locked facts; they are always correct, so never judge them against the intent. The business name and place
+are printed on the post, so the copy need not repeat them. Set intent_preserved false only if the headline or body
+contradicts the intent's core message or tone, or says something in must_not_say; leaving a detail out is fine.
 Finally judge, as a native speaker of the asset's language, whether it reads naturally: no repeated words, no
 phrase said twice, no dangling fragments, correct grammar and spelling. If not, set reads_naturally false and
 name the exact problem in language_issue (one sentence)."""
+
+
+def intent_for_copy(intent: dict[str, Any] | None) -> dict[str, Any]:
+    """The intent as the writer and checker see it. The call to action is fixed by the system, so a planned one
+    ("Join now") is dropped rather than letting it fail every post."""
+    return {k: v for k, v in (intent or {}).items() if k not in ("cta", "call_to_action")}
 
 
 async def audit(
@@ -56,7 +65,7 @@ async def audit(
     user = {
         "fact_sheet": [{"key": f.key, "label": f.label, "value": f.value, "display": f.display} for f in sheet.facts],
         "forbidden_claims": sheet.forbidden_claims,
-        "intent": intent or {},
+        "intent": intent_for_copy(intent),
         "assets": items,
     }
     result, _ = await router.chat_json(

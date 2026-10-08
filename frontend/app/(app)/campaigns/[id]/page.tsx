@@ -4,6 +4,7 @@ import { ArrowLeft, Broadcast, ChartLineUp, Check, ImagesSquare, LockSimple, Quo
 import clsx from "clsx";
 import Link from "next/link";
 import { use, useMemo, useState } from "react";
+import { AgentStatus } from "@/components/agent-status";
 import { AssetCard } from "@/components/asset-card";
 import { Composer } from "@/components/composer";
 import { ExperimentPanel } from "@/components/experiment-panel";
@@ -143,6 +144,8 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
         </div>
         <Steps data={data} />
       </header>
+
+      <AgentStatus campaignId={id} />
 
       {data.inbox.length > 0 && (
         <section className="mb-12">

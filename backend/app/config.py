@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     # The replay cache sits in front of every chain.
     role_reasoning: str = "gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.5-flash,agnes"
     role_generation: str = "gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash,gemini-3.5-flash-lite,agnes"
-    role_verification: str = "gemini-3.8-flash,gemini-3.6-flash,gemini-3.5-flash,gemini-3.1-flash-lite,agnes"
+    role_verification: str = "gemini-3.8-flash,gemini-3.5-flash,gemini-3.1-flash-lite,gemini-3.6-flash,agnes"
     role_image: str = "agnes"
     # Reads the business's photos once (caption, tags) so posts can be matched to the right one.
     role_vision: str = "gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.5-flash"
@@ -85,6 +85,10 @@ class Settings(BaseSettings):
     # Agent budgets per run.
     agent_max_steps: int = 8
     agent_max_llm_calls: int = 8
+    # A whole run (several model calls, posts, pictures) is stopped and reported after this long.
+    agent_run_timeout_s: int = 480
+    # An AI picture (fallback when a business has no photos) gets this long, then the post goes ahead without one.
+    picture_timeout_s: int = 120
 
 
 @lru_cache

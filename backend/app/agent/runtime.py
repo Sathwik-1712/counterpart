@@ -4,6 +4,7 @@
 The loop ends when the model stops calling tools or a budget is reached.
 """
 
+import asyncio
 import json
 import logging
 from typing import Any
@@ -103,7 +104,20 @@ async def _execute(ctx: ToolContext, name: str, raw_args: str | dict[str, Any]) 
 
 
 async def run(ctx: ToolContext, trigger: str) -> dict[str, Any]:
-    """One agent run. Returns the final message and a step log."""
+    """One agent run, with a time limit so a stuck model never leaves the owner watching a spinner."""
+    limit = ctx.settings.agent_run_timeout_s
+    try:
+        return await asyncio.wait_for(_run(ctx, trigger), timeout=limit)
+    except TimeoutError:
+        async with connection() as conn:
+            await ledger.record(conn, ctx.business["id"], "agent.failed",
+                                f"I stopped after {limit // 60} minutes because the AI models were too slow or busy. "
+                                "Everything done so far is saved. Try again in a few minutes.",
+                                actor="system", campaign_id=ctx.campaign_id, payload={"timeout_s": limit})
+        return {"status": "timeout", "message": "The run took too long and was stopped."}
+
+
+async def _run(ctx: ToolContext, trigger: str) -> dict[str, Any]:
     key = str(ctx.campaign_id or ctx.business["id"])
     if key in _running:
         return {"status": "busy", "message": "Already working on this."}

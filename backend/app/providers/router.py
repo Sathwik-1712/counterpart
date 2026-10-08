@@ -85,6 +85,20 @@ class _Breaker:
 _RECOVERABLE = (ProviderError, RateLimited, httpx.HTTPError)
 
 
+def rest_for(e: Exception) -> float:
+    """How long to skip a model after this failure, so later calls go straight to one that works.
+    Seen live on the Gemini free tier: daily quota runs out (429), models get overloaded (503), and some
+    accept the request but never answer (timeout)."""
+    text = str(e).lower()
+    if "quota" in text or "resource_exhausted" in text:
+        return 1800.0
+    if isinstance(e, httpx.TimeoutException):
+        return 900.0
+    if "503" in text or "high demand" in text or "overloaded" in text or "unavailable" in text:
+        return 120.0
+    return 0.0
+
+
 class ModelRouter:
     def __init__(
         self,
@@ -98,6 +112,7 @@ class ModelRouter:
         self.llms, self.images, self.roles = llms, images, roles
         self.replay, self.replay_mode = replay, replay_mode
         self._breakers: dict[str, _Breaker] = {}
+        self._rest_until: dict[str, float] = {}
         self.calls: deque[CallRecord] = deque(maxlen=300)
 
     # ------------------------------------------------------------- helpers
@@ -110,6 +125,14 @@ class ModelRouter:
 
     def _breaker(self, name: str) -> _Breaker:
         return self._breakers.setdefault(name, _Breaker())
+
+    def _resting(self, name: str) -> bool:
+        return self._rest_until.get(name, 0.0) > time.monotonic()
+
+    def _failed(self, name: str, e: Exception) -> None:
+        self._breaker(name).fail()
+        if rest := rest_for(e):
+            self._rest_until[name] = time.monotonic() + rest
 
     def _log(self, role: str, provider: str, model: str, started: float, *, ok: bool, replayed: bool = False,
              tin: int = 0, tout: int = 0, cost: float = 0.0, error: str | None = None) -> None:
@@ -127,7 +150,10 @@ class ModelRouter:
             return hit
 
         errors: list[str] = []
-        for p in self._chain(role, self.llms):
+        chain = self._chain(role, self.llms)
+        # Resting models are skipped; if every model is resting, try them anyway rather than give up.
+        ready = [p for p in chain if not self._resting(p.name)] or chain
+        for p in ready:
             br = self._breaker(p.name)
             if br.open():
                 errors.append(f"{p.name}: circuit open")
@@ -136,8 +162,8 @@ class ModelRouter:
             try:
                 res = await p.chat(messages, **kw)
             except _RECOVERABLE as e:
-                br.fail()
-                errors.append(f"{p.name}: {e}")
+                self._failed(p.name, e)
+                errors.append(f"{p.name}: {type(e).__name__} {e}")
                 self._log(role, p.name, p.model, started, ok=False, error=str(e)[:200])
                 continue
             br.ok()
@@ -187,13 +213,13 @@ class ModelRouter:
         errors: list[str] = []
         for p in self._chain("image", self.images):
             br = self._breaker(p.name + ":image")
-            if br.open():
+            if br.open() or self._resting(p.name + ":image"):
                 continue
             started = time.monotonic()
             try:
                 res = await p.generate(prompt, **kw)
             except _RECOVERABLE as e:
-                br.fail()
+                self._failed(p.name + ":image", e)
                 errors.append(f"{p.name}: {e}")
                 self._log("image", p.name, p.model, started, ok=False, error=str(e)[:200])
                 continue
@@ -225,6 +251,7 @@ class ModelRouter:
                 for name, p in {**self.llms, **{k + ":image": v for k, v in self.images.items()}}.items()
                 if hasattr(p, "limiter")
             },
+            "resting": {n: round(t - time.monotonic()) for n, t in self._rest_until.items() if t > time.monotonic()},
             "recent": [asdict(c) for c in list(self.calls)[-10:]],
         }
 

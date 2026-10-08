@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Check, GoogleLogo, Globe, Plus, SealCheck, Sparkle, Trash } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowRight, Check, GoogleLogo, Globe, Plus, SealCheck, Sparkle, Trash, UploadSimple } from "@phosphor-icons/react";
 import clsx from "clsx";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui";
@@ -14,7 +14,7 @@ const LANGS = [
   { code: "hi", label: "हिन्दी" },
 ] as const;
 const STEPS = ["Your business", "Where", "What you sell", "Photos and voice"];
-const SETUP = ["Saving your business", "Drafting your brand voice", "Looking for photos of your place", "Opening your workspace"];
+const SETUP = ["Saving your business", "Drafting your brand voice", "Adding photos of your place", "Opening your workspace"];
 
 interface Item {
   name: string;
@@ -34,6 +34,17 @@ function Label({ children, hint }: { children: React.ReactNode; hint?: string })
   );
 }
 
+/** Shrink big phone photos in the browser before upload (the server re-encodes again). */
+async function toDataUrl(file: File, max = 2000): Promise<string> {
+  const bmp = await createImageBitmap(file);
+  const scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bmp.width * scale);
+  canvas.height = Math.round(bmp.height * scale);
+  canvas.getContext("2d")!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", 0.88);
+}
+
 export default function Onboarding() {
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
@@ -49,6 +60,7 @@ export default function Onboarding() {
   const [google, setGoogle] = useState(true);
   const [googleOn, setGoogleOn] = useState(false);
   const [description, setDescription] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [phase, setPhase] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -96,6 +108,14 @@ export default function Onboarding() {
         },
       });
       clearInterval(timer);
+      setPhase(2);
+      for (const f of files) {
+        try {
+          await api(`/businesses/${b.slug}/photos`, { method: "POST", json: { data_url: await toDataUrl(f) } });
+        } catch {
+          // a photo that fails (too small, not an image) is skipped; the rest still go in
+        }
+      }
       setPhase(SETUP.length - 1);
       rememberBusiness(b.slug);
       setTimeout(() => (window.location.href = "/"), 700);
@@ -297,7 +317,21 @@ export default function Onboarding() {
                   </span>
                   {google && googleOn && <SealCheck size={20} weight="fill" className="text-leaf" aria-hidden />}
                 </button>
-                <p className="mt-3 text-xs text-muted">You can also upload photos any time from the Photos page.</p>
+                <label className="press mt-4 flex cursor-pointer items-center gap-3 rounded-[var(--radius-md)] border border-dashed border-line-strong p-3.5 hover:bg-sunken/60">
+                  <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => setFiles(Array.from(e.target.files ?? []).slice(0, 12))} />
+                  <UploadSimple size={20} className="text-leaf" aria-hidden />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[14px] font-medium">{files.length ? `${files.length} photo${files.length === 1 ? "" : "s"} ready to add` : "Add photos from your phone or computer"}</span>
+                    <span className="block text-xs text-muted">Your products, counter or space. Up to 12 now, more later from the Photos page.</span>
+                  </span>
+                </label>
+                {files.length > 0 && (
+                  <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                    {files.map((f, i) => (
+                      <img key={i} src={URL.createObjectURL(f)} alt="" className="pop h-16 w-16 shrink-0 rounded-[12px] object-cover" style={{ "--i": i } as React.CSSProperties} />
+                    ))}
+                  </div>
+                )}
               </div>
               <label className="block">
                 <Label hint="optional, helps the voice">What do customers love about you?</Label>

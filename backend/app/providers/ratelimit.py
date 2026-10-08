@@ -42,7 +42,7 @@ class RpmLimiter:
 
 
 async def with_backoff[T](
-    fn: Callable[[], Awaitable[T]], *, attempts: int = 4, base: float = 2.0, cap: float = 30.0
+    fn: Callable[[], Awaitable[T]], *, attempts: int = 3, base: float = 2.0, cap: float = 10.0
 ) -> T:
     """Retry on RateLimited with exponential backoff + jitter, honouring Retry-After."""
     for attempt in range(attempts):
@@ -51,6 +51,6 @@ async def with_backoff[T](
         except RateLimited as e:
             if attempt == attempts - 1:
                 raise
-            delay = e.retry_after if e.retry_after is not None else min(cap, base * 2**attempt)
+            delay = min(cap, e.retry_after if e.retry_after is not None else base * 2**attempt)
             await asyncio.sleep(delay + random.uniform(0, 0.5))
     raise AssertionError("unreachable")

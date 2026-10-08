@@ -181,3 +181,14 @@ def test_translation_left_in_english_is_flagged():
         {"key": "discount", "label": "Discount", "type": "percent", "value": 15,
          "display": {"en": "15% off", "hi": "15% off", "kn": "ಶೇಕಡಾ 15 ರಷ್ಟು ರಿಯಾಯಿತಿ"}}]})
     assert [(i["lang"], "English" in i["issue"]) for i in wording_issues(sheet)] == [("hi", True)]
+
+
+def test_planned_call_to_action_never_reaches_the_writer_or_checker():
+    """Seen live: the planner set cta 'Join now'; the system always prints 'Show this at the counter', so the
+    checker failed every post for a mismatch it could not fix."""
+    from app.domain.audit import SYSTEM, intent_for_copy
+
+    intent = {"core_message": "Christmas membership deal", "cta": "Join now", "tone": "bold"}
+    assert intent_for_copy(intent) == {"core_message": "Christmas membership deal", "tone": "bold"}
+    assert intent_for_copy(None) == {}
+    assert "never judge them against the intent" in SYSTEM

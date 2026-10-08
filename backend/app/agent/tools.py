@@ -20,6 +20,7 @@ from app.agent import situation
 from app.agent.prompts import GENERATION_SYSTEM
 from app.config import Settings
 from app.db import connection, fetch_all, fetch_one, jsonb
+from app.domain.audit import intent_for_copy
 from app.domain.economics import offer_economics
 from app.domain.facts import CHANNEL_LIMITS, AssetContent
 from app.providers.base import ProviderError
@@ -261,7 +262,8 @@ class PlanArgs(BaseModel):
     name: str = Field(description="Short campaign name for the owner, 2-5 words, e.g. 'Midterm study break'.")
     goal: dict[str, Any] = Field(description="{statement, kpi: {metric, target, window_days}}")
     plan: dict[str, Any] = Field(description="{cells: [{segment, channel, language, rationale}], hypotheses: [...]}")
-    intent: dict[str, Any] = Field(description="{core_message, cta, must_say, must_not_say, tone}")
+    intent: dict[str, Any] = Field(description="{core_message, must_say, must_not_say, tone}. No call to action: "
+                                   "the system always adds 'Show this at the counter'.")
 
 
 @tool("set_campaign_plan", "Save the goal, the audience × channel × language plan and the intent contract.",
@@ -269,7 +271,7 @@ class PlanArgs(BaseModel):
 async def set_campaign_plan(ctx: ToolContext, a: PlanArgs) -> dict[str, Any]:
     async with connection() as conn:
         c = await services.update_campaign_plan(conn, ctx.campaign_id,  # type: ignore[arg-type]
-                                                goal=a.goal, plan=a.plan, intent=a.intent, name=a.name)
+                                                goal=a.goal, plan=a.plan, intent=intent_for_copy(a.intent), name=a.name)
         await ledger.record(conn, ctx.business["id"], "campaign.planned",
                             f"Plan saved: {len(a.plan.get('cells', []))} audience/channel/language cells",
                             actor=ctx.actor, campaign_id=c["id"], payload={"plan": a.plan})
@@ -340,7 +342,7 @@ async def generate_copy(ctx: ToolContext, a: GenerateArgs) -> dict[str, Any]:
     system = GENERATION_SYSTEM.format(
         business_name=ctx.business["name"], locality=ctx.business["locality"], city=ctx.business["city"],
         brand=json.dumps(brand["dna"] if brand else {}, ensure_ascii=False),
-        facts=facts_text, intent=json.dumps(campaign.get("intent") or {}, ensure_ascii=False),
+        facts=facts_text, intent=json.dumps(intent_for_copy(campaign.get("intent")), ensure_ascii=False),
         insights=json.dumps([{"id": f"insight:theme:{t['theme']}", "theme": t["theme"], "mentions": t["recent"] + t["previous"],
                               "sentiment": t["sentiment"], "quotes": t["quotes"]} for t in themes[:8]],
                             ensure_ascii=False, default=str),
@@ -456,7 +458,23 @@ class AssetIds(BaseModel):
 @tool("validate_assets", "Re-run the meaning check (back-translation + every customer promise vs the facts) "
       "on assets that passed the deterministic guard. generate_copy already runs it once.", AssetIds, "internal", [needs_locked_facts])
 async def validate_assets(ctx: ToolContext, a: AssetIds) -> dict[str, Any]:
-    return await services.audit_assets(ctx.router, connection, a.asset_ids)
+    out = await services.audit_assets(ctx.router, connection, a.asset_ids)
+    # A piece that passes on a later check still needs its picture (generate_copy only adds pictures to
+    # pieces that pass first time).
+    async with connection() as conn:
+        missing = await fetch_all(
+            conn, """select a.id, a.segment from assets a join asset_revisions r
+                     on r.asset_id = a.id and r.n = a.current_revision
+                     where a.id = any(%s::uuid[]) and a.status = 'valid' and a.channel = any(%s)
+                     and r.image_key is null""", (a.asset_ids, list(VISUAL_CHANNELS)))
+        facts = await services.facts_row(conn, ctx.campaign_id, "locked") if missing else None  # type: ignore[arg-type]
+    if missing:
+        items = " and ".join(f.get("display", {}).get("en", "") for f in (facts or {}).get("facts", [])
+                             if f.get("type") == "item") or "what the business sells"
+        pics = await asyncio.gather(*(make_visual(ctx, str(m["id"]), f"{items}, for {m['segment']}") for m in missing),
+                                    return_exceptions=True)
+        out = {**out, "pictures_added": sum(isinstance(p, dict) and "error" not in p for p in pics)}
+    return out
 
 
 RATIOS = {"poster": "3:4", "instagram_post": "1:1", "instagram_story": "9:16", "whatsapp": "1:1"}
@@ -506,7 +524,11 @@ async def make_visual(ctx: ToolContext, asset_id: str, concept: str) -> dict[str
     prompt = (f"{concept}. {dna.get('imagery', 'Photographic, warm natural light.')} {ctx.business['locality']}, "
               f"{ctx.business['city']}. Colour accents: {', '.join(dna.get('palette', []))}. Keep the lower third "
               "calm and uncluttered for an offer box. Absolutely no text, letters, numbers, logos or watermarks.")
-    img = await ctx.router.image(prompt, size="1K", ratio=RATIOS[asset["channel"]])
+    try:
+        img = await asyncio.wait_for(ctx.router.image(prompt, size="1K", ratio=RATIOS[asset["channel"]]),
+                                     timeout=ctx.settings.picture_timeout_s)
+    except TimeoutError:
+        return {"error": "The AI picture took too long. Add photos of the business, or try again later."}
     ext = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}.get(img.mime, "bin")
     key = await get_storage().put(f"{ctx.business['slug']}/{asset_id}/{asset['current_revision']}.{ext}",
                                   img.data, img.mime)

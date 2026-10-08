@@ -38,7 +38,16 @@ def check(name: str, value: str) -> str | None:
         r = httpx.post("https://places.googleapis.com/v1/places:searchText", timeout=15,
                        headers={"X-Goog-Api-Key": value, "X-Goog-FieldMask": "places.id"},
                        json={"textQuery": "MTR, Lalbagh Road, Bengaluru", "maxResultCount": 1})
-        return None if r.status_code == 200 else f"Google said {r.status_code}: {r.json().get('error', {}).get('message', '')[:160]}"
+        if r.status_code == 200:
+            return None
+        msg = r.json().get("error", {}).get("message", "")
+        hint = ("Enable 'Places API (New)' (not the old 'Places API') in APIs & Services > Library, wait a minute, retry"
+                if "has not been used" in msg or "disabled" in msg or "SERVICE_DISABLED" in r.text
+                else "Link a billing account to this Google Cloud project (Billing), then retry" if "billing" in msg.lower()
+                else "Check the key is copied fully and its API restrictions include 'Places API (New)'"
+                if "API key not valid" in msg or "not authorized" in msg.lower() or r.status_code == 403
+                else "")
+        return f"Google said {r.status_code}: {msg[:160]}" + (f"\n  What to do: {hint}" if hint else "")
     return None
 
 

@@ -5,7 +5,8 @@ import clsx from "clsx";
 import { useState } from "react";
 import { Shell } from "@/components/shell";
 import { Button, LANG_LABEL, PageHeader, SectionHeading, SEGMENT_LABEL, Skeleton, stagger, timeAgo } from "@/components/ui";
-import { api, BUSINESS, useResource } from "@/lib/api";
+import { api, useResource } from "@/lib/api";
+import { useBusiness } from "@/lib/business";
 
 interface Theme { theme: string; recent: number; previous: number; sentiment: number | null; quotes: { id: string; text: string; language?: string }[] }
 interface Customers {
@@ -52,7 +53,8 @@ function Rating({ n }: { n: number }) {
 }
 
 export default function CustomersPage() {
-  const { data, reload } = useResource<Customers>(`/businesses/${BUSINESS}/customers`, (e) => e.type.startsWith("customers."));
+  const business = useBusiness();
+  const { data, reload } = useResource<Customers>(`/businesses/${business.slug}/customers`, (e) => e.type.startsWith("customers."));
   const [busy, setBusy] = useState(false);
   const events = data?.insights.filter((i) => i.kind === "event") ?? [];
   const segments = data?.insights.filter((i) => i.kind === "segment") ?? [];
@@ -65,12 +67,27 @@ export default function CustomersPage() {
   async function injectDemo() {
     setBusy(true);
     try {
-      await api(`/businesses/${BUSINESS}/demo/new-reviews`, { method: "POST" });
+      await api(`/businesses/${business.slug}/demo/new-reviews`, { method: "POST" });
       await reload();
     } finally {
       setBusy(false);
     }
   }
+
+  if (data && total === 0)
+    return (
+      <Shell>
+        <PageHeader title="What customers are saying" />
+        <div className="forest rise-in rounded-[var(--radius-lg)] p-8 md:p-12">
+          <ChatCircleText size={34} className="text-mint" aria-hidden />
+          <p className="mt-4 max-w-[24ch] text-[30px] font-semibold leading-tight tracking-[-0.03em]">Your customers' words will show up here.</p>
+          <p className="mt-3 max-w-[60ch] text-[15px] text-white/70">
+            Counterpart reads reviews and messages in every language they were written in, groups them into topics, and writes campaigns that answer what people actually say.
+            Connecting Google reviews and WhatsApp is next on our list. Until then, campaigns are written from your brief and your brand voice.
+          </p>
+        </div>
+      </Shell>
+    );
 
   return (
     <Shell>
@@ -78,9 +95,11 @@ export default function CustomersPage() {
         title="What customers are saying"
         sub={data ? `${total} reviews and messages, read in every language they were written in. Topics compare the last 14 days with the 14 before.` : undefined}
         aside={
-          <Button onClick={injectDemo} disabled={busy} trailing={<Plus size={13} weight="bold" />}>
-            {busy ? "Adding…" : "Add demo reviews"}
-          </Button>
+          business.is_demo && (
+            <Button onClick={injectDemo} disabled={busy} trailing={<Plus size={13} weight="bold" />}>
+              {busy ? "Adding…" : "Add demo reviews"}
+            </Button>
+          )
         }
       />
 

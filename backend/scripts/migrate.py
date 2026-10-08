@@ -15,7 +15,7 @@ import psycopg
 MIGRATIONS = Path(__file__).resolve().parents[2] / "supabase" / "migrations"
 
 RESET_SQL = """
-drop table if exists ledger_events, inbox_items, memories, outcome_events, touchpoints, asset_revisions,
+drop table if exists business_photos, memberships, ledger_events, inbox_items, memories, outcome_events, touchpoints, asset_revisions,
   assets, experiments, customer_insights, customer_interactions, offer_facts, campaigns, brand_dna,
   businesses, _counterpart_migrations cascade;
 drop function if exists offer_facts_guard() cascade;

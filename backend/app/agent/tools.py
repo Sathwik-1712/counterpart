@@ -178,7 +178,7 @@ class FactIn(BaseModel):
     display: dict[str, str] = Field(description=(
         "Exact customer-facing wording per language code (en, kn, hi). It is inserted mid-sentence, so write a "
         "short phrase, not a sentence or label: lowercase start (except names), no full stop, no 'Label:' prefix. "
-        "Good: '15% off', 'filter coffee + masala dosa', '4 to 7 pm', 'Monday to Friday', 'with a valid college ID'."))
+        "Good: '15% off', 'haircut + beard trim', '4 to 7 pm', 'Monday to Friday', 'with a valid college ID'."))
     required: bool = True
 
 
@@ -426,13 +426,14 @@ async def generate_copy(ctx: ToolContext, a: GenerateArgs) -> dict[str, Any]:
         await repair(failed, "reworded")
         await meaning_check(list(failed))
     # 5. every passing picture-led piece gets its picture now, in parallel (the system writes the offer onto it)
-    items = " and ".join(f.display.get("en", "") for f in sheet.facts if f.type == "item") or "the café's food"
+    items = " and ".join(f.display.get("en", "") for f in sheet.facts if f.type == "item") or "what the business sells"
     todo = [(i, r) for i, r in results.items() if r["status"] == "valid" and r["channel"] in VISUAL_CHANNELS
             and not (existing.get(a.cells[i].asset_id or "") or {}).get("image_key")]
     pictures = await asyncio.gather(*(make_visual(ctx, r["asset_id"], f"{items}, for {cells[i]['segment']}: "
                                                   f"{cells[i]['angle']}") for i, r in todo), return_exceptions=True)
     for (_, r), pic in zip(todo, pictures, strict=True):
-        r["picture"] = "made" if isinstance(pic, dict) else f"failed: {str(pic)[:120]}"
+        r["picture"] = (pic.get("source", "made") if isinstance(pic, dict) and "error" not in pic
+                        else f"failed: {str(pic.get('error') if isinstance(pic, dict) else pic)[:120]}")
     for r in results.values():
         r.pop("reads_now", None)
     return {"assets": [results[i] for i in sorted(results)], "model": res.model, "saved_output": res.replayed}
@@ -478,12 +479,29 @@ async def generate_visual(ctx: ToolContext, a: VisualArgs) -> dict[str, Any]:
     return await make_visual(ctx, a.asset_id, a.concept)
 
 
+_photo_locks: dict[str, asyncio.Lock] = {}
+
+
 async def make_visual(ctx: ToolContext, asset_id: str, concept: str) -> dict[str, Any]:
+    """A real photo of the business when the library has a fitting one; otherwise an AI picture (labelled)."""
+    from app import photos
     from app.storage import get_storage
 
-    async with connection() as conn:
+    async with _photo_locks.setdefault(str(ctx.campaign_id), asyncio.Lock()), connection() as conn:
+        # one at a time per campaign, so parallel posts see each other's picks and spread over the library
         asset = await services.get_asset(conn, asset_id)
+        photo = await photos.choose(conn, ctx.business["id"], asset["campaign_id"], concept)
+        if photo:
+            await conn.execute("update asset_revisions set image_key = %s where asset_id = %s and n = %s",
+                               (photo["image_key"], asset_id, asset["current_revision"]))
+            await ledger.record(conn, ctx.business["id"], "asset.visual",
+                                f"Picked a photo for the {services.asset_label(asset)}: {photo.get('caption') or 'from your library'}",
+                                actor=ctx.actor, campaign_id=ctx.campaign_id,
+                                payload={"asset_id": asset_id, "photo_id": str(photo["id"]), "image_key": photo["image_key"]})
+            return {"image_key": photo["image_key"], "photo": photo.get("caption"), "source": photo["source"]}
         brand = await services.active_brand(conn, ctx.business["id"])
+    if not ctx.settings.ai_picture_fallback:
+        return {"error": "No photos of the business yet. Ask the owner to add photos."}
     dna = (brand or {}).get("dna", {})
     prompt = (f"{concept}. {dna.get('imagery', 'Photographic, warm natural light.')} {ctx.business['locality']}, "
               f"{ctx.business['city']}. Colour accents: {', '.join(dna.get('palette', []))}. Keep the lower third "
@@ -499,7 +517,7 @@ async def make_visual(ctx: ToolContext, asset_id: str, concept: str) -> dict[str
         await ledger.record(conn, ctx.business["id"], "asset.visual", f"Made a new picture for the {services.asset_label(asset)}",
                             actor=ctx.actor, campaign_id=ctx.campaign_id,
                             payload={"asset_id": asset_id, "image_key": key, "saved_output": img.replayed})
-    return {"image_key": key, "saved_output": img.replayed}
+    return {"image_key": key, "source": "generated", "saved_output": img.replayed}
 
 
 # ------------------------------------------------------------------ experiments

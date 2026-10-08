@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, ArrowUpRight } from "@phosphor-icons/react";
+import { ArrowRight, ArrowUpRight, Check } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CampaignCard } from "@/components/campaign-card";
@@ -9,7 +9,8 @@ import { FindingsList, InboxList } from "@/components/inbox";
 import { InstagramPost } from "@/components/previews";
 import { Shell } from "@/components/shell";
 import { Empty, SectionHeading, Skeleton, stagger } from "@/components/ui";
-import { api, BUSINESS, useResource } from "@/lib/api";
+import { api, useResource } from "@/lib/api";
+import { useBusiness } from "@/lib/business";
 import type { CampaignDetail, Overview } from "@/lib/types";
 
 function greeting() {
@@ -25,6 +26,7 @@ const FAN = [
 
 /** The latest real posts, fanned like prints on a counter. */
 function PostFan({ campaignId, name }: { campaignId: string; name: string }) {
+  const business = useBusiness();
   const { data } = useResource<CampaignDetail>(`/campaigns/${campaignId}`, (e) => e.campaign_id === campaignId);
   const posts = (data?.assets ?? [])
     .filter((a) => a.channel === "instagram_post" && a.image_url && a.revision?.rendered && a.status !== "rejected")
@@ -38,7 +40,7 @@ function PostFan({ campaignId, name }: { campaignId: string; name: string }) {
           className={`fan-in absolute w-[44%] max-w-[270px] overflow-hidden rounded-[18px] bg-white shadow-[var(--shadow-float)] ring-1 ring-black/5 transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-y-2 ${FAN[i]}`}
           style={stagger(i)}
         >
-          <InstagramPost r={a.revision!.rendered!} image={a.image_url} business="Kaapi Kone" code={a.touchpoints?.[0]?.code ?? null} />
+          <InstagramPost r={a.revision!.rendered!} image={a.image_url} business={business.name} code={a.touchpoints?.[0]?.code ?? null} />
         </div>
       ))}
       <span className="absolute bottom-6 right-6 z-30 inline-flex items-center gap-2 rounded-full bg-white/95 py-1.5 pl-4 pr-1.5 text-sm font-medium text-ink shadow-[var(--shadow-lift)]">
@@ -51,17 +53,68 @@ function PostFan({ campaignId, name }: { campaignId: string; name: string }) {
   );
 }
 
+/** For a new business: the three things that make Counterpart useful, ticked off as they happen. */
+function GettingStarted({ campaigns, live }: { campaigns: number; live: number }) {
+  const business = useBusiness();
+  const { data } = useResource<{ photos: { status: string }[] }>(`/businesses/${business.slug}/photos`, (e) => e.type.startsWith("photos."));
+  const photos = data?.photos.filter((p) => p.status === "active").length ?? 0;
+  const steps = [
+    { done: photos > 0, title: "Add photos of your place", text: photos ? `${photos} photo${photos === 1 ? "" : "s"} ready for posts` : "Real photos make posts look like you", href: "/photos" },
+    { done: campaigns > 0, title: "Start your first campaign", text: "Type or say the offer on the left", href: null },
+    { done: live > 0, title: "Approve your first posts", text: "Each gets a link and a QR code that counts visits", href: "/results" },
+  ];
+  return (
+    <div className="flex h-full flex-col justify-center px-10 py-12">
+      <p className="text-sm text-mint">Getting started</p>
+      <ol className="mt-5 space-y-3">
+        {steps.map((st, i) => {
+          const inner = (
+            <>
+              <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${st.done ? "bg-mint text-forest" : "bg-white/10 text-white/70"}`}>
+                {st.done ? <Check size={16} weight="bold" aria-hidden /> : <span className="text-sm font-semibold">{i + 1}</span>}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className={`block text-[16px] font-semibold tracking-tight ${st.done ? "text-white/60 line-through decoration-white/30" : "text-white"}`}>{st.title}</span>
+                <span className="block text-sm text-white/60">{st.text}</span>
+              </span>
+              {st.href && !st.done && <ArrowUpRight size={16} className="text-white/60 transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden />}
+            </>
+          );
+          return (
+            <li key={st.title} className="fan-in" style={stagger(i)}>
+              {st.href ? (
+                <Link href={st.href} className="group flex items-center gap-4 rounded-[20px] bg-white/[0.06] p-4 ring-1 ring-white/10 transition-colors hover:bg-white/[0.1]">
+                  {inner}
+                </Link>
+              ) : (
+                <div className="flex items-center gap-4 rounded-[20px] bg-white/[0.06] p-4 ring-1 ring-white/10">{inner}</div>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
 export default function Today() {
   const router = useRouter();
-  const { data, error, reload } = useResource<Overview>(`/businesses/${BUSINESS}`);
+  const business = useBusiness();
+  const { data, error, reload } = useResource<Overview>(`/businesses/${business.slug}`);
   const current = data?.campaigns.filter((c) => !c.is_historical) ?? [];
   const showcase = current.find((c) => c.cover_url);
   const owner = (data?.business.profile as { owner?: { name?: string } } | undefined)?.owner?.name;
   const events = (data?.findings ?? []).filter((f) => f.kind === "event_upcoming").map((f) => f.message.split(" starts ")[0].replace(/\s*\(.*\)/, ""));
-  const suggestions = [...events.slice(0, 2).map((e) => `Something for ${e}`), "Bring regulars back on a slow weekday morning"];
+  const menu = ((data?.business.profile as { menu?: { name: string }[] } | undefined)?.menu ?? []).map((m) => m.name);
+  const suggestions = [
+    ...events.slice(0, 2).map((e) => `Something for ${e}`),
+    ...(menu[0] ? [`A weekday offer on ${menu[0].toLowerCase()}`] : []),
+    "Bring regulars back on a slow day",
+  ].slice(0, 3);
+  const example = menu[0] ? `“15% off ${menu[0].toLowerCase()} on weekdays, 4 to 7 pm, for students.”` : "“15% off on weekdays, 4 to 7 pm, for students.”";
 
   async function newBrief(text: string) {
-    const c = await api<{ id: string }>(`/businesses/${BUSINESS}/campaigns`, { method: "POST", json: { brief: text } });
+    const c = await api<{ id: string }>(`/businesses/${business.slug}/campaigns`, { method: "POST", json: { brief: text } });
     router.push(`/campaigns/${c.id}`);
   }
 
@@ -78,14 +131,16 @@ export default function Today() {
             <p className="mt-3 max-w-[44ch] text-[16px] text-white/70 md:text-[17px]">What should customers hear next? Say it the way you would tell a regular.</p>
             <Composer
               className="mt-8 text-white"
-              placeholder="“15% off filter coffee with any snack this weekend, mornings only, dine-in.”"
+              placeholder={example}
               submitLabel="Start campaign"
               onSubmit={newBrief}
               suggestions={suggestions}
             />
             <p className="mt-4 text-xs text-white/50">Counterpart writes the offer down, checks the margin, and asks you before anything reaches customers.</p>
           </div>
-          <div className="relative hidden lg:block">{showcase && <PostFan campaignId={showcase.id} name={showcase.name} />}</div>
+          <div className="relative hidden lg:block">
+            {showcase ? <PostFan campaignId={showcase.id} name={showcase.name} /> : data && <GettingStarted campaigns={current.length} live={current.reduce((n, c) => n + (c.live ?? 0), 0)} />}
+          </div>
         </div>
       </section>
 

@@ -37,7 +37,9 @@ class LocalStorage:
 class SupabaseStorage:
     def __init__(self, url: str, service_key: str, bucket: str):
         self.url_base, self.bucket = url.rstrip("/"), bucket
-        self._headers = {"Authorization": f"Bearer {service_key}", "apikey": service_key}
+        # New secret keys (sb_secret_...) are accepted only in the apikey header; legacy JWT keys also as Bearer.
+        self._headers = {"apikey": service_key, **({"Authorization": f"Bearer {service_key}"}
+                                                   if service_key.startswith("eyJ") else {})}
 
     async def ensure_bucket(self) -> None:
         async with httpx.AsyncClient(timeout=20) as c:

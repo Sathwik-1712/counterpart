@@ -43,6 +43,7 @@ def build_router(s: Settings) -> ModelRouter:
             "generation": chain(s.role_generation),
             "verification": chain(s.role_verification),
             "image": chain(s.role_image),
+            "vision": chain(s.role_vision),
         },
         replay=ReplayCache(s.replay_dir),
         replay_mode=s.replay_mode,

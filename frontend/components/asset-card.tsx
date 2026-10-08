@@ -1,10 +1,11 @@
 "use client";
 
-import { CaretDown, Check, DeviceMobile, DownloadSimple, InstagramLogo, PencilSimple, SealCheck, ShareNetwork, Storefront, WarningOctagon, WhatsappLogo, X } from "@phosphor-icons/react";
+import { Camera, CaretDown, Check, DeviceMobile, DownloadSimple, InstagramLogo, PencilSimple, SealCheck, ShareNetwork, Sparkle, Storefront, WarningOctagon, WhatsappLogo, X } from "@phosphor-icons/react";
 import clsx from "clsx";
 import { useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { Asset, Fact, Validation } from "@/lib/types";
+import { PhotoPicker, SOURCE_LABEL } from "./photo-picker";
 import { ChannelPreview } from "./previews";
 import { Button, CHANNEL_LABEL, LANG_LABEL, segmentLabel, stagger, StatusPill } from "./ui";
 
@@ -72,6 +73,7 @@ async function renderPng(node: HTMLElement) {
 
 export function AssetCard({ asset, facts, business, onChange, i = 0 }: { asset: Asset; facts: Fact[]; business: string; onChange: () => void; i?: number }) {
   const [editing, setEditing] = useState(false);
+  const [picking, setPicking] = useState(false);
   const [draft, setDraft] = useState({ headline: "", body: "" });
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +81,7 @@ export function AssetCard({ asset, facts, business, onChange, i = 0 }: { asset: 
   const rev = asset.revision;
   const v = rev?.validation ?? null;
   const code = asset.touchpoints?.[0]?.code;
-  const fileName = `kaapi-kone-${asset.channel}-${asset.language}${code ? `-${code}` : ""}.png`;
+  const fileName = `${business.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${asset.channel}-${asset.language}${code ? `-${code}` : ""}.png`;
 
   async function act(name: string, fn: () => Promise<unknown>) {
     setBusy(name);
@@ -191,6 +193,22 @@ export function AssetCard({ asset, facts, business, onChange, i = 0 }: { asset: 
           <ChannelPreview asset={asset} business={business} />
         </div>
       )}
+      {!editing && asset.channel !== "whatsapp" && asset.image_source && (
+        <div className="flex items-center gap-2 px-3 pt-2.5 text-xs text-muted">
+          {asset.image_source.source === "generated" ? <Sparkle size={13} className="shrink-0 text-turmeric" aria-hidden /> : <Camera size={13} className="shrink-0 text-leaf" aria-hidden />}
+          <span className="min-w-0 flex-1 truncate">
+            {asset.image_source.source === "generated"
+              ? "AI picture. Add photos of your place to use real ones."
+              : `${SOURCE_LABEL[asset.image_source.source]} photo${asset.image_source.source === "google" && asset.image_source.attribution ? ` (${asset.image_source.attribution})` : ""}`}
+          </span>
+          {!["live", "retired", "rejected"].includes(asset.status) && (
+            <button onClick={() => setPicking(true)} className="press shrink-0 rounded-full px-2 py-1 font-medium text-leaf hover:bg-leaf-soft">
+              Change photo
+            </button>
+          )}
+        </div>
+      )}
+      {picking && <PhotoPicker assetId={asset.id} current={asset.image_url} onClose={() => setPicking(false)} onPicked={onChange} />}
 
       <div className="mt-auto space-y-3 px-3 pb-2 pt-4">
         {!editing && <GuardSummary v={v} />}

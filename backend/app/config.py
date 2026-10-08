@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     role_generation: str = "gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash,gemini-3.5-flash-lite,agnes"
     role_verification: str = "gemini-3.8-flash,gemini-3.6-flash,gemini-3.5-flash,gemini-3.1-flash-lite,agnes"
     role_image: str = "agnes"
+    # Reads the business's photos once (caption, tags) so posts can be matched to the right one.
+    role_vision: str = "gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.5-flash"
 
     # Record/replay of model outputs. Replayed outputs are always labelled in the UI.
     replay_mode: Literal["off", "record", "replay"] = "off"
@@ -58,8 +60,21 @@ class Settings(BaseSettings):
     storage_backend: Literal["local", "supabase"] = "local"
     storage_dir: Path = REPO_ROOT / "data" / "storage"
     supabase_url: str | None = None
+    # Secret key (sb_secret_...) or legacy service_role key: storage uploads and creating confirmed accounts.
     supabase_service_role_key: SecretStr | None = None
     supabase_bucket: str = "campaign-assets"
+
+    # Accounts (Supabase Auth). The publishable key is not secret, but it is only ever used server-side here.
+    supabase_publishable_key: str | None = None
+    # "Try the demo" signs in as this account; it is a member of the demo business only.
+    demo_email: str = "demo@counterpart.app"
+    demo_password: SecretStr | None = None
+
+    # Photos of the business itself. Google Places API (New) key for the business's Google Maps photos (optional;
+    # website import and uploads work without it).
+    google_maps_api_key: SecretStr | None = None
+    # When a business has no usable photos yet, fall back to an AI picture (labelled as such in the UI).
+    ai_picture_fallback: bool = True
 
     # If set, owner routes require the X-Owner-Token header (added server-side by the Next.js proxy).
     owner_api_token: SecretStr | None = None

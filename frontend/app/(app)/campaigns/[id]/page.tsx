@@ -12,6 +12,7 @@ import { InboxList } from "@/components/inbox";
 import { Shell } from "@/components/shell";
 import { CHANNEL_LABEL, Empty, SectionHeading, Skeleton, stagger, StatusPill } from "@/components/ui";
 import { api, useResource } from "@/lib/api";
+import { useBusiness } from "@/lib/business";
 import type { CampaignDetail, Channel } from "@/lib/types";
 
 const CHANNEL_ORDER: Channel[] = ["instagram_post", "instagram_story", "poster", "whatsapp"];
@@ -85,6 +86,7 @@ function LoadingCampaign() {
 
 export default function CampaignPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const business = useBusiness();
   const { data, error, reload } = useResource<CampaignDetail>(`/campaigns/${id}`, (e) => e.campaign_id === id);
   const [channel, setChannel] = useState<Channel | "all">("all");
   const [sent, setSent] = useState<string | null>(null);
@@ -186,7 +188,7 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
             />
             <div className="grid gap-5 md:grid-cols-2">
               {assets.map((a, i) => (
-                <AssetCard key={a.id} asset={a} i={i} facts={locked?.facts ?? []} business="Kaapi Kone" onChange={reload} />
+                <AssetCard key={a.id} asset={a} i={i} facts={locked?.facts ?? []} business={business.name} onChange={reload} />
               ))}
             </div>
             {data.experiments.length > 0 && (

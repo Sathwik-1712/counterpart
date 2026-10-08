@@ -1,0 +1,342 @@
+"use client";
+
+import { ArrowLeft, ArrowRight, Check, GoogleLogo, Globe, Plus, SealCheck, Sparkle, Trash } from "@phosphor-icons/react";
+import clsx from "clsx";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui";
+import { api } from "@/lib/api";
+import { rememberBusiness } from "@/lib/business";
+
+const KINDS = ["Café", "Restaurant", "Bakery", "Sweet shop", "Salon", "Clothing store", "Grocery", "Gym", "Clinic"];
+const LANGS = [
+  { code: "en", label: "English" },
+  { code: "kn", label: "ಕನ್ನಡ" },
+  { code: "hi", label: "हिन्दी" },
+] as const;
+const STEPS = ["Your business", "Where", "What you sell", "Photos and voice"];
+const SETUP = ["Saving your business", "Drafting your brand voice", "Looking for photos of your place", "Opening your workspace"];
+
+interface Item {
+  name: string;
+  price: string;
+  cost: string;
+}
+
+const field =
+  "h-12 w-full rounded-[var(--radius-md)] bg-surface px-4 text-[15px] shadow-[inset_0_0_0_1px_var(--color-line-strong)] outline-none transition-shadow focus:shadow-[inset_0_0_0_2px_var(--color-leaf)]";
+
+function Label({ children, hint }: { children: React.ReactNode; hint?: string }) {
+  return (
+    <span className="mb-1.5 block">
+      <span className="text-sm font-medium">{children}</span>
+      {hint && <span className="ml-1.5 text-xs text-muted">{hint}</span>}
+    </span>
+  );
+}
+
+export default function Onboarding() {
+  const [step, setStep] = useState(0);
+  const [dir, setDir] = useState(1);
+  const [name, setName] = useState("");
+  const [kind, setKind] = useState("");
+  const [otherKind, setOtherKind] = useState("");
+  const [owner, setOwner] = useState("");
+  const [city, setCity] = useState("");
+  const [locality, setLocality] = useState("");
+  const [langs, setLangs] = useState<string[]>(["en"]);
+  const [items, setItems] = useState<Item[]>([{ name: "", price: "", cost: "" }]);
+  const [website, setWebsite] = useState("");
+  const [google, setGoogle] = useState(true);
+  const [googleOn, setGoogleOn] = useState(false);
+  const [description, setDescription] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [phase, setPhase] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api<{ features?: { google_photos?: boolean } }>("/me")
+      .then((m) => setGoogleOn(!!m.features?.google_photos))
+      .catch(() => {});
+  }, []);
+
+  const finalKind = kind === "Other" ? otherKind.trim() : kind;
+  const goodItems = items.filter((i) => i.name.trim() && Number(i.price) > 0);
+  const valid = [
+    name.trim().length >= 2 && finalKind.length >= 2,
+    city.trim().length >= 2 && locality.trim().length >= 2 && langs.length > 0,
+    goodItems.length > 0,
+    true,
+  ];
+
+  function go(n: number) {
+    setDir(n > step ? 1 : -1);
+    setStep(n);
+    setError(null);
+  }
+
+  async function finish() {
+    setBusy(true);
+    setError(null);
+    setPhase(0);
+    const timer = setInterval(() => setPhase((p) => Math.min(p + 1, SETUP.length - 2)), 1400);
+    try {
+      const b = await api<{ slug: string }>("/businesses", {
+        method: "POST",
+        json: {
+          name: name.trim(),
+          kind: finalKind,
+          owner_name: owner.trim() || null,
+          city: city.trim(),
+          locality: locality.trim(),
+          languages: langs,
+          offerings: goodItems.map((i) => ({ name: i.name.trim(), price: Number(i.price), unit_cost: i.cost ? Number(i.cost) : null })),
+          website: website.trim() || null,
+          find_on_google: google && googleOn,
+          description: description.trim() || null,
+        },
+      });
+      clearInterval(timer);
+      setPhase(SETUP.length - 1);
+      rememberBusiness(b.slug);
+      setTimeout(() => (window.location.href = "/"), 700);
+    } catch (e) {
+      clearInterval(timer);
+      setBusy(false);
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  if (busy)
+    return (
+      <main className="forest flex min-h-dvh items-center justify-center px-6">
+        <div className="w-full max-w-sm">
+          <img src="/icon.svg" alt="" className="pop mb-8 h-12 w-12" />
+          <h1 className="text-[30px] tracking-[-0.03em] text-white">Setting up {name || "your business"}</h1>
+          <ol className="mt-8 space-y-4">
+            {SETUP.map((s, i) => (
+              <li key={s} className={clsx("flex items-center gap-3 text-[15px] transition-opacity duration-500", i > phase ? "opacity-35" : "opacity-100")}>
+                <span className={clsx("inline-flex h-7 w-7 items-center justify-center rounded-full", i < phase ? "bg-mint text-forest" : "bg-white/10 text-mint")}>
+                  {i < phase ? <Check size={14} weight="bold" aria-hidden /> : i === phase ? <span className="pulse-dot h-2 w-2 rounded-full bg-mint" /> : null}
+                </span>
+                {s}
+              </li>
+            ))}
+          </ol>
+        </div>
+      </main>
+    );
+
+  return (
+    <main className="min-h-dvh px-5 py-8 md:py-14">
+      <div className="mx-auto max-w-[620px]">
+        <div className="mb-10 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <img src="/icon.svg" alt="" className="h-9 w-9" />
+            <span className="text-[16px] font-semibold tracking-tight">Counterpart</span>
+          </div>
+          <span className="text-sm text-muted">
+            Step {step + 1} of {STEPS.length}
+          </span>
+        </div>
+
+        <ol className="mb-10 grid grid-cols-4 gap-2" aria-label="Progress">
+          {STEPS.map((s, i) => (
+            <li key={s} className="h-1.5 overflow-hidden rounded-full bg-sunken" aria-current={i === step ? "step" : undefined}>
+              <span
+                className="block h-full rounded-full bg-leaf transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]"
+                style={{ transform: `scaleX(${i <= step ? 1 : 0})`, transformOrigin: "left" }}
+              />
+              <span className="sr-only">{s}</span>
+            </li>
+          ))}
+        </ol>
+
+        <div key={step} className={dir > 0 ? "step-in-right" : "step-in-left"}>
+          <h1 className="text-[34px] tracking-[-0.035em] md:text-[42px]">{STEPS[step]}</h1>
+
+          {step === 0 && (
+            <div className="mt-8 space-y-6">
+              <label className="block">
+                <Label>Business name</Label>
+                <input className={field} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Shear Joy Salon" autoFocus />
+              </label>
+              <div>
+                <Label>What kind of business?</Label>
+                <div className="flex flex-wrap gap-2">
+                  {[...KINDS, "Other"].map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setKind(k)}
+                      aria-pressed={kind === k}
+                      className={clsx("press rounded-full px-4 py-2 text-sm", kind === k ? "bg-ink text-white" : "bg-surface text-ink-2 ring-1 ring-line-strong hover:text-ink")}
+                    >
+                      {k}
+                    </button>
+                  ))}
+                </div>
+                {kind === "Other" && <input className={clsx(field, "mt-3")} value={otherKind} onChange={(e) => setOtherKind(e.target.value)} placeholder="e.g. Flower shop" autoFocus />}
+              </div>
+              <label className="block">
+                <Label hint="optional">Your first name</Label>
+                <input className={field} value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="So Counterpart can greet you" />
+              </label>
+            </div>
+          )}
+
+          {step === 1 && (
+            <div className="mt-8 space-y-6">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block">
+                  <Label>City</Label>
+                  <input className={field} value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Mysuru" autoFocus />
+                </label>
+                <label className="block">
+                  <Label>Area or street</Label>
+                  <input className={field} value={locality} onChange={(e) => setLocality(e.target.value)} placeholder="e.g. Kuvempunagar" />
+                </label>
+              </div>
+              <div>
+                <Label hint="posts are written natively in each">Languages your customers read</Label>
+                <div className="flex flex-wrap gap-2">
+                  {LANGS.map((l) => {
+                    const on = langs.includes(l.code);
+                    return (
+                      <button
+                        key={l.code}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => setLangs(on ? langs.filter((x) => x !== l.code) : [...langs, l.code])}
+                        className={clsx("press inline-flex items-center gap-2 rounded-full px-4 py-2 text-[15px]", on ? "bg-leaf text-white" : "bg-surface text-ink-2 ring-1 ring-line-strong")}
+                      >
+                        {on && <Check size={14} weight="bold" aria-hidden />}
+                        {l.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="mt-8">
+              <p className="mb-5 text-[15px] text-ink-2">Offers can only use these items and prices, so nothing is ever made up. Cost is optional; with it, Counterpart checks every discount still makes money.</p>
+              <div className="space-y-3">
+                <div className="hidden grid-cols-[1fr_110px_110px_40px] gap-2 px-1 text-xs text-muted sm:grid">
+                  <span>Item or service</span>
+                  <span>Price (₹)</span>
+                  <span>Costs you (₹)</span>
+                </div>
+                {items.map((it, i) => (
+                  <div key={i} className="rise-in grid grid-cols-[1fr_1fr_40px] gap-2 sm:grid-cols-[1fr_110px_110px_40px]">
+                    <input
+                      className={clsx(field, "col-span-3 sm:col-span-1")}
+                      value={it.name}
+                      onChange={(e) => setItems(items.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
+                      placeholder={i === 0 ? "e.g. Haircut" : "Another item"}
+                      aria-label="Item or service"
+                    />
+                    <input
+                      className={field}
+                      inputMode="decimal"
+                      value={it.price}
+                      onChange={(e) => setItems(items.map((x, j) => (j === i ? { ...x, price: e.target.value.replace(/[^\d.]/g, "") } : x)))}
+                      placeholder="Price"
+                      aria-label="Price in rupees"
+                    />
+                    <input
+                      className={field}
+                      inputMode="decimal"
+                      value={it.cost}
+                      onChange={(e) => setItems(items.map((x, j) => (j === i ? { ...x, cost: e.target.value.replace(/[^\d.]/g, "") } : x)))}
+                      placeholder="Cost"
+                      aria-label="What it costs you, in rupees (optional)"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setItems(items.length > 1 ? items.filter((_, j) => j !== i) : items)}
+                      className="press inline-flex h-12 w-10 items-center justify-center rounded-full text-muted hover:bg-sunken hover:text-kumkum disabled:opacity-30"
+                      disabled={items.length === 1}
+                      aria-label="Remove item"
+                    >
+                      <Trash size={16} aria-hidden />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <Button variant="ghost" className="mt-3" onClick={() => setItems([...items, { name: "", price: "", cost: "" }])}>
+                <Plus size={15} aria-hidden /> Add another
+              </Button>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="mt-8 space-y-6">
+              <div className="rounded-[var(--radius-lg)] bg-surface p-5 ring-1 ring-line/80">
+                <p className="text-[15px] font-semibold tracking-tight">Real photos of your place</p>
+                <p className="mt-1 text-sm text-ink-2">Posts use photos of your own business, not stock or AI pictures. Counterpart collects them and sets aside blurry shots, logos and menus.</p>
+                <label className="mt-4 block">
+                  <Label hint="optional">
+                    <Globe size={14} className="mr-1 inline" aria-hidden />
+                    Your website or online menu
+                  </Label>
+                  <input className={field} value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="e.g. shearjoy.in" inputMode="url" />
+                </label>
+                <button
+                  type="button"
+                  disabled={!googleOn}
+                  onClick={() => setGoogle(!google)}
+                  aria-pressed={google && googleOn}
+                  className={clsx("press mt-4 flex w-full items-center gap-3 rounded-[var(--radius-md)] p-3.5 text-left ring-1", google && googleOn ? "bg-leaf-soft ring-leaf/40" : "bg-surface ring-line", !googleOn && "opacity-60")}
+                >
+                  <GoogleLogo size={20} aria-hidden />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[14px] font-medium">Use photos from our Google Maps listing</span>
+                    <span className="block text-xs text-muted">{googleOn ? "Found by your name and area, with credit to the photographer." : "Not switched on for this server yet. You can add photos later."}</span>
+                  </span>
+                  {google && googleOn && <SealCheck size={20} weight="fill" className="text-leaf" aria-hidden />}
+                </button>
+                <p className="mt-3 text-xs text-muted">You can also upload photos any time from the Photos page.</p>
+              </div>
+              <label className="block">
+                <Label hint="optional, helps the voice">What do customers love about you?</Label>
+                <textarea
+                  rows={3}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="In your own words: what people come back for, how you talk to them."
+                  className="w-full rounded-[var(--radius-md)] bg-surface px-4 py-3 text-[15px] shadow-[inset_0_0_0_1px_var(--color-line-strong)] outline-none transition-shadow focus:shadow-[inset_0_0_0_2px_var(--color-leaf)]"
+                />
+              </label>
+            </div>
+          )}
+        </div>
+
+        {error && (
+          <p className="pop mt-6 rounded-[var(--radius-md)] bg-kumkum-soft px-3.5 py-2.5 text-sm text-kumkum" role="alert">
+            {error}
+          </p>
+        )}
+
+        <div className="mt-10 flex items-center gap-3">
+          {step > 0 && (
+            <Button variant="ghost" size="lg" onClick={() => go(step - 1)}>
+              <ArrowLeft size={15} aria-hidden /> Back
+            </Button>
+          )}
+          <span className="flex-1" />
+          {step < STEPS.length - 1 ? (
+            <Button variant="primary" size="lg" disabled={!valid[step]} onClick={() => go(step + 1)} trailing={<ArrowRight size={15} weight="bold" />}>
+              Continue
+            </Button>
+          ) : (
+            <Button variant="accent" size="lg" onClick={finish} trailing={<Sparkle size={15} weight="fill" />}>
+              Set up my workspace
+            </Button>
+          )}
+        </div>
+      </div>
+    </main>
+  );
+}

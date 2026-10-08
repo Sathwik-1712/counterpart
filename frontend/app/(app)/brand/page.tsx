@@ -1,9 +1,11 @@
 "use client";
 
-import { Camera, Check, Prohibit, Sparkle, X } from "@phosphor-icons/react";
+import { Camera, Check, PencilSimple, Prohibit, Sparkle, X } from "@phosphor-icons/react";
+import { useState } from "react";
 import { Shell } from "@/components/shell";
-import { LANG_LABEL, PageHeader, SectionHeading, Skeleton, stagger } from "@/components/ui";
-import { BUSINESS, useResource } from "@/lib/api";
+import { Button, LANG_LABEL, PageHeader, SectionHeading, Skeleton, stagger } from "@/components/ui";
+import { api, useResource } from "@/lib/api";
+import { useBusiness } from "@/lib/business";
 import type { Overview } from "@/lib/types";
 
 /** Brand palettes are written as words ("banana-leaf green"); show a swatch for the colour word in each. */
@@ -17,11 +19,96 @@ const SWATCH: [RegExp, string][] = [
   [/yellow|turmeric/i, "#d8a32a"],
   [/blue/i, "#2f5d8a"],
   [/black|charcoal/i, "#1f2321"],
+  [/teal|turquoise/i, "#1f7a7a"],
+  [/pink|rose/i, "#d77a92"],
+  [/orange|saffron|terracotta/i, "#d0702c"],
+  [/purple|violet|lavender/i, "#7a5aa8"],
 ];
 const swatch = (name: string) => SWATCH.find(([re]) => re.test(name))?.[1] ?? "#b9bdb6";
 
+const lines = (t: string) => t.split("\n").map((x) => x.trim()).filter(Boolean);
+const commas = (t: string) => t.split(",").map((x) => x.trim()).filter(Boolean);
+
+/** Edit the voice in plain text; saving makes a new version. */
+function BrandEditor({ slug, dna, onClose, onSaved }: { slug: string; dna: Record<string, any>; onClose: () => void; onSaved: () => void }) {
+  const [f, setF] = useState({
+    voice: (dna.voice ?? []).join(", "),
+    do: (dna.do ?? []).join("\n"),
+    avoid: (dna.avoid ?? []).join("\n"),
+    banned: (dna.banned_words ?? []).join(", "),
+    imagery: dna.imagery ?? "",
+  });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const box = "mt-1.5 w-full rounded-[var(--radius-md)] bg-surface px-4 py-3 text-[15px] shadow-[inset_0_0_0_1px_var(--color-line-strong)] outline-none focus:shadow-[inset_0_0_0_2px_var(--color-leaf)]";
+
+  async function save() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/businesses/${slug}/brand`, {
+        method: "PUT",
+        json: { dna: { ...dna, voice: commas(f.voice), do: lines(f.do), avoid: lines(f.avoid), banned_words: commas(f.banned).map((w) => w.toLowerCase()), imagery: f.imagery.trim() } },
+      });
+      onSaved();
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-forest/40 p-3 backdrop-blur-[2px] md:items-center" onClick={onClose}>
+      <div role="dialog" aria-label="Edit brand voice" className="sheet-up flex max-h-[88dvh] w-full max-w-2xl flex-col rounded-[28px] bg-paper shadow-[var(--shadow-float)]" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 pb-2 pt-5">
+          <p className="text-[19px] font-semibold tracking-tight">Edit the voice</p>
+          <button onClick={onClose} className="press rounded-full p-2 text-ink-2 hover:bg-sunken" aria-label="Close">
+            <X size={18} aria-hidden />
+          </button>
+        </div>
+        <div className="space-y-5 overflow-y-auto px-6 pb-4">
+          <label className="block">
+            <span className="text-sm font-medium">How it sounds</span> <span className="text-xs text-muted">words, separated by commas</span>
+            <input className={box} value={f.voice} onChange={(e) => setF({ ...f, voice: e.target.value })} />
+          </label>
+          <div className="grid gap-5 md:grid-cols-2">
+            <label className="block">
+              <span className="text-sm font-medium">Always</span> <span className="text-xs text-muted">one per line</span>
+              <textarea rows={4} className={box} value={f.do} onChange={(e) => setF({ ...f, do: e.target.value })} />
+            </label>
+            <label className="block">
+              <span className="text-sm font-medium">Never</span> <span className="text-xs text-muted">one per line</span>
+              <textarea rows={4} className={box} value={f.avoid} onChange={(e) => setF({ ...f, avoid: e.target.value })} />
+            </label>
+          </div>
+          <label className="block">
+            <span className="text-sm font-medium">Words the checks block</span> <span className="text-xs text-muted">separated by commas</span>
+            <input className={box} value={f.banned} onChange={(e) => setF({ ...f, banned: e.target.value })} />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium">Pictures should look like</span>
+            <textarea rows={2} className={box} value={f.imagery} onChange={(e) => setF({ ...f, imagery: e.target.value })} />
+          </label>
+          {error && <p className="text-sm text-kumkum">{error}</p>}
+        </div>
+        <div className="flex justify-end gap-2 border-t border-line px-6 py-4">
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="accent" onClick={save} disabled={busy}>
+            {busy ? "Saving…" : "Save as a new version"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function BrandPage() {
-  const { data } = useResource<Overview>(`/businesses/${BUSINESS}`, (e) => e.type.startsWith("memory.") || e.type.startsWith("brand."));
+  const business = useBusiness();
+  const { data, reload } = useResource<Overview>(`/businesses/${business.slug}`, (e) => e.type.startsWith("memory.") || e.type.startsWith("brand."));
+  const [editing, setEditing] = useState(false);
   const dna = data?.brand?.dna ?? {};
   const voice: string[] = dna.voice ?? [];
   const examples: { lang: string; headline: string; body: string }[] = dna.examples ?? [];
@@ -30,9 +117,17 @@ export default function BrandPage() {
   return (
     <Shell>
       <PageHeader
-        title="How Kaapi Kone sounds"
+        title={`How ${business.name} sounds`}
         sub={`Version ${data?.brand?.version ?? "-"}. Counterpart writes every piece with this, and suggests changes when your edits show a pattern.`}
+        aside={
+          data && (
+            <Button onClick={() => setEditing(true)} trailing={<PencilSimple size={13} />}>
+              Edit the voice
+            </Button>
+          )
+        }
       />
+      {editing && data && <BrandEditor slug={business.slug} dna={dna} onClose={() => setEditing(false)} onSaved={reload} />}
 
       {!data ? (
         <Skeleton className="h-80" />

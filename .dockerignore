@@ -1,0 +1,12 @@
+**/.env
+**/.env.*
+!**/.env.example
+**/.venv
+**/node_modules
+**/.next
+**/__pycache__
+data/pg
+data/storage
+data/replay
+frontend
+.git

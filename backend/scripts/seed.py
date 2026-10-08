@@ -41,12 +41,19 @@ async def seed(dsn: str) -> dict[str, Any]:
     async with await psycopg.AsyncConnection.connect(dsn, prepare_threshold=None) as conn:
         async with conn.transaction():
             await conn.execute("set local counterpart.allow_purge = 'on'")
+            # Re-seeding keeps who can open the demo (memberships cascade with the business).
+            members = await (await conn.execute(
+                """select m.user_id, m.role from memberships m join businesses b on b.id = m.business_id
+                   where b.slug = %s""", (b["slug"],))).fetchall()
             await conn.execute("delete from businesses where slug = %s", (b["slug"],))
             cur = await conn.execute(
-                """insert into businesses (slug, name, locality, city, languages, profile)
-                   values (%s, %s, %s, %s, %s, %s) returning id""",
+                """insert into businesses (slug, name, locality, city, languages, profile, is_demo)
+                   values (%s, %s, %s, %s, %s, %s, true) returning id""",
                 (b["slug"], b["name"], b["locality"], b["city"], b["languages"], Jsonb(b["profile"])))
             bid = (await cur.fetchone())[0]  # type: ignore[index]
+            for user_id, role in members:
+                await conn.execute("insert into memberships (user_id, business_id, role) values (%s, %s, %s)",
+                                   (user_id, bid, role))
             await conn.execute(
                 """insert into brand_dna (business_id, version, status, dna, rationale, created_by)
                    values (%s, 1, 'active', %s, 'Imported from past posts and the owner''s notes', 'seed')""",

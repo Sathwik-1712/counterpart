@@ -8,7 +8,7 @@ from fastapi import APIRouter, Response
 
 from app import services
 from app.config import get_settings
-from app.db import connection, fetch_one
+from app.db import connection, fetch_all, fetch_one
 from app.storage import get_storage
 
 public = APIRouter(prefix="/api/public")
@@ -45,6 +45,22 @@ async def claim(code: str) -> dict[str, Any]:
         # Intent only. The real redemption is recorded when staff tap the code at the counter.
         await services.record_outcome(conn, code, "click", source="live")
     return {"ok": True, "code": data["code"]}
+
+
+@public.get("/showcase")
+async def showcase() -> list[dict[str, Any]]:
+    """A few live posts from the demo business, for the sign-in page. Demo content only."""
+    async with connection() as conn:
+        rows = await fetch_all(
+            conn,
+            """select r.rendered->>'headline' as headline, r.rendered->'offer'->>0 as offer, r.image_key, b.name,
+                      a.language
+               from assets a join asset_revisions r on r.asset_id = a.id and r.n = a.current_revision
+               join campaigns c on c.id = a.campaign_id join businesses b on b.id = c.business_id
+               where b.is_demo and a.status = 'live' and a.channel = 'instagram_post' and r.image_key is not null
+               order by a.created_at desc limit 3""")
+    storage = get_storage()
+    return [{**{k: v for k, v in r.items() if k != "image_key"}, "image_url": storage.url(r["image_key"])} for r in rows]
 
 
 @public.get("/qr/{code}.png")

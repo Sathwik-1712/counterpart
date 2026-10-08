@@ -8,6 +8,8 @@ import json
 import re
 import time
 from collections import deque
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import asdict, dataclass
 from typing import Any, Literal, TypeVar
 
@@ -25,11 +27,24 @@ from app.providers.base import (
 from app.providers.replay import ReplayCache
 
 M = TypeVar("M", bound=BaseModel)
-Role = Literal["reasoning", "generation", "verification", "image"]
+Role = Literal["reasoning", "generation", "verification", "image", "vision"]
 
 
 class NoProviderAvailable(ProviderError):
     pass
+
+
+# Which business and which job a model call belongs to, so the owner can see what each agent is doing.
+_scope: ContextVar[dict[str, str | None] | None] = ContextVar("model_call_scope", default=None)
+
+
+@contextmanager
+def call_scope(**tags: str | None):
+    token = _scope.set({**(_scope.get() or {}), **tags})
+    try:
+        yield
+    finally:
+        _scope.reset(token)
 
 
 @dataclass
@@ -45,6 +60,9 @@ class CallRecord:
     cost_usd: float
     latency_ms: int
     error: str | None = None
+    business_id: str | None = None
+    campaign_id: str | None = None
+    task: str | None = None
 
 
 class _Breaker:
@@ -95,8 +113,10 @@ class ModelRouter:
 
     def _log(self, role: str, provider: str, model: str, started: float, *, ok: bool, replayed: bool = False,
              tin: int = 0, tout: int = 0, cost: float = 0.0, error: str | None = None) -> None:
+        tags = _scope.get() or {}
         self.calls.append(CallRecord(time.time(), role, provider, model, ok, replayed, tin, tout, cost,
-                                     int((time.monotonic() - started) * 1000), error))
+                                     int((time.monotonic() - started) * 1000), error, tags.get("business_id"),
+                                     tags.get("campaign_id"), tags.get("task")))
 
     # ------------------------------------------------------------- chat
     async def chat(self, role: str, messages: list[dict[str, Any]], **kw: Any) -> ChatResult:
@@ -207,6 +227,9 @@ class ModelRouter:
             },
             "recent": [asdict(c) for c in list(self.calls)[-10:]],
         }
+
+    def calls_for(self, business_id: str, limit: int = 60) -> list[dict[str, Any]]:
+        return [asdict(c) for c in self.calls if c.business_id == business_id][-limit:]
 
 
 _FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)

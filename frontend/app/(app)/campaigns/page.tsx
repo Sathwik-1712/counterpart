@@ -5,13 +5,15 @@ import Link from "next/link";
 import { CampaignCard } from "@/components/campaign-card";
 import { Shell } from "@/components/shell";
 import { Empty, PageHeader, SectionHeading, Skeleton, stagger, StatusPill } from "@/components/ui";
-import { BUSINESS, useResource } from "@/lib/api";
+import { useResource } from "@/lib/api";
+import { useBusiness } from "@/lib/business";
 import type { Overview } from "@/lib/types";
 
 const when = (d: string | null) => (d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Not scheduled");
 
 export default function Campaigns() {
-  const { data } = useResource<Overview>(`/businesses/${BUSINESS}`);
+  const business = useBusiness();
+  const { data } = useResource<Overview>(`/businesses/${business.slug}`);
   const current = data?.campaigns.filter((c) => !c.is_historical) ?? [];
   const past = data?.campaigns.filter((c) => c.is_historical) ?? [];
   return (

@@ -2,20 +2,22 @@
 
 import clsx from "clsx";
 import { useEffect, useState } from "react";
-import { api, BUSINESS, useLedgerEvents } from "@/lib/api";
+import { api, useLedgerEvents } from "@/lib/api";
+import { useBusiness } from "@/lib/business";
 import type { LedgerEvent } from "@/lib/types";
 
 const ACTOR: Record<LedgerEvent["actor"], string> = { agent: "Counterpart", owner: "You", system: "System", customer: "Customer" };
 
 /** The agent's work log, printed like a counter receipt. Newest at the top. */
 export function Receipt({ campaignId, className }: { campaignId?: string; className?: string }) {
+  const business = useBusiness();
   const [events, setEvents] = useState<LedgerEvent[]>([]);
   const [freshIds, setFreshIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     const q = new URLSearchParams({ limit: "40", ...(campaignId ? { campaign_id: campaignId } : {}) });
-    api<LedgerEvent[]>(`/businesses/${BUSINESS}/ledger?${q}`).then(setEvents).catch(() => {});
-  }, [campaignId]);
+    api<LedgerEvent[]>(`/businesses/${business.slug}/ledger?${q}`).then(setEvents).catch(() => {});
+  }, [campaignId, business.slug]);
 
   useLedgerEvents((e) => {
     if (campaignId && e.campaign_id !== campaignId) return;
@@ -27,7 +29,7 @@ export function Receipt({ campaignId, className }: { campaignId?: string; classN
     <aside className={clsx("flex min-h-0 flex-col", className)} aria-label="Activity log">
       <div className="receipt-edge" />
       <div className="min-h-0 flex-1 overflow-y-auto bg-receipt px-4 pb-6 font-receipt text-[12px] leading-[1.55] text-ink-2">
-        <p className="pt-2 text-center text-ink">KAAPI KONE · WORK LOG</p>
+        <p className="pt-2 text-center text-ink">{business.name.toUpperCase()} · WORK LOG</p>
         <p className="border-b border-dashed border-line-strong pb-2 text-center text-muted">
           {new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" })}
         </p>

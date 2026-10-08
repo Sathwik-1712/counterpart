@@ -8,6 +8,8 @@ from fastapi.staticfiles import StaticFiles
 from app import db
 from app.api.owner import api
 from app.api.public import public
+from app.api.workspace import accounts
+from app.auth import AuthError
 from app.config import get_settings
 from app.providers import build_router
 from app.services import Conflict, NotFound
@@ -30,6 +32,7 @@ app = FastAPI(title="Counterpart API", version="0.1.0", lifespan=lifespan)
 _s = get_settings()
 app.add_middleware(CORSMiddleware, allow_origins=_s.cors_origins, allow_methods=["*"], allow_headers=["*"])
 app.include_router(api)
+app.include_router(accounts)
 app.include_router(public)
 if _s.storage_backend == "local":
     _s.storage_dir.mkdir(parents=True, exist_ok=True)
@@ -39,6 +42,11 @@ if _s.storage_backend == "local":
 @app.exception_handler(NotFound)
 async def not_found(_: Request, e: NotFound) -> JSONResponse:
     return JSONResponse({"detail": str(e)}, status_code=404)
+
+
+@app.exception_handler(AuthError)
+async def auth_error(_: Request, e: AuthError) -> JSONResponse:
+    return JSONResponse({"detail": str(e)}, status_code=400)
 
 
 @app.exception_handler(Conflict)

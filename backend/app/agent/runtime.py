@@ -16,7 +16,7 @@ from app.agent.prompts import AGENT_SYSTEM
 from app.agent.tools import REGISTRY, ToolContext, schemas
 from app.db import connection, fetch_one, jsonb
 from app.providers.base import ProviderError
-from app.providers.router import NoProviderAvailable
+from app.providers.router import NoProviderAvailable, call_scope
 
 log = logging.getLogger(__name__)
 GATED = {"customer_facing", "fact"}
@@ -48,7 +48,17 @@ def _validate_args(model: type[BaseModel], args: dict[str, Any]) -> BaseModel:
         return model.model_validate(unwrapped)
 
 
+def _tags(ctx: ToolContext, task: str) -> dict[str, str | None]:
+    return {"business_id": str(ctx.business["id"]), "campaign_id": str(ctx.campaign_id) if ctx.campaign_id else None,
+            "task": task}
+
+
 async def execute(ctx: ToolContext, name: str, raw_args: str | dict[str, Any]) -> dict[str, Any]:
+    with call_scope(**_tags(ctx, name)):
+        return await _execute(ctx, name, raw_args)
+
+
+async def _execute(ctx: ToolContext, name: str, raw_args: str | dict[str, Any]) -> dict[str, Any]:
     tool = REGISTRY.get(name)
     if tool is None:
         return {"ok": False, "error": f"Unknown tool '{name}'."}
@@ -116,7 +126,9 @@ async def run(ctx: ToolContext, trigger: str) -> dict[str, Any]:
         llm_calls = 0
         nudged = False
         while llm_calls < s.agent_max_llm_calls and len(steps) < s.agent_max_steps:
-            res = await ctx.router.chat("reasoning", messages, tools=schemas(), tool_choice="auto", temperature=0.2)
+            with call_scope(**_tags(ctx, "plan")):
+                res = await ctx.router.chat("reasoning", messages, tools=schemas(), tool_choice="auto",
+                                            temperature=0.2)
             llm_calls += 1
             if not res.tool_calls:
                 reply = (res.content or "").strip()

@@ -151,6 +151,7 @@ export interface Asset {
   touchpoints: { code: string; kind: string }[] | null;
   outcomes: Record<string, number> | null;
   image_url: string | null;
+  image_source?: { source: Photo["source"]; attribution?: string | null; caption?: string | null } | null;
 }
 
 export interface ExperimentArm {
@@ -187,4 +188,59 @@ export interface CampaignDetail {
   assets: Asset[];
   experiments: ExperimentStatus[];
   inbox: InboxItem[];
+}
+
+export interface ResultRow {
+  campaign_id: string;
+  campaign: string;
+  asset_id: string;
+  channel: Channel;
+  language: Lang;
+  segment: string;
+  variant: string | null;
+  code: string;
+  scans: number;
+  claims: number;
+  redeemed: number;
+  link: string;
+  conversion: number | null;
+}
+export interface Results {
+  posts: ResultRow[];
+  totals: { scans: number; claims: number; redeemed: number; conversion: number | null };
+}
+
+export interface Photo {
+  id: string;
+  source: "upload" | "website" | "google" | "generated";
+  source_url: string | null;
+  attribution: string | null;
+  url: string;
+  width: number | null;
+  height: number | null;
+  caption: string | null;
+  tags: string[];
+  kind: string | null;
+  status: "active" | "hidden";
+  created_at: string;
+}
+
+export interface ModelCall {
+  at: number;
+  role: string;
+  provider: string;
+  model: string;
+  ok: boolean;
+  replayed: boolean;
+  latency_ms: number;
+  error: string | null;
+  task: string | null;
+}
+export interface AgentInfo {
+  role: string;
+  name: string;
+  job: string;
+  models: string[];
+  calls: number;
+  last: ModelCall | null;
 }

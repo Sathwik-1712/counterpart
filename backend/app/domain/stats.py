@@ -1,7 +1,7 @@
 """Small-sample experimentation: Beta-Binomial posteriors, Thompson sampling,
 expected-loss decisions, and priors pooled from the business's own history.
 
-A café sees tens of redemptions, not thousands, so p-values never arrive.
+A small business sees tens of redemptions, not thousands, so p-values never arrive.
 We decide when the expected loss of picking the leader is below a threshold.
 """
 

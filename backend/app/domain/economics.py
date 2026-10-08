@@ -11,12 +11,18 @@ def offer_economics(
     baseline_covers: int,
     expected_extra_covers: float | None = None,
 ) -> dict[str, Any]:
-    """items: [{name, price, unit_cost}] making up one redemption (e.g. coffee + snack).
+    """items: [{name, price, unit_cost}] making up one redemption (e.g. coffee + snack). unit_cost may be unknown
+    (None) for businesses that have not entered costs; the margin verdict is then "unknown_cost".
 
     Conservative assumption: every customer in the offer window takes the deal,
     so baseline customers also get the discount.
     """
     price = sum(float(i["price"]) for i in items)
+    if any(i.get("unit_cost") is None for i in items):
+        offer_price = max(price * (1 - discount_pct / 100) - flat_off, 0.0)
+        return {"items": [i["name"] for i in items], "list_price": round(price, 2), "offer_price": round(offer_price, 2),
+                "verdict": "unknown_cost",
+                "summary": "Item costs are not set, so the margin can't be checked. Ask the owner what each item costs them."}
     cost = sum(float(i["unit_cost"]) for i in items)
     offer_price = max(price * (1 - discount_pct / 100) - flat_off, 0.0)
     margin_before = price - cost

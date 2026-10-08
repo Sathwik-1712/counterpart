@@ -1,6 +1,6 @@
 # Counterpart — working notes for Claude
 
-HR26 Agnes hackathon, problem HR26-AI-02 (Marketing Campaigns). Product: an agentic "marketing employee" for a small café (demo business `kaapi-kone`, Jayanagar, Bengaluru). The pitch is that the SYSTEM (locked facts, guard, attribution, experiments, ledger) is the product; the LLM is a swappable component.
+HR26 Agnes hackathon, problem HR26-AI-02 (Marketing Campaigns). Product: an agentic "marketing employee" for any small business. Owners sign up, onboard their business (items and prices, languages, website), and run campaigns. `kaapi-kone` (a Jayanagar café) is the seeded DEMO business (`is_demo`), reachable only through "Try the demo". The pitch is that the SYSTEM (locked facts, guard, attribution, experiments, ledger) is the product; the LLM is a swappable component.
 
 ## Layout
 - `supabase/migrations/` — the only schema source (14 tables, RLS on, offer_facts immutability trigger). Applied by `backend/scripts/migrate.py`.
@@ -10,7 +10,9 @@ HR26 Agnes hackathon, problem HR26-AI-02 (Marketing Campaigns). Product: an agen
   - `agent/` — `tools.py` (registry: args model, effect class, preconditions), `runtime.py` (policy gate + loop + inbox decisions), `situation.py` (snapshot + deterministic detectors), `prompts.py`
   - `providers/` — role-based `ModelRouter`; Agnes via `openai_compat.py`; `replay.py`; `ratelimit.py`
   - `api/owner.py` (owner routes, `require_owner`), `api/public.py` (QR landing, no auth)
-- `frontend/` — Next.js 15 App Router. `app/api/[...path]/route.ts` proxies to the backend and adds the owner token server-side. `lib/api.ts` has `api()`, `useResource()` (refetch on ledger SSE) and `useLedgerEvents()`.
+- `backend/app/auth.py` — Supabase Auth over REST (sign in/up/refresh), `current_user` (verifies the Bearer token with GoTrue, 60 s cache), `require_member`/`business_for`. `api/workspace.py` — auth routes, `/me`, onboarding (`POST /businesses`, brand voice drafted by the model with a fallback), brand edits, photo library, `/agents`, `/results`.
+- `backend/app/photos.py` — photos of the business itself: website import (SSRF-guarded: public hosts, ports 80/443, size caps), Google Places API (New) photos with attribution, uploads; the `vision` role captions them in batches; `choose()` matches a post to a photo deterministically (penalises reuse within a campaign).
+- `frontend/` — Next.js 15 App Router. Owner pages live in the `app/(app)` route group, wrapped by `BusinessProvider` (`lib/business.tsx`: `/me`, selected business in localStorage). `/login`, `/signup`, `/onboarding`, `/r/[code]` sit outside it. `app/api/[...path]/route.ts` proxies to the backend, attaches the access token from the httpOnly `cp_at` cookie and refreshes once on 401 (`cp_rt`). `app/api/session/[action]` signs in/up/out and sets cookies. `middleware.ts` sends owner pages without a session to /login. `lib/api.ts` has `api()`, `useResource()` (refetch on ledger SSE), `useLedgerEvents()` and `setLiveBusiness()`.
 - `data/seed/kaapi_kone.json` — synthetic demo data; `demo_new_reviews` is the on-stage batch that triggers the complaint-spike detector.
 
 ## Invariants (do not weaken)
@@ -23,7 +25,10 @@ HR26 Agnes hackathon, problem HR26-AI-02 (Marketing Campaigns). Product: an agen
 - Tools with effect `customer_facing` or `fact` become inbox approvals unless `ctx.approved`.
 - Asset approval requires validation passed against the CURRENT locked facts version and L3 not pending/failed (`services.approvable`).
 - No LLM call inside an open DB transaction (read → call model → write).
-- Secrets (Agnes key, Supabase service role, owner token) only in `backend/.env` / server-side Next env. Only `NEXT_PUBLIC_BUSINESS_SLUG` is public.
+- Every owner route depends on `current_user` and checks membership of the business it touches (unknown and forbidden both 404). New routes must do the same; tests override `current_user` (conftest `client.user["id"]`).
+- Tokens never reach browser JS (httpOnly cookies set by the Next server). Secrets (Gemini, Agnes, Supabase secret key, Google Maps key, owner token, demo password) only in `backend/.env` / server-side env. Set them with `scripts.set_secret` (hidden prompt, tested), never through chat.
+- Posts use real photos of the business first; AI pictures are only a fallback (`AI_PICTURE_FALLBACK`) and are always labelled. Never scrape Google Search/Images; Google photos come only from the Places API with attribution.
+- Demo-only actions (synthetic review batch) refuse non-demo businesses.
 - Synthetic/replayed data is always labelled in the UI.
 
 ## Commands
@@ -31,6 +36,7 @@ PATH: `export PATH=~/.local/opt/node/bin:~/.local/bin:$PATH`
 - Backend: `cd backend && uv run uvicorn app.main:app --reload --port 8000`; tests `uv run pytest`; lint `uv run ruff check .`
 - DB: `uv run python -m scripts.migrate [--reset]`, `scripts.seed`, `scripts.set_db_password` (hidden prompt, URL-encodes, tests, writes .env), `scripts.sample_campaign`, local PG `scripts.dev_db`
 - Frontend: `cd frontend && npm run dev`; `npm run typecheck`; `npm run build`
+- Secrets: `uv run python -m scripts.set_secret SUPABASE_SERVICE_ROLE_KEY|GOOGLE_MAPS_API_KEY`; local images to Supabase Storage: `scripts.upload_storage`. Deploy: `docs/DEPLOY.md` (Render API from `backend/Dockerfile` + `render.yaml`, Vercel frontend).
 
 ## Design system (frontend)
 Tokens in `frontend/app/globals.css`. "Forest" family: green-tinted bone paper, green-black ink, deep forest (`.forest`) only for hero moments (Today hero, campaign "current step", Counter terminal, brand voice, offer box on the QR page), ONE accent leaf green; turmeric/kumkum are status only. Shadows tinted forest, never black. Fonts: Geist (+ Geist Mono for codes and the receipt), Noto Sans Kannada/Devanagari; set `lang` on any element showing customer copy. Icons: Phosphor only. Shape rule: surfaces 22px, bezel shells 28px, inputs 14px, buttons/chips pill. Motion is CSS only (`.rise-in` with `stagger(i)`, `.fan-in`, `.lift`, `.pop`), all disabled under reduced motion. Real post pictures are the visual hero (Today post fan, campaign covers from `cover_url`). No em/en dashes in UI copy. Design skills: `.claude/skills/redesign-existing-projects`, `design-taste-frontend`, `high-end-visual-design`.

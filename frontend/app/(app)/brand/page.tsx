@@ -8,7 +8,7 @@ import { api, useResource } from "@/lib/api";
 import { useBusiness } from "@/lib/business";
 import type { Overview } from "@/lib/types";
 
-/** Brand palettes are written as words ("banana-leaf green"); show a swatch for the colour word in each. */
+/** Brand palettes are written as words ("banana-pen green"); show a swatch for the colour word in each. */
 const SWATCH: [RegExp, string][] = [
   [/brown|decoction|coffee/i, "#5b3a22"],
   [/brass|gold/i, "#b48a3c"],
@@ -40,7 +40,7 @@ function BrandEditor({ slug, dna, onClose, onSaved }: { slug: string; dna: Recor
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const box = "mt-1.5 w-full rounded-[var(--radius-md)] bg-surface px-4 py-3 text-[15px] shadow-[inset_0_0_0_1px_var(--color-line-strong)] outline-none focus:shadow-[inset_0_0_0_2px_var(--color-leaf)]";
+  const box = "mt-1.5 w-full rounded-[var(--radius-md)] bg-surface px-4 py-3 text-[15px] shadow-[inset_0_0_0_1.5px_var(--color-ink)] outline-none focus:shadow-[inset_0_0_0_1.5px_var(--color-ink),0_0_0_3px_var(--color-marker)]";
 
   async function save() {
     setBusy(true);
@@ -59,11 +59,11 @@ function BrandEditor({ slug, dna, onClose, onSaved }: { slug: string; dna: Recor
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-forest/40 p-3 backdrop-blur-[2px] md:items-center" onClick={onClose}>
-      <div role="dialog" aria-label="Edit brand voice" className="sheet-up flex max-h-[88dvh] w-full max-w-2xl flex-col rounded-[28px] bg-paper shadow-[var(--shadow-float)]" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-3 backdrop-blur-[2px] md:items-center" onClick={onClose}>
+      <div role="dialog" aria-label="Edit brand voice" className="sheet-up flex max-h-[88dvh] w-full max-w-2xl flex-col rounded-[var(--radius-xl)] bg-paper shadow-[var(--shadow-float)]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 pb-2 pt-5">
           <p className="text-[19px] font-semibold tracking-tight">Edit the voice</p>
-          <button onClick={onClose} className="press rounded-full p-2 text-ink-2 hover:bg-sunken" aria-label="Close">
+          <button onClick={onClose} className="press rounded-[var(--radius-sm)] p-2 text-ink-2 hover:bg-sunken" aria-label="Close">
             <X size={18} aria-hidden />
           </button>
         </div>
@@ -133,8 +133,8 @@ export default function BrandPage() {
         <Skeleton className="h-80" />
       ) : (
         <div className="grid gap-4 lg:grid-cols-12">
-          <section className="forest rise-in flex flex-col justify-between rounded-[var(--radius-lg)] p-7 md:p-10 lg:col-span-7" aria-label="Voice">
-            <p className="text-sm text-mint">The voice</p>
+          <section className="night rise-in flex flex-col justify-between rounded-[var(--radius-lg)] p-7 md:p-10 lg:col-span-7" aria-label="Voice">
+            <p className="text-sm text-marker">The voice</p>
             <p className="mt-3 text-[34px] font-semibold leading-[1.05] tracking-[-0.035em] md:text-[46px]">
               {voice.join(", ").replace(/^\w/, (c) => c.toUpperCase())}.
             </p>
@@ -150,7 +150,7 @@ export default function BrandPage() {
 
           <section className="rise-in rounded-[var(--radius-lg)] bg-surface p-7 shadow-[var(--shadow-soft)] ring-1 ring-line/80 lg:col-span-5" style={stagger(1)} aria-labelledby="pics-h">
             <div className="flex items-center gap-2">
-              <Camera size={18} className="text-leaf" aria-hidden />
+              <Camera size={18} className="text-pen" aria-hidden />
               <h2 id="pics-h" className="text-[17px] tracking-tight">
                 Pictures look like
               </h2>
@@ -158,7 +158,7 @@ export default function BrandPage() {
             {dna.imagery && <p className="mt-3 text-[15px] leading-relaxed text-ink-2">{dna.imagery}</p>}
             <div className="mt-6 flex flex-wrap gap-3">
               {(dna.palette ?? []).map((p: string) => (
-                <span key={p} className="inline-flex items-center gap-2 rounded-full bg-sunken py-1 pl-1 pr-3 text-[13px]">
+                <span key={p} className="inline-flex items-center gap-2 rounded-[var(--radius-sm)] bg-sunken py-1 pl-1 pr-3 text-[13px]">
                   <span className="h-6 w-6 rounded-full ring-1 ring-black/10" style={{ background: swatch(p) }} aria-hidden />
                   {p}
                 </span>
@@ -174,7 +174,7 @@ export default function BrandPage() {
             <ul className="mt-4 space-y-3">
               {(dna.do ?? []).map((d: string) => (
                 <li key={d} className="flex gap-3 text-[15px]">
-                  <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-leaf-soft text-leaf">
+                  <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pen-soft text-pen">
                     <Check size={13} weight="bold" aria-hidden />
                   </span>
                   {d}
@@ -204,7 +204,7 @@ export default function BrandPage() {
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {banned.map((w) => (
-                    <span key={w} className="rounded-full bg-sunken px-2.5 py-0.5 text-[13px] text-ink-2 line-through decoration-kumkum/60">
+                    <span key={w} className="rounded-[var(--radius-sm)] bg-sunken px-2.5 py-0.5 text-[13px] text-ink-2 line-through decoration-kumkum/60">
                       {w}
                     </span>
                   ))}
@@ -235,7 +235,7 @@ export default function BrandPage() {
         <div className="grid gap-4 md:grid-cols-2">
           {data?.learnings.map((m, i) => (
             <article key={m.id} className="rise-in flex gap-4 rounded-[var(--radius-lg)] bg-surface p-5 shadow-[var(--shadow-soft)] ring-1 ring-line/80" style={stagger(Math.min(i, 6))}>
-              <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] ${m.kind === "brand_rule" ? "bg-forest text-mint" : "bg-leaf-soft text-leaf-ink"}`}>
+              <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-lg)] ${m.kind === "brand_rule" ? "bg-ink text-marker" : "bg-pen-soft text-pen-ink"}`}>
                 {m.kind === "brand_rule" ? <Prohibit size={18} aria-hidden /> : <Sparkle size={18} weight="fill" aria-hidden />}
               </span>
               <div className="min-w-0">

@@ -32,8 +32,8 @@ function Trend({ t, light }: { t: Theme; light?: boolean }) {
   return (
     <span
       className={clsx(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums",
-        light ? "bg-white/12 text-white" : bad ? "bg-kumkum-soft text-kumkum" : delta > 0 ? "bg-leaf-soft text-leaf-ink" : "bg-sunken text-ink-2",
+        "inline-flex items-center gap-1 rounded-[var(--radius-sm)] px-2 py-0.5 text-xs font-medium tabular-nums",
+        light ? "bg-white/12 text-white" : bad ? "bg-kumkum-soft text-kumkum" : delta > 0 ? "bg-pen-soft text-pen-ink" : "bg-sunken text-ink-2",
       )}
     >
       <Icon size={12} weight="bold" aria-hidden />
@@ -44,7 +44,7 @@ function Trend({ t, light }: { t: Theme; light?: boolean }) {
 
 function Rating({ n }: { n: number }) {
   return (
-    <span className="inline-flex gap-0.5 text-leaf" aria-label={`${n} out of 5`}>
+    <span className="inline-flex gap-0.5 text-pen" aria-label={`${n} out of 5`}>
       {[1, 2, 3, 4, 5].map((i) => (
         <Star key={i} size={13} weight={i <= n ? "fill" : "regular"} className={i <= n ? "" : "text-line-strong"} aria-hidden />
       ))}
@@ -78,8 +78,8 @@ export default function CustomersPage() {
     return (
       <Shell>
         <PageHeader title="What customers are saying" />
-        <div className="forest rise-in rounded-[var(--radius-lg)] p-8 md:p-12">
-          <ChatCircleText size={34} className="text-mint" aria-hidden />
+        <div className="night rise-in rounded-[var(--radius-lg)] p-8 md:p-12">
+          <ChatCircleText size={34} className="text-marker" aria-hidden />
           <p className="mt-4 max-w-[24ch] text-[30px] font-semibold leading-tight tracking-[-0.03em]">Your customers' words will show up here.</p>
           <p className="mt-3 max-w-[60ch] text-[15px] text-white/70">
             Counterpart reads reviews and messages in every language they were written in, groups them into topics, and writes campaigns that answer what people actually say.
@@ -118,9 +118,9 @@ export default function CustomersPage() {
           </h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {top && (
-              <article className="forest rise-in flex flex-col justify-between rounded-[var(--radius-lg)] p-7 md:col-span-2 lg:col-span-1 lg:row-span-2">
+              <article className="night rise-in flex flex-col justify-between rounded-[var(--radius-lg)] p-7 md:col-span-2 lg:col-span-1 lg:row-span-2">
                 <div>
-                  <p className="text-sm text-mint">Most talked about</p>
+                  <p className="text-sm text-marker">Most talked about</p>
                   <p className="mt-2 text-[34px] font-semibold leading-none tracking-[-0.035em]">{human(top.theme)}</p>
                   <div className="mt-4 flex items-center gap-3 text-sm text-white/70">
                     <span className="text-[44px] font-semibold leading-none tracking-tight text-white tabular-nums">{top.recent}</span>
@@ -162,7 +162,7 @@ export default function CustomersPage() {
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <span className="mr-1 text-sm text-muted">Also mentioned</span>
               {more.map((t) => (
-                <span key={t.theme} className="inline-flex items-center gap-1.5 rounded-full bg-surface px-3 py-1 text-[13px] ring-1 ring-line">
+                <span key={t.theme} className="inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] bg-surface px-3 py-1 text-[13px] ring-1 ring-line">
                   {human(t.theme)} <span className="tabular-nums text-muted">{t.recent}</span>
                 </span>
               ))}
@@ -185,7 +185,7 @@ export default function CustomersPage() {
                 <p className="text-sm text-muted">{s.data.peak}</p>
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {(s.data.motivations ?? []).map((m: string) => (
-                    <span key={m} className="rounded-full bg-sunken px-2.5 py-0.5 text-xs text-ink-2">
+                    <span key={m} className="rounded-[var(--radius-sm)] bg-sunken px-2.5 py-0.5 text-xs text-ink-2">
                       {m}
                     </span>
                   ))}
@@ -201,9 +201,9 @@ export default function CustomersPage() {
               const d = e.period_start ? new Date(e.period_start) : null;
               return (
                 <li key={e.key} className="rise-in flex items-center gap-4 rounded-[var(--radius-lg)] bg-surface p-4 shadow-[var(--shadow-soft)] ring-1 ring-line/80" style={stagger(i)}>
-                  <span className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-[14px] bg-forest text-white">
+                  <span className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-[var(--radius-lg)] bg-ink text-white">
                     <span className="text-[20px] font-semibold leading-none tabular-nums">{d ? d.getDate() : "?"}</span>
-                    <span className="mt-0.5 text-[11px] uppercase tracking-wide text-mint">{d ? d.toLocaleDateString("en-IN", { month: "short" }) : ""}</span>
+                    <span className="mt-0.5 text-[11px] uppercase tracking-wide text-marker">{d ? d.toLocaleDateString("en-IN", { month: "short" }) : ""}</span>
                   </span>
                   <span className="min-w-0">
                     <span className="block text-[15px] font-medium leading-snug">{e.data.name}</span>

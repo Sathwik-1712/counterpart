@@ -29,46 +29,19 @@ function CopyLink({ link }: { link: string }) {
         setDone(true);
         setTimeout(() => setDone(false), 1600);
       }}
-      className="press inline-flex items-center gap-1.5 rounded-full bg-sunken px-3 py-1.5 text-xs font-medium text-ink hover:bg-line"
+      className="press inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] bg-sunken px-3 py-1.5 text-xs font-medium text-ink hover:bg-line"
       aria-label={`Copy link ${link}`}
     >
-      {done ? <Check size={13} weight="bold" className="text-leaf" aria-hidden /> : <Copy size={13} aria-hidden />}
+      {done ? <Check size={13} weight="bold" className="text-pen" aria-hidden /> : <Copy size={13} aria-hidden />}
       {done ? "Copied" : "Copy link"}
     </button>
-  );
-}
-
-function Funnel({ t }: { t: Results["totals"] }) {
-  const max = Math.max(t.scans, t.claims, t.redeemed, 1);
-  const rows = [
-    { label: "Opened the link", n: t.scans, tone: "bg-forest" },
-    { label: "Claimed a code", n: t.claims, tone: "bg-leaf" },
-    { label: "Redeemed at the counter", n: t.redeemed, tone: "bg-mint" },
-  ];
-  return (
-    <div className="space-y-4">
-      {t.redeemed > t.scans && (
-        <p className="text-xs text-muted">Some codes were redeemed from printed posters or shared messages without opening the link, so redemptions can be higher than visits.</p>
-      )}
-      {rows.map((r, i) => (
-        <div key={r.label}>
-          <div className="mb-1.5 flex items-baseline justify-between text-sm">
-            <span className="text-ink-2">{r.label}</span>
-            <span className="text-[17px] font-semibold tabular-nums">
-              <CountUp value={r.n} />
-            </span>
-          </div>
-          <div className={clsx("grow-x h-3 rounded-full", r.tone)} style={{ width: `${r.n ? Math.max(3, (r.n / max) * 100) : 1.5}%`, ...stagger(i) }} />
-        </div>
-      ))}
-    </div>
   );
 }
 
 function PostRow({ r, best, i }: { r: ResultRow; best: boolean; i: number }) {
   const Icon = CHANNEL_ICON[r.channel];
   return (
-    <li className="rise-in flex flex-wrap items-center gap-x-5 gap-y-3 rounded-[var(--radius-lg)] bg-surface p-4 shadow-[var(--shadow-soft)] ring-1 ring-line/80 md:flex-nowrap" style={stagger(Math.min(i, 8))}>
+    <li className="rise-in flex flex-wrap items-center gap-x-5 gap-y-3 border-b border-line py-4 md:flex-nowrap" style={stagger(Math.min(i, 8))}>
       <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sunken text-ink">
         <Icon size={19} aria-hidden />
       </span>
@@ -76,7 +49,7 @@ function PostRow({ r, best, i }: { r: ResultRow; best: boolean; i: number }) {
         <p className="flex items-center gap-2 text-[15px] font-semibold tracking-tight">
           {CHANNEL_LABEL[r.channel]} <span className="font-normal text-muted">in {LANG_LABEL[r.language]}</span>
           {best && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-leaf-soft px-2 py-0.5 text-[11px] font-medium text-leaf-ink">
+            <span className="inline-flex items-center gap-1 rounded-[var(--radius-sm)] bg-pen-soft px-2 py-0.5 text-[11px] font-medium text-pen-ink">
               <Trophy size={11} weight="fill" aria-hidden /> Best so far
             </span>
           )}
@@ -98,13 +71,13 @@ function PostRow({ r, best, i }: { r: ResultRow; best: boolean; i: number }) {
           </div>
         ))}
         <div>
-          <dd className={clsx("text-[17px] font-semibold leading-none tabular-nums", r.conversion ? "text-leaf" : "text-muted")}>{pct(r.conversion)}</dd>
+          <dd className={clsx("text-[17px] font-semibold leading-none tabular-nums", r.conversion ? "text-pen" : "text-muted")}>{pct(r.conversion)}</dd>
           <dt className="mt-1 text-[11px] text-muted">Converted</dt>
         </div>
       </dl>
       <div className="flex gap-1.5">
         <CopyLink link={r.link} />
-        <a href={`/api/public/qr/${r.code}.png`} download={`qr-${r.code}.png`} className="press inline-flex items-center gap-1.5 rounded-full bg-sunken px-3 py-1.5 text-xs font-medium text-ink hover:bg-line">
+        <a href={`/api/public/qr/${r.code}.png`} download={`qr-${r.code}.png`} className="press inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] bg-sunken px-3 py-1.5 text-xs font-medium text-ink hover:bg-line">
           <DownloadSimple size={13} aria-hidden /> QR
         </a>
       </div>
@@ -127,30 +100,43 @@ export default function ResultsPage() {
         <Skeleton className="h-64" />
       ) : (
         <>
-          <section className="grid gap-4 lg:grid-cols-12" aria-label="Totals">
-            <div className="forest rise-in rounded-[var(--radius-lg)] p-7 lg:col-span-5">
-              <p className="text-sm text-mint">Conversion</p>
-              <p className="mt-2 text-[64px] font-semibold leading-none tracking-[-0.05em]">
-                {t?.conversion === null ? "-" : <CountUp value={(t?.conversion ?? 0) * 100} format={(n) => `${n.toFixed(1)}%`} />}
-              </p>
-              <p className="mt-3 max-w-[34ch] text-sm text-white/70">Of everyone who opened a post's link, the share who redeemed the offer at your counter.</p>
+          <section aria-label="Totals">
+            <div className="grid gap-px overflow-hidden rounded-[var(--radius-lg)] bg-ink ring-1 ring-ink sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                { n: t?.scans ?? 0, label: "opened a post's link" },
+                { n: t?.claims ?? 0, label: "claimed an offer code" },
+                { n: t?.redeemed ?? 0, label: "redeemed at your counter", hero: true },
+              ].map((x, i) => (
+                <div key={x.label} className={clsx("rise-in p-6", x.hero ? "bg-marker" : "bg-surface")} style={stagger(i)}>
+                  <p className="sign tabular text-[72px]">
+                    <CountUp value={x.n} />
+                  </p>
+                  <p className="mt-1 text-[14px] text-ink-2">{x.label}</p>
+                </div>
+              ))}
+              <div className="rise-in bg-ink p-6 text-white" style={stagger(3)}>
+                <p className="sign tabular text-[72px] text-marker">
+                  {t?.conversion == null ? "–" : <CountUp value={(t.conversion ?? 0) * 100} format={(n) => `${n.toFixed(1)}%`} />}
+                </p>
+                <p className="mt-1 text-[14px] text-white/70">{t?.conversion == null ? "conversion shows once people open links" : "of people who opened a link redeemed"}</p>
+              </div>
             </div>
-            <div className="rise-in rounded-[var(--radius-lg)] bg-surface p-7 shadow-[var(--shadow-soft)] ring-1 ring-line/80 lg:col-span-7" style={stagger(1)}>
-              {t && <Funnel t={t} />}
-            </div>
+            {t && t.redeemed > t.scans && (
+              <p className="mt-3 text-[13px] text-muted">Some codes were redeemed from printed posters or forwarded messages without opening the link, so redemptions can be higher than visits.</p>
+            )}
           </section>
 
           <Reveal as="section" className="mt-14">
             <SectionHeading title="How tracking works" />
-            <ol className="grid gap-3 md:grid-cols-3">
+            <ol className="grid gap-px overflow-hidden rounded-[var(--radius-lg)] bg-ink ring-1 ring-ink md:grid-cols-3">
               {HOW.map(({ icon: Icon, title, text }, i) => (
-                <li key={title} className="relative rounded-[var(--radius-lg)] bg-surface/70 p-5 ring-1 ring-line/80">
-                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-[12px] bg-leaf-soft text-leaf-ink">
-                    <Icon size={19} aria-hidden />
+                <li key={title} className="bg-surface p-5">
+                  <span className="flex items-center justify-between">
+                    <span className="font-mono text-[11px] font-semibold text-muted">{String(i + 1).padStart(2, "0")}</span>
+                    <Icon size={20} weight="bold" className="text-pen" aria-hidden />
                   </span>
-                  <p className="mt-3 text-[15px] font-semibold tracking-tight">{title}</p>
-                  <p className="mt-1 text-sm text-ink-2">{text}</p>
-                  {i < HOW.length - 1 && <ArrowRight size={18} className="absolute -right-3 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-paper text-muted md:block" aria-hidden />}
+                  <p className="mt-2 text-[19px] font-bold [font-stretch:85%]">{title}</p>
+                  <p className="mt-1 text-[14px] text-ink-2">{text}</p>
                 </li>
               ))}
             </ol>
@@ -166,10 +152,10 @@ export default function ResultsPage() {
                   const best = rows.filter((r) => r.scans >= 5).sort((a, b) => (b.conversion ?? 0) - (a.conversion ?? 0))[0];
                   return (
                     <div key={cid}>
-                      <Link href={`/campaigns/${cid}`} className="press mb-3 inline-flex items-center gap-1.5 rounded-full text-[17px] font-semibold tracking-tight hover:text-leaf">
+                      <Link href={`/campaigns/${cid}`} className="press mb-3 inline-flex items-center gap-1.5 rounded-full text-[17px] font-semibold tracking-tight hover:text-pen">
                         {rows[0].campaign} <ArrowRight size={15} aria-hidden />
                       </Link>
-                      <ul className="space-y-2.5">
+                      <ul className="border-t border-ink">
                         {rows.map((r, i) => (
                           <PostRow key={r.code} r={r} i={i} best={!!best && best.code === r.code && (best.conversion ?? 0) > 0} />
                         ))}

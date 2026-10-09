@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { ArrowUpRight, Microphone, Sparkle, Stop } from "@phosphor-icons/react";
+import { ArrowRight, Microphone, Stop } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "./ui";
 
@@ -102,17 +102,17 @@ export function Composer({
 
   return (
     <div className={className}>
-      <div className="rounded-[var(--radius-lg)] bg-surface p-4 shadow-[var(--shadow-soft)] ring-1 ring-ink/[0.08] transition-shadow duration-300 focus-within:shadow-[var(--shadow-lift)] focus-within:ring-leaf/50">
+      <div className="rounded-[var(--radius-lg)] bg-surface ring-1 ring-ink transition-shadow duration-200 focus-within:shadow-[0_0_0_3px_var(--color-marker)]">
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === "Enter" && submit()}
           rows={rows}
           placeholder={listening ? "Listening…" : placeholder}
-          className="w-full resize-none bg-transparent text-[16px] leading-relaxed text-ink outline-none placeholder:text-muted"
+          className="ruled margin-rule block w-full resize-none bg-transparent pl-6 pr-4 pt-[7px] text-[17px] text-ink outline-none placeholder:text-muted md:pl-8"
           aria-label={placeholder}
         />
-        <div className="mt-2 flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 border-t border-line px-3 py-2.5">
           {supported && (
             <>
               <button
@@ -120,18 +120,18 @@ export function Composer({
                 onClick={toggleMic}
                 aria-pressed={listening}
                 className={clsx(
-                  "press inline-flex h-9 items-center gap-2 rounded-full px-3.5 text-[13px] font-medium",
-                  listening ? "bg-kumkum text-white" : "bg-sunken text-ink hover:bg-line",
+                  "press inline-flex h-9 items-center gap-2 rounded-[var(--radius-sm)] px-3 text-[14px] font-semibold",
+                  listening ? "bg-kumkum text-white" : "text-ink hover:bg-sunken",
                 )}
               >
-                {listening ? <Stop size={14} aria-hidden /> : <Microphone size={15} aria-hidden />}
+                {listening ? <Stop size={15} weight="fill" aria-hidden /> : <Microphone size={16} weight="bold" aria-hidden />}
                 {listening ? "Stop" : "Speak"}
               </button>
               <select
                 value={lang}
                 onChange={(e) => setLang(e.target.value)}
                 disabled={listening}
-                className="h-9 rounded-full bg-sunken px-3 text-[13px] text-ink-2 outline-none"
+                className="h-9 rounded-[var(--radius-sm)] bg-transparent px-2 text-[14px] text-ink-2 outline-none hover:bg-sunken"
                 aria-label="Spoken language"
               >
                 {LANGS.map((l) => (
@@ -143,22 +143,22 @@ export function Composer({
             </>
           )}
           <span className="min-w-0 flex-1 text-xs text-muted">{note ?? (supported ? "" : "Type here. Voice needs Chrome, Edge or Safari.")}</span>
-          <Button variant="primary" onClick={submit} disabled={busy || !text.trim()} trailing={<ArrowUpRight size={14} weight="bold" />}>
+          <Button variant="primary" onClick={submit} disabled={busy || !text.trim()} trailing={<ArrowRight size={15} weight="bold" />}>
             {busy ? "Sending…" : submitLabel}
           </Button>
         </div>
       </div>
       {suggestions.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1.5 text-[14px]">
+          <span className="text-muted">Ideas from Counterpart:</span>
           {suggestions.map((sug) => (
             <button
               key={sug}
               type="button"
               onClick={() => setText(sug)}
-              className="press inline-flex max-w-full items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-[13px] text-current ring-1 ring-current/15 hover:bg-white/20"
+              className="press max-w-full truncate font-semibold text-pen underline decoration-pen/30 decoration-2 underline-offset-4 hover:decoration-pen"
             >
-              <Sparkle size={13} weight="fill" className="shrink-0 opacity-70" aria-hidden />
-              <span className="truncate">{sug}</span>
+              {sug}
             </button>
           ))}
         </div>

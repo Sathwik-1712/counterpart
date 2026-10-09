@@ -32,9 +32,24 @@ class Settings(BaseSettings):
     # so roles can chain several models (the free tier gives each model its own small daily quota).
     gemini_api_key: SecretStr | None = None
     gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai"
-    gemini_models: str = ("gemini-3.7-flash,gemini-3.8-flash,gemini-3.6-flash,gemini-3.5-flash,"
-                          "gemini-3.5-flash-lite,gemini-3.1-flash-lite")
+    # Order checked live 2026-10-09 on the free tier: 3.7-flash and 3.8-flash accept requests but never answer, so they
+    # sit last in every chain; the rest reply in 1 to 4 s. Pro models have no free quota.
+    gemini_models: str = ("gemini-3.6-flash,gemini-3.5-flash,gemini-3-flash-preview,gemini-3.5-flash-lite,"
+                          "gemini-3.1-flash-lite,gemini-3.7-flash,gemini-3.8-flash")
     gemini_rpm: int = 10
+    # Optional key from a second Google project (e.g. a teammate's). Free quota is per project, so its models are
+    # tried after every model on the first key has failed or run out.
+    gemini_api_key_2: SecretStr | None = None
+
+    # Free backups that need no card (OpenAI-compatible). Used after Gemini, before Agnes.
+    groq_api_key: SecretStr | None = None
+    groq_base_url: str = "https://api.groq.com/openai/v1"
+    groq_model: str = "openai/gpt-oss-120b"
+    groq_rpm: int = 20
+    cerebras_api_key: SecretStr | None = None
+    cerebras_base_url: str = "https://api.cerebras.ai/v1"
+    cerebras_model: str = "gpt-oss-120b"
+    cerebras_rpm: int = 20
 
     # Optional second OpenAI-compatible LLM (independent verifier / live model swap).
     alt_llm_base_url: str | None = None
@@ -44,10 +59,13 @@ class Settings(BaseSettings):
 
     # Role -> provider chain; unconfigured names are skipped. Names: Gemini model ids, "agnes", "alt".
     # The writer and the checker start on different models, so a model never checks its own copy.
+    # Backups are added automatically after the Gemini models: second-key Gemini, then Groq/Cerebras
+    # (Cerebras first for the checker, so writer and checker stay on different backups too).
     # The replay cache sits in front of every chain.
     role_reasoning: str = "gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.5-flash,agnes"
-    role_generation: str = "gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash,gemini-3.5-flash-lite,agnes"
-    role_verification: str = "gemini-3.8-flash,gemini-3.5-flash,gemini-3.1-flash-lite,gemini-3.6-flash,agnes"
+    role_generation: str = "gemini-3.6-flash,gemini-3-flash-preview,gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3.7-flash,agnes"
+    role_verification: str = ("gemini-3.5-flash,gemini-3.1-flash-lite,gemini-3-flash-preview,gemini-3.6-flash,"
+                              "gemini-3.8-flash,agnes")
     role_image: str = "agnes"
     # Reads the business's photos once (caption, tags) so posts can be matched to the right one.
     role_vision: str = "gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-3.5-flash"

@@ -2,6 +2,9 @@
 
     uv run python -m scripts.set_secret SUPABASE_SERVICE_ROLE_KEY
     uv run python -m scripts.set_secret GOOGLE_MAPS_API_KEY
+    uv run python -m scripts.set_secret GROQ_API_KEY        (free, no card: console.groq.com > API Keys)
+    uv run python -m scripts.set_secret CEREBRAS_API_KEY    (free, no card: cloud.cerebras.ai > API Keys)
+    uv run python -m scripts.set_secret GEMINI_API_KEY_2    (a second Google project's key, aistudio.google.com)
 
 The value is typed hidden and checked against the service before it is saved.
 """
@@ -17,7 +20,19 @@ SUPABASE_URL = "https://owstnpcbfihxzmiiiznj.supabase.co"
 ALLOWED = {
     "SUPABASE_SERVICE_ROLE_KEY": "Supabase secret key (Dashboard > Project Settings > API Keys > Secret keys, sb_secret_...)",
     "GOOGLE_MAPS_API_KEY": "Google Maps Platform key with 'Places API (New)' enabled",
+    "GEMINI_API_KEY": "Gemini API key (aistudio.google.com > Get API key)",
+    "GEMINI_API_KEY_2": "Gemini API key from a DIFFERENT Google project (same-project keys share one quota)",
+    "GROQ_API_KEY": "Groq API key (console.groq.com > API Keys, gsk_...)",
+    "CEREBRAS_API_KEY": "Cerebras API key (cloud.cerebras.ai > API Keys, csk-...)",
 }
+# Free backup providers: (models URL, preferred models best first). The first one the key can use is saved too.
+BACKUPS = {
+    "GROQ_API_KEY": ("https://api.groq.com/openai/v1/models", "GROQ_MODEL",
+                     ["openai/gpt-oss-120b", "moonshotai/kimi-k2-instruct-0905", "llama-3.3-70b-versatile"]),
+    "CEREBRAS_API_KEY": ("https://api.cerebras.ai/v1/models", "CEREBRAS_MODEL",
+                         ["gpt-oss-120b", "qwen-3-235b-a22b-instruct-2507", "llama-3.3-70b"]),
+}
+extra: dict[str, str] = {}  # other settings learned while checking the key (the backup model to use)
 
 
 def _env_value(name: str) -> str | None:
@@ -34,6 +49,26 @@ def check(name: str, value: str) -> str | None:
         headers = {"apikey": value, **({"Authorization": f"Bearer {value}"} if value.startswith("eyJ") else {})}
         r = httpx.get(f"{base}/auth/v1/admin/users", params={"per_page": 1}, headers=headers, timeout=15)
         return None if r.status_code == 200 else f"Supabase said {r.status_code}; check you copied the secret key"
+    if name.startswith("GEMINI_API_KEY"):
+        r = httpx.get("https://generativelanguage.googleapis.com/v1beta/openai/models", timeout=15,
+                      headers={"Authorization": f"Bearer {value}"})
+        if r.status_code != 200:
+            return f"Google said {r.status_code}: {r.text[:160]}"
+        first = _env_value("GEMINI_API_KEY")
+        if name == "GEMINI_API_KEY_2" and first and first == value:
+            return "this is the same key as GEMINI_API_KEY; a backup only helps from a different Google project"
+        return None
+    if name in BACKUPS:
+        url, setting, preferred = BACKUPS[name]
+        r = httpx.get(url, headers={"Authorization": f"Bearer {value}"}, timeout=15)
+        if r.status_code != 200:
+            return f"the service said {r.status_code}: {r.text[:160]}"
+        ids = [m["id"] for m in r.json().get("data", [])]
+        model = next((m for m in preferred if m in ids), None)
+        if not model:
+            return f"none of {preferred} is offered to this key (it offers: {', '.join(ids[:12])})"
+        extra[setting] = model
+        return None
     if name == "GOOGLE_MAPS_API_KEY":
         r = httpx.post("https://places.googleapis.com/v1/places:searchText", timeout=15,
                        headers={"X-Goog-Api-Key": value, "X-Goog-FieldMask": "places.id"},
@@ -60,10 +95,12 @@ def main() -> None:
         raise SystemExit("Nothing entered; nothing changed.")
     if problem := check(name, value):
         raise SystemExit(f"That key did not work ({problem}). backend/.env was not changed.")
-    lines = [line for line in ENV.read_text().splitlines() if not line.startswith(f"{name}=")]
-    lines.append(f"{name}={value}")
+    new = {name: value, **extra}
+    lines = [line for line in ENV.read_text().splitlines() if line.split("=", 1)[0] not in new]
+    lines += [f"{k}={v}" for k, v in new.items()]
     ENV.write_text("\n".join(lines) + "\n")
-    print(f"{name} works and is saved to backend/.env. Restart the backend to use it.")
+    print(f"{name} works and is saved to backend/.env" + "".join(f" (using {v})" for v in extra.values())
+          + ". Restart the backend to use it.")
 
 
 if __name__ == "__main__":

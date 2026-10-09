@@ -23,7 +23,7 @@ interface Item {
 }
 
 const field =
-  "h-12 w-full rounded-[var(--radius-md)] bg-surface px-4 text-[15px] shadow-[inset_0_0_0_1px_var(--color-line-strong)] outline-none transition-shadow focus:shadow-[inset_0_0_0_2px_var(--color-leaf)]";
+  "h-12 w-full rounded-[var(--radius-md)] bg-surface px-4 text-[15px] shadow-[inset_0_0_0_1.5px_var(--color-ink)] outline-none transition-shadow focus:shadow-[inset_0_0_0_1.5px_var(--color-ink),0_0_0_3px_var(--color-marker)]";
 
 function Label({ children, hint }: { children: React.ReactNode; hint?: string }) {
   return (
@@ -128,15 +128,15 @@ export default function Onboarding() {
 
   if (busy)
     return (
-      <main className="forest flex min-h-dvh items-center justify-center px-6">
+      <main className="night flex min-h-dvh items-center justify-center px-6">
         <div className="w-full max-w-sm">
           <img src="/icon.svg" alt="" className="pop mb-8 h-12 w-12" />
           <h1 className="text-[30px] tracking-[-0.03em] text-white">Setting up {name || "your business"}</h1>
           <ol className="mt-8 space-y-4">
             {SETUP.map((s, i) => (
               <li key={s} className={clsx("flex items-center gap-3 text-[15px] transition-opacity duration-500", i > phase ? "opacity-35" : "opacity-100")}>
-                <span className={clsx("inline-flex h-7 w-7 items-center justify-center rounded-full", i < phase ? "bg-mint text-forest" : "bg-white/10 text-mint")}>
-                  {i < phase ? <Check size={14} weight="bold" aria-hidden /> : i === phase ? <span className="pulse-dot h-2 w-2 rounded-full bg-mint" /> : null}
+                <span className={clsx("inline-flex h-7 w-7 items-center justify-center rounded-full", i < phase ? "bg-marker text-ink" : "bg-white/10 text-marker")}>
+                  {i < phase ? <Check size={14} weight="bold" aria-hidden /> : i === phase ? <span className="pulse-dot h-2 w-2 rounded-full bg-marker" /> : null}
                 </span>
                 {s}
               </li>
@@ -163,7 +163,7 @@ export default function Onboarding() {
           {STEPS.map((s, i) => (
             <li key={s} className="h-1.5 overflow-hidden rounded-full bg-sunken" aria-current={i === step ? "step" : undefined}>
               <span
-                className="block h-full rounded-full bg-leaf transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]"
+                className="block h-full rounded-full bg-pen transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)]"
                 style={{ transform: `scaleX(${i <= step ? 1 : 0})`, transformOrigin: "left" }}
               />
               <span className="sr-only">{s}</span>
@@ -189,7 +189,7 @@ export default function Onboarding() {
                       type="button"
                       onClick={() => setKind(k)}
                       aria-pressed={kind === k}
-                      className={clsx("press rounded-full px-4 py-2 text-sm", kind === k ? "bg-ink text-white" : "bg-surface text-ink-2 ring-1 ring-line-strong hover:text-ink")}
+                      className={clsx("press rounded-[var(--radius-sm)] px-4 py-2 text-sm", kind === k ? "bg-ink text-white" : "bg-surface text-ink-2 ring-1 ring-line-strong hover:text-ink")}
                     >
                       {k}
                     </button>
@@ -227,7 +227,7 @@ export default function Onboarding() {
                         type="button"
                         aria-pressed={on}
                         onClick={() => setLangs(on ? langs.filter((x) => x !== l.code) : [...langs, l.code])}
-                        className={clsx("press inline-flex items-center gap-2 rounded-full px-4 py-2 text-[15px]", on ? "bg-leaf text-white" : "bg-surface text-ink-2 ring-1 ring-line-strong")}
+                        className={clsx("press inline-flex items-center gap-2 rounded-[var(--radius-sm)] px-4 py-2 text-[15px]", on ? "bg-pen text-white" : "bg-surface text-ink-2 ring-1 ring-line-strong")}
                       >
                         {on && <Check size={14} weight="bold" aria-hidden />}
                         {l.label}
@@ -308,18 +308,18 @@ export default function Onboarding() {
                   disabled={!googleOn}
                   onClick={() => setGoogle(!google)}
                   aria-pressed={google && googleOn}
-                  className={clsx("press mt-4 flex w-full items-center gap-3 rounded-[var(--radius-md)] p-3.5 text-left ring-1", google && googleOn ? "bg-leaf-soft ring-leaf/40" : "bg-surface ring-line", !googleOn && "opacity-60")}
+                  className={clsx("press mt-4 flex w-full items-center gap-3 rounded-[var(--radius-md)] p-3.5 text-left ring-1", google && googleOn ? "bg-pen-soft ring-pen/40" : "bg-surface ring-line", !googleOn && "opacity-60")}
                 >
                   <GoogleLogo size={20} aria-hidden />
                   <span className="min-w-0 flex-1">
                     <span className="block text-[14px] font-medium">Use photos from our Google Maps listing</span>
                     <span className="block text-xs text-muted">{googleOn ? "Found by your name and area, with credit to the photographer." : "Not switched on for this server yet. You can add photos later."}</span>
                   </span>
-                  {google && googleOn && <SealCheck size={20} weight="fill" className="text-leaf" aria-hidden />}
+                  {google && googleOn && <SealCheck size={20} weight="fill" className="text-pen" aria-hidden />}
                 </button>
                 <label className="press mt-4 flex cursor-pointer items-center gap-3 rounded-[var(--radius-md)] border border-dashed border-line-strong p-3.5 hover:bg-sunken/60">
                   <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => setFiles(Array.from(e.target.files ?? []).slice(0, 12))} />
-                  <UploadSimple size={20} className="text-leaf" aria-hidden />
+                  <UploadSimple size={20} className="text-pen" aria-hidden />
                   <span className="min-w-0 flex-1">
                     <span className="block text-[14px] font-medium">{files.length ? `${files.length} photo${files.length === 1 ? "" : "s"} ready to add` : "Add photos from your phone or computer"}</span>
                     <span className="block text-xs text-muted">Your products, counter or space. Up to 12 now, more later from the Photos page.</span>
@@ -328,7 +328,7 @@ export default function Onboarding() {
                 {files.length > 0 && (
                   <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
                     {files.map((f, i) => (
-                      <img key={i} src={URL.createObjectURL(f)} alt="" className="pop h-16 w-16 shrink-0 rounded-[12px] object-cover" style={{ "--i": i } as React.CSSProperties} />
+                      <img key={i} src={URL.createObjectURL(f)} alt="" className="pop h-16 w-16 shrink-0 rounded-[var(--radius-lg)] object-cover" style={{ "--i": i } as React.CSSProperties} />
                     ))}
                   </div>
                 )}
@@ -340,7 +340,7 @@ export default function Onboarding() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="In your own words: what people come back for, how you talk to them."
-                  className="w-full rounded-[var(--radius-md)] bg-surface px-4 py-3 text-[15px] shadow-[inset_0_0_0_1px_var(--color-line-strong)] outline-none transition-shadow focus:shadow-[inset_0_0_0_2px_var(--color-leaf)]"
+                  className="w-full rounded-[var(--radius-md)] bg-surface px-4 py-3 text-[15px] shadow-[inset_0_0_0_1.5px_var(--color-ink)] outline-none transition-shadow focus:shadow-[inset_0_0_0_1.5px_var(--color-ink),0_0_0_3px_var(--color-marker)]"
                 />
               </label>
             </div>

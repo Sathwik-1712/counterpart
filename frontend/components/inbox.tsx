@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, CalendarBlank, Check, Lightbulb, LockSimple, Megaphone, WarningCircle } from "@phosphor-icons/react";
+import { ArrowRight, CalendarBlank, Check, Lightbulb, LockSimple, Megaphone, WarningCircle } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useState } from "react";
 import { api } from "@/lib/api";
@@ -22,7 +22,7 @@ export function InboxList({ items, onChange, showCampaignLink = true }: { items:
       </Empty>
     );
   return (
-    <ul className="space-y-3">
+    <ul className="divide-y divide-ink/15 border-y border-ink">
       {items.map((i, n) => (
         <InboxRow key={i.id} item={i} n={n} onChange={onChange} showCampaignLink={showCampaignLink} />
       ))}
@@ -51,25 +51,25 @@ function InboxRow({ item, n, onChange, showCampaignLink }: { item: InboxItem; n:
   }
 
   return (
-    <li className="rise-in rounded-[var(--radius-lg)] bg-surface p-5 shadow-[var(--shadow-soft)] ring-1 ring-line/80 md:p-6" style={stagger(n)}>
+    <li className="rise-in py-5" style={stagger(n)}>
       <div className="flex gap-4">
-        <span className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] ${approval ? "bg-turmeric-soft text-turmeric" : "bg-leaf-soft text-leaf-ink"}`}>
-          <Icon size={20} weight="duotone" aria-hidden />
+        <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-sm)] ${approval ? "bg-ink text-marker" : "bg-pen-soft text-pen"}`}>
+          <Icon size={20} weight="bold" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-xs text-muted">
-            <span className={approval ? "font-medium text-turmeric" : "font-medium text-leaf-ink"}>{approval ? "Needs your OK" : "Suggestion"}</span>
-            <span className="px-1.5">·</span>
+          <p className="flex flex-wrap items-center gap-x-2 text-[13px] text-muted">
+            <span className={approval ? "font-semibold text-ink" : "font-semibold text-pen"}>{approval ? "Needs your OK" : "Suggestion from Counterpart"}</span>
+            <span aria-hidden>·</span>
             {timeAgo(item.created_at)}
           </p>
-          <p className="mt-1 text-[16px] font-semibold leading-snug tracking-tight">{item.title}</p>
-          {item.body && <p className="mt-1.5 text-sm text-ink-2">{item.body}</p>}
-          {tool && EFFECT[tool] && <p className="mt-1.5 text-sm text-muted">{EFFECT[tool]}</p>}
+          <p className="mt-1 text-[19px] font-bold leading-snug [font-stretch:90%]">{item.title}</p>
+          {item.body && <p className="mt-1 text-[15px] text-ink-2">{item.body}</p>}
+          {tool && EFFECT[tool] && <p className="mt-1 text-[14px] text-muted">{EFFECT[tool]}</p>}
           {item.payload.evidence?.length ? (
-            <ul className="mt-3 space-y-1.5 text-sm text-ink-2">
+            <ul className="mt-3 space-y-1 text-[14px] text-ink-2">
               {item.payload.evidence.map((e, i) => (
                 <li key={i} className="flex gap-2">
-                  <Check size={14} className="mt-1 shrink-0 text-leaf" aria-hidden />
+                  <Check size={14} weight="bold" className="mt-1 shrink-0 text-pen" aria-hidden />
                   {e}
                 </li>
               ))}
@@ -79,7 +79,7 @@ function InboxRow({ item, n, onChange, showCampaignLink }: { item: InboxItem; n:
           <div className="mt-4 flex flex-wrap items-center gap-2">
             {approval ? (
               <>
-                <Button variant="accent" onClick={() => decide(true)} disabled={busy !== null} trailing={<Check size={13} weight="bold" />}>
+                <Button variant="primary" onClick={() => decide(true)} disabled={busy !== null} trailing={<Check size={14} weight="bold" />}>
                   {busy === "approve" ? "Approving…" : "Approve"}
                 </Button>
                 <Button variant="ghost" onClick={() => decide(false)} disabled={busy !== null}>
@@ -93,8 +93,8 @@ function InboxRow({ item, n, onChange, showCampaignLink }: { item: InboxItem; n:
             )}
             <span className="flex-1" />
             {showCampaignLink && item.campaign_id && (
-              <Link href={`/campaigns/${item.campaign_id}`} className="press inline-flex items-center gap-1 rounded-full px-2 text-sm font-medium text-leaf hover:text-leaf-ink">
-                Open the campaign <ArrowUpRight size={13} aria-hidden />
+              <Link href={`/campaigns/${item.campaign_id}`} className="press inline-flex items-center gap-1 text-[14px] font-semibold text-ink underline decoration-ink/30 underline-offset-4 hover:decoration-ink">
+                Open the campaign <ArrowRight size={13} weight="bold" aria-hidden />
               </Link>
             )}
           </div>
@@ -113,28 +113,28 @@ function eventDate(message: string) {
 export function FindingsList({ findings }: { findings: Finding[] }) {
   if (!findings.length) return <Empty>Nothing unusual in your reviews, calendar or campaigns.</Empty>;
   return (
-    <ul className="grid gap-3">
+    <ul className="divide-y divide-line border-y border-ink">
       {findings.map((f, i) => {
         const ev = f.kind === "event_upcoming" ? eventDate(f.message) : null;
         const urgent = f.priority === 1;
         return (
-          <li key={i} className="rise-in flex items-center gap-4 rounded-[var(--radius-lg)] bg-surface p-4 shadow-[var(--shadow-soft)] ring-1 ring-line/80" style={stagger(i + 1)}>
+          <li key={i} className="rise-in flex items-center gap-4 py-3.5" style={stagger(i + 1)}>
             {ev ? (
-              <span className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-[14px] bg-forest text-white">
-                <span className="text-[20px] font-semibold leading-none tabular-nums">{ev.day}</span>
-                <span className="mt-0.5 text-[11px] uppercase tracking-wide text-mint">{ev.month}</span>
+              <span className="flex w-12 shrink-0 flex-col items-center text-pen">
+                <span className="sign tabular text-[34px]">{ev.day}</span>
+                <span className="font-mono text-[10px] font-semibold uppercase">{ev.month}</span>
               </span>
             ) : (
-              <span className={`inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-[14px] ${urgent ? "bg-kumkum-soft text-kumkum" : "bg-turmeric-soft text-turmeric"}`}>
-                <WarningCircle size={22} weight="duotone" aria-hidden />
+              <span className={`inline-flex h-12 w-12 shrink-0 items-center justify-center ${urgent ? "text-kumkum" : "text-turmeric"}`}>
+                <WarningCircle size={26} weight="bold" aria-hidden />
               </span>
             )}
             <div className="min-w-0">
-              <p className="text-[15px] font-medium leading-snug">{ev ? ev.name : f.message}</p>
-              <p className="mt-0.5 flex items-center gap-1 text-xs text-muted">
+              <p className="text-[16px] font-semibold leading-snug">{ev ? ev.name : f.message}</p>
+              <p className="mt-0.5 flex items-center gap-1 text-[13px] text-pen">
                 {ev ? (
                   <>
-                    <CalendarBlank size={12} aria-hidden /> Coming up, a good moment for a campaign
+                    <CalendarBlank size={13} aria-hidden /> Coming up. A good moment for a campaign.
                   </>
                 ) : urgent ? (
                   "Worth a look today"

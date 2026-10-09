@@ -42,8 +42,8 @@ function Pipeline({ live }: { live: Set<string> }) {
     { role: "owner", label: "You approve" },
   ];
   return (
-    <div className="forest rise-in overflow-hidden rounded-[var(--radius-lg)] p-6 md:p-8">
-      <p className="text-sm text-mint">How a campaign moves</p>
+    <div className="night rise-in overflow-hidden rounded-[var(--radius-lg)] p-6 md:p-8">
+      <p className="text-sm text-marker">How a campaign moves</p>
       <ol className="mt-6 grid grid-cols-2 gap-y-6 md:flex md:items-center">
         {nodes.map((n, i) => {
           const Icon = n.role === "owner" ? UserCircle : ICON[n.role];
@@ -51,15 +51,15 @@ function Pipeline({ live }: { live: Set<string> }) {
           return (
             <li key={n.role} className="flex items-center md:flex-1">
               <div className="flex flex-col items-center gap-2 text-center">
-                <span className={clsx("relative inline-flex h-14 w-14 items-center justify-center rounded-[18px] transition-colors duration-500", on ? "bg-mint text-forest" : "bg-white/10 text-white")}>
+                <span className={clsx("relative inline-flex h-14 w-14 items-center justify-center rounded-[var(--radius-lg)] transition-colors duration-500", on ? "bg-marker text-ink" : "bg-white/10 text-white")}>
                   <Icon size={24} weight={on ? "fill" : "regular"} aria-hidden />
-                  {on && <span className="pulse-dot absolute -right-1 -top-1 h-3 w-3 rounded-full bg-mint ring-2 ring-forest" />}
+                  {on && <span className="pulse-dot absolute -right-1 -top-1 h-3 w-3 rounded-full bg-marker ring-2 ring-ink" />}
                 </span>
                 <span className="text-[13px] font-medium">{n.label}</span>
               </div>
               {i < nodes.length - 1 && (
                 <span className="relative mx-3 hidden h-px flex-1 bg-white/20 md:block" aria-hidden>
-                  <span className="flow-dot absolute -top-[3px] h-[7px] w-[7px] rounded-full bg-mint" style={stagger(i)} />
+                  <span className="flow-dot absolute -top-[3px] h-[7px] w-[7px] rounded-full bg-marker" style={stagger(i)} />
                 </span>
               )}
             </li>
@@ -104,16 +104,16 @@ export default function AgentsPage() {
                 return (
                   <article
                     key={a.role}
-                    className={clsx("rise-in flex flex-col rounded-[var(--radius-lg)] p-6 ring-1 transition-shadow duration-500", working ? "bg-surface shadow-[var(--shadow-lift)] ring-leaf/40" : "bg-surface shadow-[var(--shadow-soft)] ring-line/80")}
+                    className={clsx("rise-in flex flex-col rounded-[var(--radius-lg)] p-6 ring-1 transition-shadow duration-500", working ? "bg-surface shadow-[var(--shadow-lift)] ring-pen/40" : "bg-surface shadow-[var(--shadow-soft)] ring-line/80")}
                     style={stagger(i)}
                   >
                     <div className="flex items-start gap-3">
-                      <span className={clsx("inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px]", working ? "bg-forest text-mint" : "bg-leaf-soft text-leaf-ink")}>
+                      <span className={clsx("inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-lg)]", working ? "bg-ink text-marker" : "bg-pen-soft text-pen-ink")}>
                         <Icon size={21} weight="duotone" aria-hidden />
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="text-[17px] font-semibold tracking-tight">{a.name}</p>
-                        <p className={clsx("flex items-center gap-1.5 text-xs", working ? "text-leaf-ink" : "text-muted")}>
+                        <p className={clsx("flex items-center gap-1.5 text-xs", working ? "text-pen-ink" : "text-muted")}>
                           {working ? (
                             <>
                               <span className="typing font-bold" aria-hidden>
@@ -137,7 +137,7 @@ export default function AgentsPage() {
                       <div className="flex flex-wrap gap-1.5">
                         {a.models.length ? (
                           a.models.map((m, j) => (
-                            <span key={m} className={clsx("rounded-full px-2.5 py-0.5 font-receipt text-[11px]", j === 0 ? "bg-ink text-white" : "bg-sunken text-ink-2")}>
+                            <span key={m} className={clsx("rounded-[var(--radius-sm)] px-2.5 py-0.5 font-receipt text-[11px]", j === 0 ? "bg-ink text-white" : "bg-sunken text-ink-2")}>
                               {m}
                             </span>
                           ))
@@ -160,7 +160,7 @@ export default function AgentsPage() {
               <ul className="overflow-hidden rounded-[var(--radius-lg)] bg-surface shadow-[var(--shadow-soft)] ring-1 ring-line/80">
                 {data?.calls.slice(0, 15).map((c, i) => (
                   <li key={`${c.at}-${i}`} className="flex items-center gap-3 border-b border-line px-5 py-3 text-sm last:border-0">
-                    {c.ok ? <CheckCircle size={16} weight="fill" className="shrink-0 text-leaf" aria-hidden /> : <WarningCircle size={16} weight="fill" className="shrink-0 text-turmeric" aria-hidden />}
+                    {c.ok ? <CheckCircle size={16} weight="fill" className="shrink-0 text-pen" aria-hidden /> : <WarningCircle size={16} weight="fill" className="shrink-0 text-turmeric" aria-hidden />}
                     <span className="w-28 shrink-0 font-medium">{data.agents.find((a) => a.role === c.role)?.name ?? c.role}</span>
                     <span className="min-w-0 flex-1 truncate text-ink-2">{c.ok ? taskLabel(c.task) : `Moved on: ${c.error ?? "model unavailable"}`}</span>
                     <span className="hidden font-receipt text-xs text-muted sm:inline">{c.model}</span>

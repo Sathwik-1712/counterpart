@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Broadcast, ChartLineUp, Check, ImagesSquare, LockSimple, Quotes } from "@phosphor-icons/react";
+import { ArrowDown, ArrowLeft, Check, ImagesSquare, LinkSimple } from "@phosphor-icons/react";
 import clsx from "clsx";
 import Link from "next/link";
 import { use, useMemo, useState } from "react";
@@ -10,73 +10,25 @@ import { Composer } from "@/components/composer";
 import { ExperimentPanel } from "@/components/experiment-panel";
 import { FactsCard } from "@/components/facts-card";
 import { InboxList } from "@/components/inbox";
+import { JourneyTrack } from "@/components/journey";
+import { CountUp } from "@/components/motion";
+import { Receipt } from "@/components/receipt";
+import { SharePanel } from "@/components/share-panel";
 import { Shell } from "@/components/shell";
-import { CHANNEL_LABEL, Empty, SectionHeading, Skeleton, stagger, StatusPill } from "@/components/ui";
+import { Button, CHANNEL_LABEL, Empty, SectionHeading, Skeleton, StatusPill } from "@/components/ui";
 import { api, useResource } from "@/lib/api";
 import { useBusiness } from "@/lib/business";
-import type { CampaignDetail, Channel } from "@/lib/types";
+import { nextAction, STEPS, stepOfDetail } from "@/lib/journey";
+import type { CampaignDetail, Channel, Results } from "@/lib/types";
 
 const CHANNEL_ORDER: Channel[] = ["instagram_post", "instagram_story", "poster", "whatsapp"];
-
-function Steps({ data }: { data: CampaignDetail }) {
-  const locked = data.facts.find((f) => f.status === "locked");
-  const draft = data.facts.find((f) => f.status === "draft");
-  const assets = data.assets.filter((a) => a.status !== "rejected");
-  const checked = assets.filter((a) => ["valid", "live", "approved"].includes(a.status)).length;
-  const live = assets.filter((a) => a.status === "live").length;
-  const scans = assets.reduce((n, a) => n + (a.outcomes?.scan ?? 0), 0);
-  const redeemed = assets.reduce((n, a) => n + (a.outcomes?.redeem ?? 0), 0);
-  const steps = [
-    { label: "Offer", icon: LockSimple, done: !!locked, note: locked ? `Locked, version ${locked.version}` : draft ? "Waiting for you to lock" : "Being written down" },
-    { label: "Posts", icon: ImagesSquare, done: checked > 0, note: assets.length ? `${checked} of ${assets.length} passed the checks` : locked ? "Being written" : "After the offer is locked" },
-    { label: "Live", icon: Broadcast, done: live > 0, note: live ? `${live} live with tracking codes` : checked ? "Waiting for your approval" : "After you approve" },
-    { label: "Results", icon: ChartLineUp, done: redeemed > 0, note: live ? `${scans} scans, ${redeemed} redeemed` : "Counted at the counter" },
-  ];
-  const current = steps.findIndex((s) => !s.done);
-  return (
-    <ol className="grid grid-cols-2 gap-2 md:grid-cols-4" aria-label="Progress">
-      {steps.map((s, i) => {
-        const Icon = s.icon;
-        const now = i === current;
-        return (
-          <li
-            key={s.label}
-            aria-current={now ? "step" : undefined}
-            className={clsx(
-              "rise-in flex items-start gap-3 rounded-[18px] p-3.5 ring-1",
-              s.done ? "bg-surface ring-line/80" : now ? "forest ring-transparent shadow-[var(--shadow-lift)]" : "bg-transparent ring-line",
-            )}
-            style={stagger(i + 1)}
-          >
-            <span
-              className={clsx(
-                "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-                s.done ? "bg-leaf text-white" : now ? "bg-white/15 text-mint" : "bg-sunken text-muted",
-              )}
-            >
-              {s.done ? <Check size={16} weight="bold" aria-hidden /> : <Icon size={17} aria-hidden />}
-            </span>
-            <span className="min-w-0 leading-tight">
-              <span className={clsx("block text-[15px] font-semibold", !s.done && !now && "text-muted")}>{s.label}</span>
-              <span className={clsx("mt-0.5 block text-xs", now ? "text-white/70" : "text-muted")}>{s.note}</span>
-            </span>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
 
 function LoadingCampaign() {
   return (
     <div className="space-y-6">
-      <Skeleton className="h-12 w-2/3" />
+      <Skeleton className="h-14 w-2/3" />
       <Skeleton className="h-5 w-1/2" />
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-        {[0, 1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-16" />
-        ))}
-      </div>
+      <Skeleton className="h-20" />
       <div className="grid gap-5 md:grid-cols-2">
         <Skeleton className="aspect-square" />
         <Skeleton className="aspect-square" />
@@ -85,132 +37,238 @@ function LoadingCampaign() {
   );
 }
 
+/** Step 4 for one campaign: the three numbers that matter, as big figures. */
+function CampaignResults({ rows }: { rows: Results["posts"] }) {
+  const t = rows.reduce((s, r) => ({ scans: s.scans + r.scans, claims: s.claims + r.claims, redeemed: s.redeemed + r.redeemed }), { scans: 0, claims: 0, redeemed: 0 });
+  const best = rows.filter((r) => r.scans >= 5).sort((a, b) => (b.conversion ?? 0) - (a.conversion ?? 0))[0];
+  return (
+    <div className="grid gap-px overflow-hidden rounded-[var(--radius-lg)] bg-ink ring-1 ring-ink sm:grid-cols-3">
+      {[
+        ["opened a link", t.scans, false],
+        ["claimed a code", t.claims, false],
+        ["redeemed at your counter", t.redeemed, true],
+      ].map(([label, n, hero], i) => (
+        <div key={label as string} className={clsx("rise-in p-6", hero ? "bg-marker" : "bg-surface")} style={{ "--i": i } as React.CSSProperties}>
+          <p className="sign tabular text-[64px]">
+            <CountUp value={n as number} />
+          </p>
+          <p className="mt-1 text-[14px] text-ink-2">{label as string}</p>
+        </div>
+      ))}
+      {best && (best.conversion ?? 0) > 0 && (
+        <p className="bg-surface px-6 py-4 text-[15px] sm:col-span-3">
+          Working best: <span className="font-semibold">{CHANNEL_LABEL[best.channel]}</span> for {best.segment.replace(/_/g, " ")}, {Math.round((best.conversion ?? 0) * 100)}% of people who opened it redeemed.
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function CampaignPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const business = useBusiness();
   const { data, error, reload } = useResource<CampaignDetail>(`/campaigns/${id}`, (e) => e.campaign_id === id);
+  const { data: results } = useResource<Results>(`/businesses/${business.slug}/results`, (e) => e.type.startsWith("outcome.") || e.type === "assets.published");
   const [channel, setChannel] = useState<Channel | "all">("all");
   const [sent, setSent] = useState<string | null>(null);
+  const [approving, setApproving] = useState(false);
 
   const locked = data?.facts.find((f) => f.status === "locked");
+  const visible = useMemo(() => (data?.assets ?? []).filter((a) => a.status !== "rejected"), [data]);
   const assets = useMemo(
-    () =>
-      (data?.assets ?? [])
-        .filter((a) => a.status !== "rejected" && (channel === "all" || a.channel === channel))
-        .sort((a, b) => CHANNEL_ORDER.indexOf(a.channel) - CHANNEL_ORDER.indexOf(b.channel)),
-    [data, channel],
+    () => visible.filter((a) => channel === "all" || a.channel === channel).sort((a, b) => CHANNEL_ORDER.indexOf(a.channel) - CHANNEL_ORDER.indexOf(b.channel)),
+    [visible, channel],
   );
-  const channels = CHANNEL_ORDER.filter((c) => data?.assets.some((a) => a.channel === c));
-  const ready = (data?.assets ?? []).filter((a) => a.status === "valid").length;
-  const blocked = (data?.assets ?? []).filter((a) => a.status === "invalid").length;
+  const channels = CHANNEL_ORDER.filter((c) => visible.some((a) => a.channel === c));
+  const ready = visible.filter((a) => a.status === "valid");
+  const blocked = visible.filter((a) => a.status === "invalid").length;
+  const live = visible.filter((a) => a.status === "live");
+  const rows = (results?.posts ?? []).filter((r) => r.campaign_id === id);
 
   async function tell(text: string) {
     await api(`/campaigns/${id}/agent`, { method: "POST", json: { message: text } });
     setSent(text);
   }
 
+  async function approveAll() {
+    setApproving(true);
+    try {
+      await api(`/campaigns/${id}/publish`, { method: "POST", json: { asset_ids: ready.map((a) => a.id) } });
+      reload();
+    } finally {
+      setApproving(false);
+    }
+  }
+
   if (error) return <Shell campaignId={id}><p className="text-kumkum">{error}</p></Shell>;
   if (!data) return <Shell campaignId={id}><LoadingCampaign /></Shell>;
   const c = data.campaign;
-  const hasPosts = data.assets.length > 0;
+  const step = stepOfDetail(data);
+  const target = step < 5 ? STEPS[step].key : "results";
+  const redeemed = rows.reduce((n, r) => n + r.redeemed, 0);
+  const notes: Record<string, string> = {
+    brief: "In your words",
+    offer: locked ? `Locked, v${locked.version}` : data.facts.length ? "Waiting for you" : "Being written",
+    posts: visible.length ? `${ready.length + live.length} of ${visible.length} passed` : "After the offer",
+    share: live.length ? `${live.length} live` : "After you approve",
+    results: live.length ? `${redeemed} redeemed` : "Counted at the counter",
+  };
 
   const TELL_SUGGESTIONS = ["Write a calmer headline", "Add a Hindi version", "Make it weekends only"];
-  const tellBox = (
-    <div className="rounded-[var(--radius-lg)] bg-surface/70 p-5 ring-1 ring-line/80">
-      <h2 className="text-[16px] tracking-tight">Tell Counterpart</h2>
-      <p className="mb-3 mt-0.5 text-xs text-muted">Changes to the offer come back to you to lock again.</p>
-      <Composer rows={2} placeholder="“Make it Sunday only, Saturday has a private booking.”" submitLabel="Send" onSubmit={tell} suggestions={TELL_SUGGESTIONS} className="text-ink" />
-      {sent && <p className="mt-3 text-sm text-ink-2">On it: “{sent}”. Follow along in the work log.</p>}
-    </div>
-  );
 
   return (
-    <Shell campaignId={id}>
-      <Link href="/campaigns" className="press mb-6 inline-flex items-center gap-1.5 rounded-full bg-surface px-3.5 py-1.5 text-sm text-ink-2 shadow-[var(--shadow-soft)] ring-1 ring-line/80 hover:text-ink">
-        <ArrowLeft size={14} aria-hidden /> Campaigns
+    <Shell campaignId={id} log={false}>
+      <Link href="/campaigns" className="press mb-6 inline-flex items-center gap-1.5 text-[14px] font-semibold text-ink-2 hover:text-ink">
+        <ArrowLeft size={14} weight="bold" aria-hidden /> All campaigns
       </Link>
-      <header className="mb-10 space-y-6">
-        <div className="rise-in">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-[34px] tracking-[-0.035em] md:text-[48px]">{c.name}</h1>
-            <StatusPill status={c.status} />
-          </div>
-          {c.brief && (
-            <p className="mt-4 flex max-w-[72ch] gap-2.5 text-[15px] text-ink-2 md:text-base">
-              <Quotes size={20} weight="fill" className="mt-0.5 shrink-0 text-leaf/60" aria-hidden />
-              <span>{c.brief}</span>
-            </p>
-          )}
+
+      <header id="brief" className="rise-in">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <h1 className="text-[44px] md:text-[72px]">{c.name}</h1>
+          <StatusPill status={c.status} />
         </div>
-        <Steps data={data} />
+        {c.brief && (
+          <blockquote className="mt-5 max-w-[72ch] border-l-[3px] border-ink pl-4 text-[17px] text-ink-2">
+            <span className="mb-1 block text-[13px] font-semibold text-muted">Your brief</span>
+            {c.brief}
+          </blockquote>
+        )}
       </header>
 
-      <AgentStatus campaignId={id} />
+      <div className="mt-8">
+        <JourneyTrack step={step} notes={notes} />
+      </div>
+
+      {step < 5 && (
+        <a href={`#${target}`} className="rise-in group mt-5 flex items-center gap-3 text-[20px] font-bold [font-stretch:90%] md:text-[24px]" style={{ "--i": 3 } as React.CSSProperties}>
+          <span className="font-mono text-[12px] font-semibold text-muted">NEXT</span>
+          <span className="hl hl-in">{nextAction(step, data)}</span>
+          <ArrowDown size={18} weight="bold" className="transition-transform duration-200 group-hover:translate-y-0.5" aria-hidden />
+        </a>
+      )}
+
+      <div className="mt-8">
+        <AgentStatus campaignId={id} />
+      </div>
 
       {data.inbox.length > 0 && (
-        <section className="mb-12">
-          <SectionHeading title="Needs you" />
-          <InboxList items={data.inbox} onChange={reload} showCampaignLink={false} />
+        <section className="mb-12 rounded-[var(--radius-lg)] bg-marker px-5 pb-2 pt-5 ring-1 ring-ink md:px-8" aria-label="Needs you">
+          <h2 className="text-[28px]">Needs you</h2>
+          <div className="mt-3">
+            <InboxList items={data.inbox} onChange={reload} showCampaignLink={false} />
+          </div>
         </section>
       )}
 
-      {!hasPosts ? (
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
-          <div className="space-y-6">
-            <Empty icon={<ImagesSquare size={17} aria-hidden />}>
-              {locked ? "Counterpart is writing the posts. They appear here as each one passes its checks." : "Posts are written as soon as you lock the offer."}
-            </Empty>
-            {tellBox}
-          </div>
-          <FactsCard campaignId={id} versions={data.facts} onChange={reload} />
-        </div>
-      ) : (
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <section aria-labelledby="posts-h">
+      <div className="grid gap-12 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 space-y-16">
+          <section id="offer" aria-labelledby="offer-h">
+            <SectionHeading id="offer-h" n={2} title="The offer" sub="Every post uses exactly this wording, in every language. Check it, then lock it." />
+            <div className="grid gap-8 md:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+              <FactsCard campaignId={id} versions={data.facts} onChange={reload} />
+              <div className="space-y-4 text-[15px] text-ink-2">
+                <p>
+                  <span className="font-semibold text-ink">Why lock it?</span> The writer never types prices, times or dates itself. It leaves blanks, and the system fills them from this card. So a post can never promise something you did not offer.
+                </p>
+                <p>
+                  <span className="font-semibold text-ink">Want to change something?</span> Tell Counterpart in plain words, for example “make it weekends only”. It writes a new version for you to lock, and every post is checked again.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section id="posts" aria-labelledby="posts-h">
             <SectionHeading
               id="posts-h"
+              n={3}
               title="Posts"
-              sub={[ready > 0 && `${ready} ready to approve`, blocked > 0 && `${blocked} blocked by checks`].filter(Boolean).join(", ") || undefined}
+              sub={
+                visible.length
+                  ? [ready.length > 0 && `${ready.length} ready for your OK`, live.length > 0 && `${live.length} live`, blocked > 0 && `${blocked} blocked by the checks`].filter(Boolean).join(" · ") || "Being checked"
+                  : undefined
+              }
               aside={
-                channels.length > 1 && (
-                  <div className="no-scrollbar flex max-w-full gap-1 overflow-x-auto rounded-full bg-sunken p-1" role="tablist" aria-label="Channel">
-                    {(["all", ...channels] as const).map((ch) => (
-                      <button
-                        key={ch}
-                        role="tab"
-                        aria-selected={channel === ch}
-                        onClick={() => setChannel(ch)}
-                        className={clsx("press shrink-0 rounded-full px-3.5 py-1.5 text-[13px]", channel === ch ? "bg-surface font-medium text-ink shadow-[var(--shadow-soft)]" : "text-ink-2 hover:text-ink")}
-                      >
-                        {ch === "all" ? `All ${data.assets.filter((a) => a.status !== "rejected").length}` : CHANNEL_LABEL[ch]}
-                      </button>
-                    ))}
-                  </div>
+                ready.length > 1 && (
+                  <Button variant="primary" onClick={approveAll} disabled={approving} trailing={<Check size={14} weight="bold" />}>
+                    {approving ? "Approving…" : `Approve all ${ready.length}`}
+                  </Button>
                 )
               }
             />
-            <div className="grid gap-5 md:grid-cols-2">
-              {assets.map((a, i) => (
-                <AssetCard key={a.id} asset={a} i={i} facts={locked?.facts ?? []} business={business.name} onChange={reload} />
-              ))}
-            </div>
-            {data.experiments.length > 0 && (
-              <section className="mt-16">
-                <SectionHeading title="What's working" sub="Each variant gets its own code, so redemptions show which message brought people in." />
-                <div className="space-y-4">
-                  {data.experiments.map((e) => (
-                    <ExperimentPanel key={e.experiment.id} exp={e} />
-                  ))}
-                </div>
-              </section>
+            {channels.length > 1 && (
+              <div className="no-scrollbar mb-5 flex max-w-full gap-1 overflow-x-auto" role="tablist" aria-label="Channel">
+                {(["all", ...channels] as const).map((ch) => (
+                  <button
+                    key={ch}
+                    role="tab"
+                    aria-selected={channel === ch}
+                    onClick={() => setChannel(ch)}
+                    className={clsx("press shrink-0 rounded-[var(--radius-sm)] px-3 py-1.5 text-[14px] font-semibold", channel === ch ? "bg-ink text-white" : "text-ink-2 hover:bg-sunken hover:text-ink")}
+                  >
+                    {ch === "all" ? `All ${visible.length}` : CHANNEL_LABEL[ch]}
+                  </button>
+                ))}
+              </div>
+            )}
+            {!visible.length ? (
+              <Empty icon={<ImagesSquare size={17} aria-hidden />}>
+                {locked ? "Counterpart is writing the posts. Each one appears here once it passes its checks." : "Posts are written as soon as you lock the offer."}
+              </Empty>
+            ) : (
+              <div className="grid gap-6 md:grid-cols-2">
+                {assets.map((a, i) => (
+                  <AssetCard key={a.id} asset={a} i={i} facts={locked?.facts ?? []} business={business.name} onChange={reload} />
+                ))}
+              </div>
             )}
           </section>
-          <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
-            <FactsCard campaignId={id} versions={data.facts} onChange={reload} compact />
-            {tellBox}
-          </aside>
+
+          <section id="share" aria-labelledby="share-h">
+            <SectionHeading id="share-h" n={4} title="Share" sub="Every approved post has its own link and QR code, so you can see which one brought people in." />
+            {live.length ? (
+              <SharePanel assets={live} rows={rows} />
+            ) : (
+              <Empty icon={<LinkSimple size={17} aria-hidden />}>Approve a post and its link, QR code and WhatsApp message appear here, ready to send.</Empty>
+            )}
+          </section>
+
+          <section id="results" aria-labelledby="results-h">
+            <SectionHeading
+              id="results-h"
+              n={5}
+              title="Results"
+              aside={
+                <Link href="/results" className="press pb-1 text-[14px] font-semibold underline decoration-ink/30 underline-offset-4 hover:decoration-ink">
+                  All results
+                </Link>
+              }
+            />
+            {rows.length ? <CampaignResults rows={rows} /> : <Empty>Results appear once posts are live and customers open them.</Empty>}
+            {data.experiments.length > 0 && (
+              <div className="mt-10 space-y-4">
+                <h3 className="text-[22px]">Which message works better</h3>
+                <p className="-mt-2 text-[14px] text-muted">Each version has its own code, so redemptions show which message brought people in.</p>
+                {data.experiments.map((e) => (
+                  <ExperimentPanel key={e.experiment.id} exp={e} />
+                ))}
+              </div>
+            )}
+          </section>
         </div>
-      )}
+
+        <aside className="space-y-6 xl:sticky xl:top-24 xl:self-start" aria-label="Talk to Counterpart">
+          <div>
+            <h2 className="text-[24px]">Tell Counterpart</h2>
+            <p className="mb-3 mt-1 text-[14px] text-muted">Ask for changes in plain words. Offer changes come back to you to lock.</p>
+            <Composer rows={3} placeholder="Make it Sunday only, Saturday has a private booking." submitLabel="Send" onSubmit={tell} suggestions={TELL_SUGGESTIONS} />
+            {sent && <p className="mt-3 text-[14px] text-pen">On it: “{sent}”. Watch the work log below.</p>}
+          </div>
+          <div>
+            <h2 className="mb-2 text-[20px]">Work log</h2>
+            <Receipt campaignId={id} className="h-[420px] overflow-hidden rounded-[var(--radius-md)] ring-1 ring-line" />
+          </div>
+        </aside>
+      </div>
     </Shell>
   );
 }

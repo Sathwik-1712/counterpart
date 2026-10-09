@@ -21,11 +21,24 @@ def _raise_for(resp: httpx.Response) -> None:
         raise ProviderError(f"{resp.status_code}: {resp.text[:160]}")
     if resp.status_code == 429:
         ra = resp.headers.get("retry-after")
-        raise RateLimited(float(ra) if ra and ra.replace(".", "", 1).isdigit() else None)
+        wait = float(ra) if ra and ra.replace(".", "", 1).isdigit() else None
+        if wait is not None and wait > 30:  # daily/token limit (Groq says so in retry-after): move on, rest it
+            raise ProviderError(f"429 quota: retry after {wait:.0f}s: {resp.text[:120]}")
+        raise RateLimited(wait)
     if resp.status_code >= 500:
         raise ProviderError(f"{resp.status_code}: {resp.text[:160]}")  # server error: let the next model try
     if resp.status_code >= 400:
         raise ProviderError(f"{resp.status_code}: {resp.text[:300]}")
+
+
+def _plain(m: dict[str, Any]) -> dict[str, Any]:
+    """A message with only the standard OpenAI chat fields."""
+    out = {k: m[k] for k in ("role", "content", "name", "tool_call_id") if k in m}
+    if m.get("tool_calls"):
+        out["tool_calls"] = [{"id": c["id"], "type": "function",
+                              "function": {"name": c["function"]["name"], "arguments": c["function"]["arguments"]}}
+                             for c in m["tool_calls"]]
+    return out
 
 
 class OpenAICompatChat:
@@ -42,6 +55,7 @@ class OpenAICompatChat:
         timeout: float = 75.0,  # one call can write several posts; a model that hangs is rested afterwards
         client: httpx.AsyncClient | None = None,
         structured_output: bool = False,
+        strict_messages: bool = False,
     ):
         self.name = name
         self.model = model
@@ -49,6 +63,9 @@ class OpenAICompatChat:
         self.price_in = price_in
         self.price_out = price_out
         self.structured_output = structured_output  # supports response_format json_schema (Gemini; not Agnes)
+        # Strict APIs (Groq, Cerebras) reject fields other providers add to messages, such as Gemini's
+        # extra_content on tool calls, which ends up in the conversation when a run switches provider.
+        self.strict_messages = strict_messages
         self._client = client or httpx.AsyncClient(
             base_url=base_url.rstrip("/"),
             headers={"Authorization": f"Bearer {api_key}"},
@@ -65,7 +82,8 @@ class OpenAICompatChat:
         max_tokens: int | None = None,
         response_schema: dict[str, Any] | None = None,
     ) -> ChatResult:
-        body: dict[str, Any] = {"model": self.model, "messages": messages}
+        body: dict[str, Any] = {"model": self.model,
+                                "messages": [_plain(m) for m in messages] if self.strict_messages else messages}
         if response_schema and self.structured_output:
             body["response_format"] = {"type": "json_schema", "json_schema": {"name": "output", "schema": response_schema}}
         if tools:

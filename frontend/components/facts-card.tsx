@@ -85,7 +85,7 @@ export function FactsCard({
     >
       <div className="px-6 pb-5 pt-5">
         <div className="flex items-center gap-2">
-          <span className={clsx("inline-flex h-8 w-8 items-center justify-center rounded-full", isDraft ? "bg-turmeric-soft text-turmeric" : "bg-leaf-soft text-leaf")}>
+          <span className={clsx("inline-flex h-8 w-8 items-center justify-center rounded-full", isDraft ? "bg-turmeric-soft text-turmeric" : "bg-pen-soft text-pen")}>
             {isDraft ? <LockOpen size={16} aria-hidden /> : <Lock size={16} weight="fill" aria-hidden />}
           </span>
           <div className="min-w-0 flex-1 leading-tight">
@@ -98,7 +98,7 @@ export function FactsCard({
         {isDraft && shown.change_reason && <p className="mt-3 text-sm text-ink-2">{shown.change_reason}</p>}
 
         {langs.length > 1 && (
-          <div className="mt-4 flex gap-1 rounded-full bg-sunken p-1" role="tablist" aria-label="Language">
+          <div className="mt-4 flex gap-1 rounded-[var(--radius-sm)] bg-sunken p-1" role="tablist" aria-label="Language">
             {langs.map((l) => (
               <button
                 key={l}
@@ -106,7 +106,7 @@ export function FactsCard({
                 aria-selected={active === l}
                 onClick={() => setLang(l)}
                 className={clsx(
-                  "press relative flex-1 rounded-full px-2 py-1 text-[13px]",
+                  "press relative flex-1 rounded-[var(--radius-sm)] px-2 py-1 text-[13px]",
                   active === l ? "bg-surface font-medium text-ink shadow-[var(--shadow-soft)]" : "text-ink-2 hover:text-ink",
                 )}
               >
@@ -158,7 +158,7 @@ export function FactsCard({
           </div>
         )}
         {isDraft && check?.status === "passed" && (
-          <p className="flex gap-2 text-leaf-ink">
+          <p className="flex gap-2 text-pen-ink">
             <SealCheck size={17} weight="fill" className="mt-px shrink-0" aria-hidden />
             Every translation was read back into English and means the same.
           </p>
@@ -168,7 +168,7 @@ export function FactsCard({
         )}
         {!isDraft && (
           <p className="flex gap-2 text-ink-2">
-            <Check size={16} weight="bold" className="mt-0.5 shrink-0 text-leaf" aria-hidden />
+            <Check size={16} weight="bold" className="mt-0.5 shrink-0 text-pen" aria-hidden />
             Every post uses exactly this wording. Changing it means locking a new version.
           </p>
         )}
@@ -196,7 +196,7 @@ export function FactsCard({
 
 function Assumed() {
   return (
-    <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-turmeric-soft px-2 py-0.5 text-xs font-medium text-turmeric">
+    <p className="mt-1 inline-flex items-center gap-1 rounded-[var(--radius-sm)] bg-turmeric-soft px-2 py-0.5 text-xs font-medium text-turmeric">
       <WarningCircle size={13} aria-hidden /> Counterpart assumed this. Check it.
     </p>
   );

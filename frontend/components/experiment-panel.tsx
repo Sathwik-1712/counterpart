@@ -26,7 +26,7 @@ export function ExperimentPanel({ exp }: { exp: ExperimentStatus }) {
 
       <div className="grid grid-cols-[72px_1fr] gap-x-4 sm:grid-cols-[72px_1fr_150px]">
         {arms.map((a) => {
-          const lead = a === leader && (a.p_best ?? 0) >= 0.5;
+          const lead = a === leader && (a.p_best ?? 0) > 0.5;
           const tip = `Variant ${a.variant}: ${a.successes}/${a.trials}, likely rate ${pct(a.mean, 1)} (90%: ${pct(a.ci90_low, 1)} to ${pct(a.ci90_high, 1)}), chance best ${pct(a.p_best)}`;
           return (
             <div key={a.asset_id} className="contents">
@@ -36,11 +36,11 @@ export function ExperimentPanel({ exp }: { exp: ExperimentStatus }) {
               <div className="group relative h-10 outline-none" tabIndex={0} title={tip} aria-label={tip}>
                 <div className="absolute inset-y-0 left-0 w-px bg-line" />
                 <div
-                  className={clsx("absolute top-1/2 h-[2px] -translate-y-1/2 rounded-full", lead ? "bg-leaf" : "bg-muted")}
+                  className={clsx("absolute top-1/2 h-[2px] -translate-y-1/2 rounded-full", lead ? "bg-pen" : "bg-muted")}
                   style={{ left: x(a.ci90_low), width: `calc(${x(a.ci90_high)} - ${x(a.ci90_low)})` }}
                 />
                 <div
-                  className={clsx("absolute top-1/2 h-[10px] w-[10px] -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-surface", lead ? "bg-leaf" : "bg-ink-2")}
+                  className={clsx("absolute top-1/2 h-[10px] w-[10px] -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-surface", lead ? "bg-pen" : "bg-ink-2")}
                   style={{ left: x(a.mean) }}
                 />
                 <div className="pointer-events-none absolute -top-7 z-10 hidden whitespace-nowrap rounded-sm bg-ink px-2 py-1 text-xs text-white group-hover:block group-focus:block" style={{ left: x(a.mean) }}>
@@ -68,7 +68,7 @@ export function ExperimentPanel({ exp }: { exp: ExperimentStatus }) {
         </div>
       </div>
 
-      <p className={clsx("mt-4 text-sm", exp.decision.winner ? "text-leaf-ink" : "text-ink-2")}>
+      <p className={clsx("mt-4 text-sm", exp.decision.winner ? "text-pen-ink" : "text-ink-2")}>
         {exp.experiment.status === "decided"
           ? `Decided. ${exp.decision.reason}`
           : exp.decision.winner

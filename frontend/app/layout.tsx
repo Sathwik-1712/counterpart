@@ -1,11 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Noto_Sans_Devanagari, Noto_Sans_Kannada } from "next/font/google";
+import { Anek_Devanagari, Anek_Kannada, Anek_Latin, Martian_Mono } from "next/font/google";
 import "./globals.css";
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap" });
-const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
-const kannada = Noto_Sans_Kannada({ subsets: ["kannada"], weight: ["400", "500", "600", "700"], variable: "--font-kannada", display: "swap" });
-const devanagari = Noto_Sans_Devanagari({ subsets: ["devanagari"], weight: ["400", "500", "600", "700"], variable: "--font-devanagari", display: "swap" });
+// One type family across English, Kannada and Hindi (Anek, by Ek Type), with a width axis: condensed for
+// signboard headlines, normal for reading. Martian Mono for codes, prices and the work log.
+const anek = Anek_Latin({ subsets: ["latin"], axes: ["wdth"], variable: "--font-anek", display: "swap" });
+const kannada = Anek_Kannada({ subsets: ["kannada"], axes: ["wdth"], variable: "--font-kannada", display: "swap" });
+const devanagari = Anek_Devanagari({ subsets: ["devanagari"], axes: ["wdth"], variable: "--font-devanagari", display: "swap" });
+const mono = Martian_Mono({ subsets: ["latin"], axes: ["wdth"], variable: "--font-martian", display: "swap" });
 
 export const metadata: Metadata = {
   title: "Counterpart",
@@ -13,12 +15,12 @@ export const metadata: Metadata = {
   icons: { icon: "/icon.svg" },
 };
 
-export const viewport: Viewport = { themeColor: "#eff1ec" };
+export const viewport: Viewport = { themeColor: "#f3f2ed" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geist.variable} ${geistMono.variable} ${kannada.variable} ${devanagari.variable}`}>
-      <body className="grain">{children}</body>
+    <html lang="en" className={`${anek.variable} ${kannada.variable} ${devanagari.variable} ${mono.variable}`}>
+      <body>{children}</body>
     </html>
   );
 }

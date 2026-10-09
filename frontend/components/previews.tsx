@@ -9,7 +9,7 @@ type Rendered = NonNullable<NonNullable<Asset["revision"]>["rendered"]>;
 
 function Picture({ url, className, children }: { url: string | null; className?: string; children?: ReactNode }) {
   return (
-    <div className={clsx("relative overflow-hidden bg-[radial-gradient(120%_90%_at_20%_15%,#2f5a40_0%,#16271d_70%)]", className)}>
+    <div className={clsx("relative overflow-hidden bg-[radial-gradient(120%_90%_at_20%_15%,#3a3830_0%,#16150f_70%)]", className)}>
       {url && <img src={url} alt="" className="absolute inset-0 h-full w-full object-cover" crossOrigin="anonymous" />}
       {children}
     </div>
@@ -30,16 +30,16 @@ function OfferBox({ lines, className, light = true }: { lines: string[]; classNa
 function Cta({ text, code }: { text: string; code: string | null }) {
   return (
     <div className="flex items-center gap-[2cqw]">
-      <span className="rounded-full bg-[#1f6f43] px-[4cqw] py-[1.8cqw] text-[3.4cqw] font-semibold text-white">{text}</span>
-      {code && <span className="rounded-full bg-black/55 px-[3cqw] py-[1.8cqw] font-receipt text-[3.2cqw] text-white">{code}</span>}
+      <span className="rounded-[var(--radius-sm)] bg-[#16150f] px-[4cqw] py-[1.8cqw] text-[3.4cqw] font-semibold text-white">{text}</span>
+      {code && <span className="rounded-[var(--radius-sm)] bg-black/55 px-[3cqw] py-[1.8cqw] font-receipt text-[3.2cqw] text-white">{code}</span>}
     </div>
   );
 }
 
 function Brand({ name }: { name: string }) {
   return (
-    <span className="inline-flex items-center gap-[1.5cqw] rounded-full bg-black/35 px-[3cqw] py-[1.2cqw] text-[3cqw] font-medium text-white backdrop-blur-sm">
-      <span className="h-[1.6cqw] w-[1.6cqw] rounded-full bg-[#7fd1a0]" aria-hidden />
+    <span className="inline-flex items-center gap-[1.5cqw] rounded-[var(--radius-sm)] bg-black/35 px-[3cqw] py-[1.2cqw] text-[3cqw] font-medium text-white backdrop-blur-sm">
+      <span className="h-[1.6cqw] w-[1.6cqw] rounded-full bg-[#ffd43b]" aria-hidden />
       {name}
     </span>
   );
@@ -111,7 +111,7 @@ export function Poster({ r, image, business, code }: { r: Rendered; image: strin
             <span className="w-[22cqw] text-center text-[2.6cqw] text-[#71717a]">QR code added when it goes live</span>
           )}
         </div>
-        <p className="mt-[2cqw] text-[3.4cqw] font-semibold text-[#1f6f43]">{r.cta}</p>
+        <p className="mt-[2cqw] text-[3.4cqw] font-semibold text-[#16150f]">{r.cta}</p>
       </div>
     </div>
   );
@@ -121,7 +121,7 @@ export function WhatsAppMessage({ r, business, code }: { r: Rendered; business: 
   return (
     <div className="bg-[#efeae2] p-4">
       <div className="max-w-[94%] rounded-2xl rounded-tl-sm bg-white px-3.5 py-2.5 text-[14px] leading-snug text-[#111b21] shadow-[0_1px_0_rgba(0,0,0,0.08)]">
-        <p className="mb-1 text-xs font-semibold text-[#1f6f43]">{business}</p>
+        <p className="mb-1 text-xs font-semibold text-[#128c7e]">{business}</p>
         {r.headline && <p className="font-semibold">{r.headline}</p>}
         {r.body && <p className="mt-1 whitespace-pre-line">{r.body}</p>}
         {(r.offer ?? []).length > 0 && (

@@ -9,7 +9,7 @@ function Loading() {
       <div className="flex flex-col items-center gap-4">
         <img src="/icon.svg" alt="" className="pop h-12 w-12" />
         <div className="h-1 w-32 overflow-hidden rounded-full bg-sunken">
-          <div className="loading-bar h-full w-1/3 rounded-full bg-leaf" />
+          <div className="loading-bar h-full w-1/3 rounded-full bg-pen" />
         </div>
       </div>
     </div>

@@ -1,9 +1,10 @@
 "use client";
 
-import { ArrowRight, ArrowUpRight, Check } from "@phosphor-icons/react";
+import { ArrowRight, Check } from "@phosphor-icons/react";
+import clsx from "clsx";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CampaignCard } from "@/components/campaign-card";
+import { CampaignLedger } from "@/components/campaign-card";
 import { Composer } from "@/components/composer";
 import { FindingsList, InboxList } from "@/components/inbox";
 import { InstagramPost } from "@/components/previews";
@@ -11,6 +12,7 @@ import { Shell } from "@/components/shell";
 import { Empty, SectionHeading, Skeleton, stagger } from "@/components/ui";
 import { api, useResource } from "@/lib/api";
 import { useBusiness } from "@/lib/business";
+import { nextAction, stepOfSummary } from "@/lib/journey";
 import type { CampaignDetail, Overview } from "@/lib/types";
 
 function greeting() {
@@ -18,14 +20,10 @@ function greeting() {
   return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
 }
 
-const FAN = [
-  "left-[3%] top-[15%] -rotate-[7deg] z-10",
-  "left-[27%] top-[6%] rotate-[2deg] z-20",
-  "left-[50%] top-[17%] rotate-[7deg] z-10",
-];
+const DEAL = ["left-[0%] top-[8%] -rotate-[6deg]", "left-[24%] top-[0%] rotate-[1.5deg]", "left-[46%] top-[12%] rotate-[6deg]"];
 
-/** The latest real posts, fanned like prints on a counter. */
-function PostFan({ campaignId, name }: { campaignId: string; name: string }) {
+/** The latest real posts, dealt onto the counter like printed photos. */
+function PostStack({ campaignId, name }: { campaignId: string; name: string }) {
   const business = useBusiness();
   const { data } = useResource<CampaignDetail>(`/campaigns/${campaignId}`, (e) => e.campaign_id === campaignId);
   const posts = (data?.assets ?? [])
@@ -33,61 +31,61 @@ function PostFan({ campaignId, name }: { campaignId: string; name: string }) {
     .slice(0, 3);
   if (!posts.length) return null;
   return (
-    <Link href={`/campaigns/${campaignId}`} className="group relative block h-full min-h-[440px]" aria-label={`Open ${name}`}>
+    <Link href={`/campaigns/${campaignId}`} className="group relative block h-full min-h-[400px]" aria-label={`Open ${name}`}>
       {posts.map((a, i) => (
         <div
           key={a.id}
-          className={`fan-in absolute w-[44%] max-w-[270px] overflow-hidden rounded-[18px] bg-white shadow-[var(--shadow-float)] ring-1 ring-black/5 transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-y-2 ${FAN[i]}`}
+          className={`fan-in absolute w-[52%] max-w-[260px] overflow-hidden rounded-[var(--radius-md)] bg-white p-1.5 pb-0 shadow-[var(--shadow-float)] ring-1 ring-ink/10 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:-translate-y-1.5 ${DEAL[i]}`}
           style={stagger(i)}
         >
-          <InstagramPost r={a.revision!.rendered!} image={a.image_url} business={business.name} code={a.touchpoints?.[0]?.code ?? null} />
+          <div className="overflow-hidden rounded-[3px]">
+            <InstagramPost r={a.revision!.rendered!} image={a.image_url} business={business.name} code={a.touchpoints?.[0]?.code ?? null} />
+          </div>
         </div>
       ))}
-      <span className="absolute bottom-6 right-6 z-30 inline-flex items-center gap-2 rounded-full bg-white/95 py-1.5 pl-4 pr-1.5 text-sm font-medium text-ink shadow-[var(--shadow-lift)]">
+      <span className="absolute bottom-0 right-0 z-30 inline-flex items-center gap-2 bg-ink px-3.5 py-2 text-[14px] font-semibold text-white">
         Latest: {name}
-        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-ink text-white transition-transform duration-300 group-hover:translate-x-0.5">
-          <ArrowUpRight size={13} weight="bold" aria-hidden />
-        </span>
+        <ArrowRight size={14} weight="bold" className="transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden />
       </span>
     </Link>
   );
 }
 
-/** For a new business: the three things that make Counterpart useful, ticked off as they happen. */
+/** For a new business: three things that make Counterpart useful, ticked off as they happen. */
 function GettingStarted({ campaigns, live }: { campaigns: number; live: number }) {
   const business = useBusiness();
   const { data } = useResource<{ photos: { status: string }[] }>(`/businesses/${business.slug}/photos`, (e) => e.type.startsWith("photos."));
   const photos = data?.photos.filter((p) => p.status === "active").length ?? 0;
   const steps = [
     { done: photos > 0, title: "Add photos of your place", text: photos ? `${photos} photo${photos === 1 ? "" : "s"} ready for posts` : "Real photos make posts look like you", href: "/photos" },
-    { done: campaigns > 0, title: "Start your first campaign", text: "Type or say the offer on the left", href: null },
-    { done: live > 0, title: "Approve your first posts", text: "Each gets a link and a QR code that counts visits", href: "/results" },
+    { done: campaigns > 0, title: "Start your first campaign", text: "Write or say the offer in the notepad", href: null },
+    { done: live > 0, title: "Approve and share your posts", text: "Each one gets a link and a QR code that counts visits", href: null },
   ];
   return (
-    <div className="flex h-full flex-col justify-center px-10 py-12">
-      <p className="text-sm text-mint">Getting started</p>
-      <ol className="mt-5 space-y-3">
+    <div className="h-full rounded-[var(--radius-lg)] bg-surface p-6 ring-1 ring-ink md:p-8">
+      <p className="text-[22px] font-bold [font-stretch:85%]">Getting started</p>
+      <ol className="mt-4 divide-y divide-line border-t border-line">
         {steps.map((st, i) => {
           const inner = (
             <>
-              <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${st.done ? "bg-mint text-forest" : "bg-white/10 text-white/70"}`}>
-                {st.done ? <Check size={16} weight="bold" aria-hidden /> : <span className="text-sm font-semibold">{i + 1}</span>}
+              <span className={clsx("inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-mono text-[12px] font-semibold", st.done ? "bg-pen text-white" : "shadow-[inset_0_0_0_1.5px_var(--color-ink)]")}>
+                {st.done ? <Check size={14} weight="bold" aria-hidden /> : i + 1}
               </span>
               <span className="min-w-0 flex-1">
-                <span className={`block text-[16px] font-semibold tracking-tight ${st.done ? "text-white/60 line-through decoration-white/30" : "text-white"}`}>{st.title}</span>
-                <span className="block text-sm text-white/60">{st.text}</span>
+                <span className={clsx("block text-[16px] font-semibold", st.done && "text-muted line-through decoration-pen decoration-2")}>{st.title}</span>
+                <span className="block text-[14px] text-muted">{st.text}</span>
               </span>
-              {st.href && !st.done && <ArrowUpRight size={16} className="text-white/60 transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden />}
+              {st.href && !st.done && <ArrowRight size={16} weight="bold" className="text-ink transition-transform duration-200 group-hover:translate-x-1" aria-hidden />}
             </>
           );
           return (
-            <li key={st.title} className="fan-in" style={stagger(i)}>
+            <li key={st.title} className="rise-in" style={stagger(i + 1)}>
               {st.href ? (
-                <Link href={st.href} className="group flex items-center gap-4 rounded-[20px] bg-white/[0.06] p-4 ring-1 ring-white/10 transition-colors hover:bg-white/[0.1]">
+                <Link href={st.href} className="group flex items-center gap-4 py-4">
                   {inner}
                 </Link>
               ) : (
-                <div className="flex items-center gap-4 rounded-[20px] bg-white/[0.06] p-4 ring-1 ring-white/10">{inner}</div>
+                <div className="flex items-center gap-4 py-4">{inner}</div>
               )}
             </li>
           );
@@ -111,76 +109,112 @@ export default function Today() {
     ...(menu[0] ? [`A weekday offer on ${menu[0].toLowerCase()}`] : []),
     "Bring regulars back on a slow day",
   ].slice(0, 3);
-  const example = menu[0] ? `“15% off ${menu[0].toLowerCase()} on weekdays, 4 to 7 pm, for students.”` : "“15% off on weekdays, 4 to 7 pm, for students.”";
+  const example = menu[0] ? `15% off ${menu[0].toLowerCase()} on weekdays, 4 to 7 pm, for students.` : "15% off on weekdays, 4 to 7 pm, for students.";
+  const live = current.reduce((n, c) => n + (c.live ?? 0), 0);
+  const redeemed = current.reduce((n, c) => n + c.redemptions, 0);
+  const approvals = data?.inbox.filter((i) => i.kind === "approval") ?? [];
+  // Campaigns waiting on the owner that have no inbox item of their own (e.g. posts ready to approve).
+  const waiting = current.filter((c) => [1, 2].includes(stepOfSummary(c)) && !approvals.some((a) => a.campaign_id === c.id));
 
   async function newBrief(text: string) {
     const c = await api<{ id: string }>(`/businesses/${business.slug}/campaigns`, { method: "POST", json: { brief: text } });
     router.push(`/campaigns/${c.id}`);
   }
 
+  const pending = (data?.inbox.length ?? 0) + waiting.length;
+
   return (
     <Shell>
-      <section className="rise-in rounded-[34px] bg-ink/[0.04] p-1.5 ring-1 ring-ink/[0.06]">
-        <div className="forest grid overflow-hidden rounded-[28px] lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-          <div className="px-6 pb-8 pt-9 md:px-12 md:pb-12 md:pt-14">
-            <p className="text-sm text-white/60">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</p>
-            <h1 className="mt-3 text-[38px] tracking-[-0.04em] text-white md:text-[56px]">
-              {greeting()}
-              {owner ? `, ${owner}` : ""}.
-            </h1>
-            <p className="mt-3 max-w-[44ch] text-[16px] text-white/70 md:text-[17px]">What should customers hear next? Say it the way you would tell a regular.</p>
-            <Composer
-              className="mt-8 text-white"
-              placeholder={example}
-              submitLabel="Start campaign"
-              onSubmit={newBrief}
-              suggestions={suggestions}
-            />
-            <p className="mt-4 text-xs text-white/50">Counterpart writes the offer down, checks the margin, and asks you before anything reaches customers.</p>
-          </div>
-          <div className="relative hidden lg:block">
-            {showcase ? <PostFan campaignId={showcase.id} name={showcase.name} /> : data && <GettingStarted campaigns={current.length} live={current.reduce((n, c) => n + (c.live ?? 0), 0)} />}
-          </div>
+      <header className="rise-in flex flex-wrap items-end justify-between gap-x-10 gap-y-4">
+        <div>
+          <p className="font-mono text-[12px] font-semibold text-muted">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</p>
+          <h1 className="mt-2 text-[48px] md:text-[80px]">
+            {greeting()}
+            {owner ? `, ${owner}` : ""}.
+          </h1>
         </div>
-      </section>
+        {data && current.length > 0 && (
+          <dl className="flex gap-8 pb-2">
+            <div>
+              <dd className="sign tabular text-[44px]">{live}</dd>
+              <dt className="text-[13px] text-muted">posts live</dt>
+            </div>
+            <div>
+              <dd className="sign tabular text-[44px] text-pen">{redeemed}</dd>
+              <dt className="text-[13px] text-muted">offers redeemed</dt>
+            </div>
+          </dl>
+        )}
+      </header>
 
       {error && <p className="mt-6 text-sm text-kumkum">{error}</p>}
 
-      <div className="mt-16 grid gap-12 lg:grid-cols-12">
-        <section className="lg:col-span-7" aria-labelledby="needs-h">
-          <SectionHeading id="needs-h" title="Needs you" sub={data && data.inbox.length > 0 ? `${data.inbox.length} waiting for your decision` : undefined} />
-          {data ? <InboxList items={data.inbox} onChange={reload} /> : <Skeleton className="h-32" />}
+      {data && pending > 0 && (
+        <section className="rise-in mt-8 rounded-[var(--radius-lg)] bg-marker px-5 pb-2 pt-5 ring-1 ring-ink md:px-8 md:pt-7" style={stagger(1)} aria-labelledby="needs-h">
+          <h2 id="needs-h" className="text-[30px] md:text-[38px]">
+            {pending === 1 ? "One thing needs you" : `${pending} things need you`}
+          </h2>
+          {waiting.length > 0 && (
+            <ul className="mt-4 divide-y divide-ink/15 border-t border-ink">
+              {waiting.map((c) => (
+                <li key={c.id}>
+                  <Link href={`/campaigns/${c.id}#${stepOfSummary(c) === 1 ? "offer" : "posts"}`} className="group flex items-center gap-4 py-4">
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[19px] font-bold leading-snug [font-stretch:90%]">{nextAction(stepOfSummary(c))}</span>
+                      <span className="block text-[14px] text-ink-2">{c.name}</span>
+                    </span>
+                    <span className="inline-flex h-10 items-center gap-1.5 rounded-[var(--radius-sm)] bg-ink px-4 text-[14px] font-semibold text-white">
+                      Open <ArrowRight size={14} weight="bold" className="transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden />
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          {data.inbox.length > 0 && (
+            <div className={waiting.length ? "" : "mt-4"}>
+              <InboxList items={data.inbox} onChange={reload} />
+            </div>
+          )}
         </section>
-        <section className="lg:col-span-5" aria-labelledby="noticed-h">
-          <SectionHeading id="noticed-h" title="Counterpart noticed" />
-          {data ? <FindingsList findings={data.findings} /> : <Skeleton className="h-32" />}
-        </section>
-      </div>
+      )}
+
+      <section className="mt-12 grid gap-10 lg:grid-cols-12" aria-labelledby="new-h">
+        <div className="rise-in lg:col-span-7" style={stagger(2)}>
+          <h2 id="new-h" className="text-[30px] md:text-[38px]">
+            What should customers hear next?
+          </h2>
+          <p className="mt-2 max-w-[52ch] text-[16px] text-ink-2">Write it the way you would tell a regular. Counterpart writes the offer down, checks your margin and makes the posts. Nothing goes out until you approve it.</p>
+          <Composer className="mt-6" placeholder={example} submitLabel="Start campaign" onSubmit={newBrief} suggestions={suggestions} rows={4} />
+        </div>
+        <div className="hidden lg:col-span-5 lg:block">
+          {!data ? <Skeleton className="h-[400px]" /> : showcase ? <PostStack campaignId={showcase.id} name={showcase.name} /> : <GettingStarted campaigns={current.length} live={live} />}
+        </div>
+      </section>
 
       <section className="mt-16" aria-labelledby="camp-h">
         <SectionHeading
           id="camp-h"
-          title="Campaigns"
+          title="Your campaigns"
+          className="border-b-0"
           aside={
-            <Link href="/campaigns" className="press inline-flex items-center gap-1.5 rounded-full px-1 text-sm font-medium text-leaf hover:text-leaf-ink">
-              All campaigns <ArrowRight size={14} aria-hidden />
+            <Link href="/campaigns" className="press inline-flex items-center gap-1.5 pb-1 text-[14px] font-semibold underline decoration-ink/30 underline-offset-4 hover:decoration-ink">
+              All campaigns <ArrowRight size={14} weight="bold" aria-hidden />
             </Link>
           }
         />
         {!data ? (
-          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            <Skeleton className="h-72" />
-            <Skeleton className="h-72" />
-          </div>
+          <Skeleton className="h-48" />
         ) : current.length === 0 ? (
-          <Empty>No campaign running yet. Tell Counterpart what you want to promote.</Empty>
+          <Empty>No campaign running yet. Write your first one in the notepad above.</Empty>
         ) : (
-          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {current.slice(0, 6).map((c, i) => (
-              <CampaignCard key={c.id} c={c} i={i} />
-            ))}
-          </div>
+          <CampaignLedger campaigns={current.slice(0, 6)} />
         )}
+      </section>
+
+      <section className="mt-16 max-w-[760px]" aria-labelledby="noticed-h">
+        <SectionHeading id="noticed-h" title="Counterpart noticed" className="border-b-0" sub="From your calendar, your reviews and your campaigns." />
+        {data ? <FindingsList findings={data.findings} /> : <Skeleton className="h-32" />}
       </section>
     </Shell>
   );

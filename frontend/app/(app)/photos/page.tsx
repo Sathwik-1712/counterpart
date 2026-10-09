@@ -30,7 +30,7 @@ function PhotoCard({ p, i, onToggle }: { p: Photo; i: number; onToggle: () => vo
         <img src={p.url} alt={p.caption || "Photo of the business"} loading="lazy" className={clsx("w-full transition-[filter] duration-500", hidden && "grayscale")} />
         <button
           onClick={onToggle}
-          className="press absolute right-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-medium text-ink opacity-0 shadow-[var(--shadow-soft)] transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+          className="press absolute right-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] bg-white/95 px-3 py-1.5 text-xs font-medium text-ink opacity-0 shadow-[var(--shadow-soft)] transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
         >
           {hidden ? <Eye size={13} aria-hidden /> : <EyeSlash size={13} aria-hidden />}
           {hidden ? "Use in posts" : "Don't use"}
@@ -43,7 +43,7 @@ function PhotoCard({ p, i, onToggle }: { p: Photo; i: number; onToggle: () => vo
         </p>
         {p.caption === null ? (
           <p className="mt-1 flex items-center gap-1.5 text-sm text-ink-2">
-            <Sparkle size={13} weight="fill" className="text-leaf" aria-hidden /> Being read…
+            <Sparkle size={13} weight="fill" className="text-pen" aria-hidden /> Being read…
           </p>
         ) : (
           p.caption && <p className="mt-1 text-sm leading-snug">{p.caption}</p>
@@ -51,7 +51,7 @@ function PhotoCard({ p, i, onToggle }: { p: Photo; i: number; onToggle: () => vo
         {p.tags.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
             {p.tags.slice(0, 5).map((t) => (
-              <span key={t} className="rounded-full bg-sunken px-2 py-0.5 text-[11px] text-ink-2">
+              <span key={t} className="rounded-[var(--radius-sm)] bg-sunken px-2 py-0.5 text-[11px] text-ink-2">
                 {t}
               </span>
             ))}
@@ -130,14 +130,14 @@ export default function PhotosPage() {
             upload(e.dataTransfer.files);
           }}
           className={clsx(
-            "forest rise-in flex flex-col justify-between rounded-[var(--radius-lg)] p-7 transition-transform duration-500 lg:col-span-5",
-            drag && "scale-[1.015] ring-2 ring-mint",
+            "night rise-in flex flex-col justify-between rounded-[var(--radius-lg)] p-7 transition-transform duration-500 lg:col-span-5",
+            drag && "scale-[1.015] ring-2 ring-marker",
           )}
         >
           <div>
-            <UploadSimple size={28} className="text-mint" aria-hidden />
-            <p className="mt-4 text-[24px] font-semibold leading-tight tracking-[-0.03em]">Drop photos here</p>
-            <p className="mt-2 max-w-[36ch] text-sm text-white/70">Your products, your counter, your space. Phone photos are perfect; natural light works best.</p>
+            <UploadSimple size={28} className="text-marker" aria-hidden />
+            <p className="mt-4 text-[34px] font-bold leading-none [font-stretch:80%]">Add photos from your phone</p>
+            <p className="mt-3 max-w-[38ch] text-[15px] text-white/75">Your products, your counter, your space. Phone photos are perfect; natural light works best. Or drop them here.</p>
           </div>
           <div className="mt-8">
             <input ref={input} type="file" accept="image/*" multiple hidden onChange={(e) => e.target.files && upload(e.target.files)} />
@@ -150,7 +150,7 @@ export default function PhotosPage() {
         <div className="rise-in space-y-4 lg:col-span-7" style={stagger(1)}>
           <div className="rounded-[var(--radius-lg)] bg-surface p-6 shadow-[var(--shadow-soft)] ring-1 ring-line/80">
             <p className="flex items-center gap-2 text-[16px] font-semibold tracking-tight">
-              <Globe size={18} className="text-leaf" aria-hidden /> From your website
+              <Globe size={18} className="text-pen" aria-hidden /> From your website
             </p>
             <p className="mt-1 text-sm text-ink-2">Counterpart looks through your site and gallery pages for photos of the business.</p>
             <div className="mt-4 flex flex-col gap-2 sm:flex-row">
@@ -160,17 +160,18 @@ export default function PhotosPage() {
                 placeholder="yourbusiness.in"
                 inputMode="url"
                 aria-label="Website address"
-                className="h-11 flex-1 rounded-[var(--radius-md)] bg-surface px-4 text-[15px] shadow-[inset_0_0_0_1px_var(--color-line-strong)] outline-none focus:shadow-[inset_0_0_0_2px_var(--color-leaf)]"
+                className="h-11 w-full shrink-0 rounded-[var(--radius-md)] sm:w-auto sm:flex-1 bg-surface px-4 text-[15px] shadow-[inset_0_0_0_1.5px_var(--color-ink)] outline-none focus:shadow-[inset_0_0_0_1.5px_var(--color-ink),0_0_0_3px_var(--color-marker)]"
               />
               <Button variant="primary" onClick={() => importFrom(false)} disabled={busy !== null || !website.trim()}>
                 {busy === "website" ? "Starting…" : "Find photos"}
               </Button>
             </div>
           </div>
-          <div className="rounded-[var(--radius-lg)] bg-surface p-6 shadow-[var(--shadow-soft)] ring-1 ring-line/80">
+          {data?.google_available && (
+            <div className="rounded-[var(--radius-lg)] bg-surface p-6 shadow-[var(--shadow-soft)] ring-1 ring-line/80">
             <div className="flex flex-wrap items-center gap-3">
               <p className="flex flex-1 items-center gap-2 text-[16px] font-semibold tracking-tight">
-                <GoogleLogo size={18} className="text-leaf" aria-hidden /> From your Google Maps listing
+                <GoogleLogo size={18} className="text-pen" aria-hidden /> From your Google Maps listing
               </p>
               <Button onClick={() => importFrom(true)} disabled={busy !== null || !data?.google_available}>
                 {busy === "google" ? "Starting…" : "Find photos"}
@@ -182,8 +183,9 @@ export default function PhotosPage() {
                 : "Not switched on for this server yet (it needs a Google Maps key)."}
             </p>
           </div>
+          )}
           {note && (
-            <p className={clsx("pop rounded-[var(--radius-md)] px-4 py-3 text-sm", note.ok ? "bg-leaf-soft text-leaf-ink" : "bg-kumkum-soft text-kumkum")} role="status">
+            <p className={clsx("pop rounded-[var(--radius-md)] px-4 py-3 text-sm", note.ok ? "bg-pen-soft text-pen-ink" : "bg-kumkum-soft text-kumkum")} role="status">
               {note.text}
             </p>
           )}

@@ -47,10 +47,10 @@ export function AgentStatus({ campaignId }: { campaignId: string }) {
 
   if (marker.type === "agent.started" && !stale)
     return (
-      <div className="forest rise-in mb-10 flex items-center gap-4 rounded-[var(--radius-lg)] p-5" role="status" aria-live="polite">
-        <span className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-white/10 text-mint">
+      <div className="night rise-in mb-10 flex items-center gap-4 rounded-[var(--radius-lg)] p-5" role="status" aria-live="polite">
+        <span className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-marker text-ink">
           <Robot size={22} weight="duotone" aria-hidden />
-          <span className="pulse-dot absolute -right-1 -top-1 h-3 w-3 rounded-full bg-mint ring-2 ring-forest" />
+          <span className="pulse-dot absolute -right-1 -top-1 h-3 w-3 rounded-full bg-kumkum ring-2 ring-ink" />
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-[15px] font-semibold">
@@ -58,7 +58,7 @@ export function AgentStatus({ campaignId }: { campaignId: string }) {
           </p>
           <p className="truncate text-sm text-white/70">{latest.id !== marker.id ? latest.summary : "Reading the situation"}</p>
         </div>
-        <span className="typing hidden text-lg font-bold text-mint sm:block" aria-hidden>
+        <span className="typing hidden text-lg font-bold text-marker sm:block" aria-hidden>
           <span>·</span>
           <span>·</span>
           <span>·</span>
@@ -81,12 +81,9 @@ export function AgentStatus({ campaignId }: { campaignId: string }) {
     );
 
   return (
-    <div className="rise-in mb-10 flex items-start gap-3 rounded-[var(--radius-lg)] bg-surface/70 p-4 ring-1 ring-line/80">
-      <Robot size={20} className="mt-0.5 shrink-0 text-leaf" aria-hidden />
-      <p className="text-sm text-ink-2">
-        <span className="font-medium text-ink">Counterpart: </span>
-        {marker.summary}
-      </p>
+    <div className="rise-in mb-10 max-w-[80ch] border-l-[3px] border-pen pl-4">
+      <p className="text-[13px] font-semibold text-pen">Counterpart&apos;s last note</p>
+      <p className="mt-0.5 text-[15px] text-ink-2">{marker.summary}</p>
     </div>
   );
 }

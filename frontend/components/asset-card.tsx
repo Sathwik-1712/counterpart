@@ -32,12 +32,12 @@ function GuardSummary({ v }: { v: Validation | null }) {
     <div className="text-sm">
       <button onClick={() => setOpen(!open)} className="flex w-full items-start gap-2 text-left" aria-expanded={open}>
         {v.passed ? (
-          <SealCheck size={18} weight="fill" className="mt-px shrink-0 text-leaf" aria-hidden />
+          <SealCheck size={18} weight="fill" className="mt-px shrink-0 text-pen" aria-hidden />
         ) : (
           <WarningOctagon size={18} weight="fill" className="mt-px shrink-0 text-kumkum" aria-hidden />
         )}
         <span className="min-w-0 flex-1">
-          <span className={clsx("block", v.passed ? "text-leaf-ink" : "text-kumkum")}>
+          <span className={clsx("block", v.passed ? "text-pen-ink" : "text-kumkum")}>
             {v.passed ? "Matches the locked offer" : blocking[0]?.detail ?? "Blocked"}
           </span>
           <span className="block text-xs text-muted">{l3}</span>
@@ -48,7 +48,7 @@ function GuardSummary({ v }: { v: Validation | null }) {
         <div className="mt-3 space-y-1.5 rounded-[var(--radius-md)] bg-sunken/70 p-3.5">
           {v.checks.map((c, i) => (
             <p key={i} className={clsx("flex gap-2", c.passed ? "text-ink-2" : c.severity === "block" ? "text-kumkum" : "text-turmeric")}>
-              {c.passed ? <Check size={14} className="mt-1 shrink-0 text-leaf" aria-hidden /> : <X size={14} className="mt-1 shrink-0" aria-hidden />}
+              {c.passed ? <Check size={14} className="mt-1 shrink-0 text-pen" aria-hidden /> : <X size={14} className="mt-1 shrink-0" aria-hidden />}
               {c.detail}
             </p>
           ))}
@@ -157,11 +157,11 @@ export function AssetCard({ asset, facts, business, onChange, i = 0 }: { asset: 
       style={stagger(i)}
     >
       <div className="flex items-center gap-3 px-3 pb-3 pt-2">
-        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sunken text-ink">
+        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-ink text-white">
           <ChannelIcon size={18} aria-hidden />
         </span>
         <div className="min-w-0 flex-1 leading-tight">
-          <p className="truncate text-[14px] font-semibold">
+          <p className="truncate text-[15px] font-semibold">
             {CHANNEL_LABEL[asset.channel]} <span className="font-normal text-muted">in {LANG_LABEL[asset.language]}</span>
           </p>
           <p className="truncate text-xs text-muted">
@@ -173,7 +173,7 @@ export function AssetCard({ asset, facts, business, onChange, i = 0 }: { asset: 
       </div>
 
       {editing ? (
-        <div className="space-y-3 rounded-[20px] bg-sunken/70 p-4">
+        <div className="space-y-3 rounded-[var(--radius-xl)] bg-sunken/70 p-4">
           {(["headline", "body"] as const).map((f) => (
             <label key={f} className="block">
               <span className="text-xs font-medium text-ink-2">{f === "headline" ? "Headline" : "Message"}</span>
@@ -182,27 +182,27 @@ export function AssetCard({ asset, facts, business, onChange, i = 0 }: { asset: 
                 onChange={(e) => setDraft({ ...draft, [f]: e.target.value })}
                 rows={f === "body" ? 4 : 2}
                 lang={asset.language}
-                className="mt-1.5 w-full resize-y rounded-[var(--radius-md)] bg-surface px-3.5 py-2.5 text-[15px] text-ink shadow-[inset_0_0_0_1px_var(--color-line-strong)] outline-none focus:shadow-[inset_0_0_0_2px_var(--color-leaf)]"
+                className="mt-1.5 w-full resize-y rounded-[var(--radius-md)] bg-surface px-3.5 py-2.5 text-[15px] text-ink shadow-[inset_0_0_0_1.5px_var(--color-ink)] outline-none focus:shadow-[inset_0_0_0_1.5px_var(--color-ink),0_0_0_3px_var(--color-marker)]"
               />
             </label>
           ))}
           <p className="text-xs text-muted">The offer box and “show this at the counter” come from the locked offer. To change the offer, tell Counterpart.</p>
         </div>
       ) : (
-        <div ref={postRef} className="overflow-hidden rounded-[20px] ring-1 ring-black/5" lang={asset.language}>
+        <div ref={postRef} className="overflow-hidden rounded-[var(--radius-xl)] ring-1 ring-black/5" lang={asset.language}>
           <ChannelPreview asset={asset} business={business} />
         </div>
       )}
       {!editing && asset.channel !== "whatsapp" && asset.image_source && (
         <div className="flex items-center gap-2 px-3 pt-2.5 text-xs text-muted">
-          {asset.image_source.source === "generated" ? <Sparkle size={13} className="shrink-0 text-turmeric" aria-hidden /> : <Camera size={13} className="shrink-0 text-leaf" aria-hidden />}
+          {asset.image_source.source === "generated" ? <Sparkle size={13} className="shrink-0 text-turmeric" aria-hidden /> : <Camera size={13} className="shrink-0 text-pen" aria-hidden />}
           <span className="min-w-0 flex-1 truncate">
             {asset.image_source.source === "generated"
               ? "AI picture. Add photos of your place to use real ones."
               : `${SOURCE_LABEL[asset.image_source.source]} photo${asset.image_source.source === "google" && asset.image_source.attribution ? ` (${asset.image_source.attribution})` : ""}`}
           </span>
           {!["live", "retired", "rejected"].includes(asset.status) && (
-            <button onClick={() => setPicking(true)} className="press shrink-0 rounded-full px-2 py-1 font-medium text-leaf hover:bg-leaf-soft">
+            <button onClick={() => setPicking(true)} className="press shrink-0 rounded-[var(--radius-sm)] px-2 py-1 font-medium text-pen hover:bg-pen-soft">
               Change photo
             </button>
           )}
@@ -214,7 +214,7 @@ export function AssetCard({ asset, facts, business, onChange, i = 0 }: { asset: 
         {!editing && <GuardSummary v={v} />}
         {code && (
           <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
-            <span className="rounded-full bg-sunken px-2.5 py-1 font-receipt text-[12px] tracking-wider text-ink">{code}</span>
+            <span className="rounded-[var(--radius-sm)] bg-sunken px-2.5 py-1 font-receipt text-[12px] tracking-wider text-ink">{code}</span>
             {asset.outcomes && (
               <span className="tabular-nums">
                 {asset.outcomes.scan ?? 0} scans, {asset.outcomes.redeem ?? 0} redeemed
@@ -239,12 +239,12 @@ export function AssetCard({ asset, facts, business, onChange, i = 0 }: { asset: 
               {asset.status === "valid" && (
                 <Button
                   size="sm"
-                  variant="accent"
+                  variant="primary"
                   onClick={() => act("publish", () => api(`/campaigns/${asset.campaign_id}/publish`, { method: "POST", json: { asset_ids: [asset.id] } }))}
                   disabled={busy !== null}
                 >
                   <Check size={14} weight="bold" aria-hidden />
-                  {busy === "publish" ? "Publishing…" : "Approve and publish"}
+                  {busy === "publish" ? "Approving…" : "Approve"}
                 </Button>
               )}
               {!["live", "retired", "rejected"].includes(asset.status) && (

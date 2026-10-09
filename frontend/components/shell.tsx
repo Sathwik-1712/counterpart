@@ -2,7 +2,7 @@
 
 import {
   BookOpenText,
-  CaretUpDown,
+  CaretDown,
   ChartLineUp,
   Check,
   DotsThreeOutline,
@@ -10,7 +10,6 @@ import {
   Megaphone,
   Plus,
   QrCode,
-  Robot,
   SignOut,
   SunHorizon,
   UsersThree,
@@ -24,17 +23,18 @@ import { useLedgerEvents } from "@/lib/api";
 import { useWorkspace } from "@/lib/business";
 import { Receipt } from "./receipt";
 
-const NAV = [
+// Two groups: the work (a campaign's flow) and the business it draws on.
+const WORK = [
   { href: "/", label: "Today", icon: SunHorizon },
   { href: "/campaigns", label: "Campaigns", icon: Megaphone },
   { href: "/results", label: "Results", icon: ChartLineUp },
-  { href: "/customers", label: "Customers", icon: UsersThree },
+];
+const BUSINESS = [
   { href: "/photos", label: "Photos", icon: Images },
   { href: "/brand", label: "Brand", icon: BookOpenText },
-  { href: "/counter", label: "Counter", icon: QrCode },
+  { href: "/customers", label: "Customers", icon: UsersThree },
 ];
-const MOBILE_MAIN = NAV.filter((n) => ["/", "/campaigns", "/results", "/photos"].includes(n.href));
-const MOBILE_MORE = [...NAV.filter((n) => !MOBILE_MAIN.includes(n)), { href: "/agents", label: "Agents", icon: Robot }];
+const NAV = [...WORK, ...BUSINESS];
 
 /** True for a short while after the agent writes to the ledger: a real "working" signal, not decoration. */
 function useAgentWorking() {
@@ -55,7 +55,7 @@ async function signOut() {
   window.location.href = "/login";
 }
 
-function initials(name: string) {
+export function initials(name: string) {
   return name
     .split(/\s+/)
     .slice(0, 2)
@@ -64,7 +64,11 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-/** The business badge doubles as the account menu: switch business, add one, sign out. */
+function Mark({ className }: { className?: string }) {
+  return <img src="/icon.svg" alt="" className={clsx("h-8 w-8", className)} />;
+}
+
+/** The business name doubles as the account menu: switch business, add one, sign out. */
 function BusinessMenu() {
   const { me, business, select } = useWorkspace();
   const [open, setOpen] = useState(false);
@@ -83,23 +87,22 @@ function BusinessMenu() {
   }, [open]);
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative min-w-0">
       <button
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="press flex items-center gap-2.5 rounded-full py-1 pl-1 pr-2.5 hover:bg-ink/[0.04]"
+        className="press flex min-w-0 items-center gap-2 rounded-[var(--radius-sm)] px-2 py-1 text-left hover:bg-ink/[0.05]"
       >
-        <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-forest text-[13px] font-semibold text-mint">{initials(business.name)}</span>
-        <span className="block text-left leading-tight">
-          <span className="block max-w-[130px] truncate text-[14px] font-semibold tracking-tight sm:max-w-[160px]">{business.name}</span>
-          <span className="block text-[11px] text-muted">{business.is_demo ? "Demo business" : (business.kind ?? business.locality)}</span>
+        <span className="min-w-0 leading-none">
+          <span className="block max-w-[170px] truncate text-[18px] font-bold [font-stretch:85%]">{business.name}</span>
+          <span className="mt-1 block text-[12px] text-muted">{business.is_demo ? "Demo business" : (business.kind ?? business.locality)}</span>
         </span>
-        <CaretUpDown size={14} className="text-muted" aria-hidden />
+        <CaretDown size={13} weight="bold" className={clsx("shrink-0 text-muted transition-transform", open && "rotate-180")} aria-hidden />
       </button>
       {open && (
-        <div role="menu" className="pop absolute left-0 top-12 z-50 w-72 origin-top-left rounded-[20px] bg-surface p-2 shadow-[var(--shadow-float)] ring-1 ring-line">
-          <p className="truncate px-3 pb-2 pt-1 text-xs text-muted">{me.user.email}</p>
+        <div role="menu" className="pop absolute left-0 top-12 z-50 w-72 rounded-[var(--radius-lg)] bg-surface p-1.5 shadow-[var(--shadow-float)] ring-1 ring-ink/15">
+          <p className="truncate px-3 pb-2 pt-1.5 text-xs text-muted">{me.user.email}</p>
           {me.businesses.map((b) => (
             <button
               key={b.slug}
@@ -108,21 +111,21 @@ function BusinessMenu() {
                 setOpen(false);
                 select(b.slug);
               }}
-              className="press flex w-full items-center gap-3 rounded-[14px] px-3 py-2 text-left hover:bg-sunken"
+              className="press flex w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2 text-left hover:bg-sunken"
             >
-              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-forest text-[12px] font-semibold text-mint">{initials(b.name)}</span>
+              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-ink text-[12px] font-bold text-marker">{initials(b.name)}</span>
               <span className="min-w-0 flex-1 leading-tight">
-                <span className="block truncate text-[14px] font-medium">{b.name}</span>
-                <span className="block text-[11px] text-muted">{b.is_demo ? "Demo business" : `${b.locality}, ${b.city}`}</span>
+                <span className="block truncate text-[15px] font-semibold">{b.name}</span>
+                <span className="block text-[12px] text-muted">{b.is_demo ? "Demo business" : `${b.locality}, ${b.city}`}</span>
               </span>
-              {b.slug === business.slug && <Check size={15} weight="bold" className="text-leaf" aria-hidden />}
+              {b.slug === business.slug && <Check size={15} weight="bold" className="text-pen" aria-hidden />}
             </button>
           ))}
           <div className="my-1.5 h-px bg-line" />
-          <Link href="/onboarding" role="menuitem" className="press flex items-center gap-3 rounded-[14px] px-3 py-2 text-[14px] hover:bg-sunken">
+          <Link href="/onboarding" role="menuitem" className="press flex items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2 text-[15px] hover:bg-sunken">
             <Plus size={16} aria-hidden /> Add a business
           </Link>
-          <button role="menuitem" onClick={signOut} className="press flex w-full items-center gap-3 rounded-[14px] px-3 py-2 text-[14px] text-ink-2 hover:bg-sunken">
+          <button role="menuitem" onClick={signOut} className="press flex w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2 text-[15px] text-ink-2 hover:bg-sunken">
             <SignOut size={16} aria-hidden /> Sign out
           </button>
         </div>
@@ -131,7 +134,24 @@ function BusinessMenu() {
   );
 }
 
-export function Shell({ children, campaignId }: { children: ReactNode; campaignId?: string }) {
+/** Who is working right now. Links to the agents page. */
+function TeamLink({ working, active }: { working: boolean; active: boolean }) {
+  return (
+    <Link
+      href="/agents"
+      className={clsx(
+        "press inline-flex h-9 items-center gap-2 rounded-[var(--radius-sm)] px-3 text-[14px] font-semibold",
+        working ? "bg-pen text-white" : active ? "bg-ink text-white" : "text-ink-2 hover:bg-ink/[0.06] hover:text-ink",
+      )}
+      aria-label={working ? "Counterpart is working. See the AI team" : "See the AI team"}
+    >
+      <span className={clsx("h-2 w-2 rounded-full", working ? "pulse-dot bg-marker" : "bg-line-strong")} aria-hidden />
+      {working ? "Working" : "AI team"}
+    </Link>
+  );
+}
+
+export function Shell({ children, campaignId, log = true }: { children: ReactNode; campaignId?: string; log?: boolean }) {
   const path = usePathname();
   const router = useRouter();
   const { business } = useWorkspace();
@@ -144,104 +164,110 @@ export function Shell({ children, campaignId }: { children: ReactNode; campaignI
     NAV.forEach((n) => router.prefetch(n.href));
   }, [router]);
 
+  const tab = (n: (typeof NAV)[number]) => (
+    <Link
+      key={n.href}
+      href={n.href}
+      aria-current={active(n.href) ? "page" : undefined}
+      className={clsx(
+        "relative flex h-16 items-center px-3 text-[15px] font-semibold transition-colors",
+        active(n.href) ? "text-ink after:absolute after:inset-x-3 after:-bottom-px after:h-[3px] after:bg-ink" : "text-muted hover:text-ink",
+      )}
+    >
+      {n.label}
+    </Link>
+  );
+
   return (
     <div className="flex min-h-dvh flex-col">
-      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-ink focus:px-4 focus:py-2 focus:text-white">
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-[var(--radius-sm)] focus:bg-ink focus:px-4 focus:py-2 focus:text-white">
         Skip to content
       </a>
-      <header className="sticky top-0 z-30 px-3 pt-3 md:px-6">
-        <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-3 rounded-full bg-white/75 pl-1.5 pr-1.5 shadow-[var(--shadow-soft)] ring-1 ring-ink/[0.07] backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b border-ink bg-paper/95 backdrop-blur-sm">
+        <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-2 px-3 md:px-8">
+          <Link href="/" className="shrink-0" aria-label="Counterpart, Today">
+            <Mark />
+          </Link>
+          <span className="mx-1 hidden h-7 w-px bg-line-strong sm:block" aria-hidden />
           <BusinessMenu />
-          <nav className="hidden items-center gap-0.5 rounded-full bg-ink/[0.04] p-1 md:flex" aria-label="Main">
-            {NAV.map(({ href, label, icon: Icon }) => (
-              <Link
-                key={href}
-                href={href}
-                title={label}
-                aria-current={active(href) ? "page" : undefined}
-                className={clsx(
-                  "press relative inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm",
-                  active(href) ? "bg-ink text-white shadow-[var(--shadow-soft)]" : "text-ink-2 hover:bg-white hover:text-ink",
-                )}
-              >
-                <Icon size={16} weight={active(href) ? "fill" : "regular"} aria-hidden />
-                <span className="hidden xl:inline">{label}</span>
-              </Link>
-            ))}
+          <nav className="ml-4 hidden items-center lg:flex" aria-label="Main">
+            {WORK.map(tab)}
+            <span className="mx-2 h-5 w-px bg-line-strong" aria-hidden />
+            {BUSINESS.map(tab)}
           </nav>
           <span className="flex-1" />
-          {business.is_demo && <span className="hidden rounded-full bg-turmeric-soft px-2.5 py-1 text-xs font-medium text-turmeric lg:inline">Demo data</span>}
+          {business.is_demo && <span className="stamp hidden text-turmeric xl:inline-flex">Demo data</span>}
+          <TeamLink working={working} active={active("/agents")} />
           <Link
-            href="/agents"
+            href="/counter"
             className={clsx(
-              "press inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm",
-              working ? "bg-forest text-white" : active("/agents") ? "bg-ink text-white" : "text-ink-2 hover:bg-ink/[0.05] hover:text-ink",
+              "press hidden h-9 items-center gap-2 rounded-[var(--radius-sm)] px-3 text-[14px] font-semibold sm:inline-flex",
+              active("/counter") ? "bg-ink text-white" : "shadow-[inset_0_0_0_1.5px_var(--color-ink)] hover:bg-sunken",
             )}
-            aria-label={working ? "Counterpart is working. See the agents" : "See what the agents are doing"}
           >
-            {working ? <span className="pulse-dot h-2 w-2 rounded-full bg-mint" aria-hidden /> : <Robot size={17} aria-hidden />}
-            <span>{working ? "Working" : "Agents"}</span>
+            <QrCode size={16} weight="bold" aria-hidden /> Counter
           </Link>
         </div>
       </header>
 
-      <div className="mx-auto flex w-full max-w-[1440px] flex-1 gap-8 px-4 md:px-8">
-        <main id="main" className="page-in min-w-0 flex-1 pb-32 pt-10 md:pb-20 md:pt-12">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-1 gap-10 px-4 md:px-8">
+        <main id="main" className="page-in min-w-0 flex-1 pb-32 pt-8 md:pb-20 md:pt-12">
           {children}
         </main>
-        {path !== "/agents" && (
-          <div className="hidden w-[300px] shrink-0 2xl:block">
-            <Receipt campaignId={campaignId} className="sticky top-24 mt-12 h-[calc(100dvh-8rem)] overflow-hidden rounded-[var(--radius-lg)] shadow-[var(--shadow-soft)] ring-1 ring-line/70" />
+        {log && path !== "/agents" && (
+          <div className="hidden w-[290px] shrink-0 2xl:block">
+            <Receipt campaignId={campaignId} className="sticky top-24 mt-12 h-[calc(100dvh-8rem)] overflow-hidden rounded-[var(--radius-md)] ring-1 ring-line" />
           </div>
         )}
       </div>
 
       {more && (
-        <div className="fixed inset-0 z-40 bg-forest/30 backdrop-blur-[2px] md:hidden" onClick={() => setMore(false)}>
+        <div className="fixed inset-0 z-40 bg-ink/30 lg:hidden" onClick={() => setMore(false)}>
           <div
-            className="sheet-up absolute inset-x-3 bottom-24 rounded-[28px] bg-surface p-3 shadow-[var(--shadow-float)]"
+            className="sheet-up absolute inset-x-0 bottom-[68px] border-t border-ink bg-surface p-3"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-label="More"
           >
-            <div className="grid grid-cols-2 gap-2">
-              {MOBILE_MORE.map(({ href, label, icon: Icon }, i) => (
+            <div className="grid grid-cols-2 gap-1.5">
+              {[...BUSINESS, { href: "/counter", label: "Counter", icon: QrCode }].map(({ href, label, icon: Icon }, i) => (
                 <Link
                   key={href}
                   href={href}
                   style={{ "--i": i } as React.CSSProperties}
-                  className={clsx("rise-in press flex items-center gap-3 rounded-[18px] p-4 text-[15px] font-medium", active(href) ? "bg-ink text-white" : "bg-sunken/70 text-ink")}
+                  className={clsx("rise-in press flex items-center gap-3 rounded-[var(--radius-md)] p-4 text-[16px] font-semibold", active(href) ? "bg-ink text-white" : "bg-sunken text-ink")}
                 >
                   <Icon size={20} weight={active(href) ? "fill" : "regular"} aria-hidden />
                   {label}
                 </Link>
               ))}
             </div>
-            <button onClick={signOut} className="press mt-2 flex w-full items-center justify-center gap-2 rounded-[18px] p-3 text-sm text-ink-2 hover:bg-sunken">
+            <button onClick={signOut} className="press mt-1.5 flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] p-3 text-sm text-ink-2 hover:bg-sunken">
               <SignOut size={16} aria-hidden /> Sign out
             </button>
           </div>
         </div>
       )}
 
-      <nav className="fixed inset-x-3 bottom-3 z-40 flex rounded-full bg-forest/95 p-1.5 shadow-[var(--shadow-float)] ring-1 ring-white/10 backdrop-blur-xl md:hidden" aria-label="Main">
-        {MOBILE_MAIN.map(({ href, label, icon: Icon }) => (
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-ink bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="Main">
+        {WORK.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}
             aria-current={active(href) ? "page" : undefined}
-            className={clsx("press flex flex-1 flex-col items-center gap-0.5 rounded-full py-1.5 text-[11px]", active(href) ? "bg-white text-ink" : "text-white/65")}
+            className={clsx("press relative flex h-[68px] flex-1 flex-col items-center justify-center gap-1 text-[12px] font-semibold", active(href) ? "text-ink" : "text-muted")}
           >
-            <Icon size={19} weight={active(href) ? "fill" : "regular"} aria-hidden />
+            {active(href) && <span className="absolute inset-x-5 top-0 h-[3px] bg-ink" aria-hidden />}
+            <Icon size={22} weight={active(href) ? "fill" : "regular"} aria-hidden />
             {label}
           </Link>
         ))}
         <button
           onClick={() => setMore(!more)}
           aria-expanded={more}
-          className={clsx("press flex flex-1 flex-col items-center gap-0.5 rounded-full py-1.5 text-[11px]", more || MOBILE_MORE.some((m) => active(m.href)) ? "bg-white text-ink" : "text-white/65")}
+          className={clsx("press relative flex h-[68px] flex-1 flex-col items-center justify-center gap-1 text-[12px] font-semibold", more || [...BUSINESS, { href: "/counter" }].some((m) => active(m.href)) ? "text-ink" : "text-muted")}
         >
-          {more ? <X size={19} aria-hidden /> : <DotsThreeOutline size={19} aria-hidden />}
+          {more ? <X size={22} aria-hidden /> : <DotsThreeOutline size={22} aria-hidden />}
           More
         </button>
       </nav>

@@ -77,3 +77,28 @@ async def test_models_out_of_quota_or_hanging_are_skipped_for_a_while(tmp_path):
     with pytest.raises(NoProviderAvailable):
         await r3.chat("reasoning", msgs)
     assert (await r3.chat("reasoning", msgs)).content == "back"
+
+
+def test_backups_follow_gemini_and_differ_for_the_checker(tmp_path):
+    from app.config import Settings
+    from app.providers import build_router
+
+    s = Settings(database_url="postgresql://x", gemini_api_key="a", gemini_api_key_2="b", groq_api_key="g",
+                 cerebras_api_key="c", agnes_api_key=None, gemini_models="m1,m2", role_reasoning="m1,m2,agnes",
+                 role_generation="m1", role_verification="m2", role_vision="m1", replay_dir=tmp_path,
+                 _env_file=None)
+    roles = build_router(s).roles
+    assert roles["reasoning"] == ["m1", "m2", "m1@2", "m2@2", "groq", "cerebras", "agnes"]
+    assert roles["generation"][-2:] == ["groq", "cerebras"]
+    assert roles["verification"][-2:] == ["cerebras", "groq"]  # writer and checker never share a backup
+    assert roles["vision"] == ["m1", "m1@2"]
+
+
+def test_strict_providers_get_plain_messages():
+    from app.providers.openai_compat import _plain
+
+    gemini_turn = {"role": "assistant", "content": "", "tool_calls": [{
+        "id": "c1", "type": "function", "function": {"name": "f", "arguments": "{}"},
+        "extra_content": {"google": {"thought_signature": "sig"}}}]}
+    assert _plain(gemini_turn) == {"role": "assistant", "content": "", "tool_calls": [
+        {"id": "c1", "type": "function", "function": {"name": "f", "arguments": "{}"}}]}

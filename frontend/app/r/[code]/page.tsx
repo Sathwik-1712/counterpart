@@ -69,12 +69,12 @@ export default function OfferPage({ params }: { params: Promise<{ code: string }
   const [lead, ...details] = r.offer ?? [];
 
   return (
-    <main className="mx-auto min-h-dvh max-w-md bg-paper md:my-8 md:min-h-0 md:overflow-hidden md:rounded-[32px] md:shadow-[var(--shadow-float)]" lang={data.language}>
-      <div className="forest relative aspect-[4/5] w-full overflow-hidden">
+    <main className="mx-auto min-h-dvh max-w-md bg-paper md:my-8 md:min-h-0 md:overflow-hidden md:rounded-[var(--radius-xl)] md:shadow-[var(--shadow-float)]" lang={data.language}>
+      <div className="night relative aspect-[4/5] w-full overflow-hidden">
         {data.image_url && <img src={data.image_url} alt="" className="absolute inset-0 h-full w-full object-cover" />}
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,20,13,0.45)_0%,transparent_30%,transparent_45%,rgba(8,20,13,0.85)_100%)]" />
-        <p className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-full bg-black/35 px-3.5 py-1.5 text-[13px] font-medium text-white backdrop-blur-md">
-          <span className="h-2 w-2 rounded-full bg-mint" aria-hidden />
+        <p className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-[var(--radius-sm)] bg-black/35 px-3.5 py-1.5 text-[13px] font-medium text-white backdrop-blur-md">
+          <span className="h-2 w-2 rounded-full bg-marker" aria-hidden />
           {data.name}
         </p>
         <h1 className="rise-in absolute inset-x-5 bottom-12 text-[34px] leading-[1.05] tracking-[-0.035em] text-white">{r.headline}</h1>
@@ -84,13 +84,13 @@ export default function OfferPage({ params }: { params: Promise<{ code: string }
         {r.body && <p className="rise-in text-[17px] leading-relaxed text-ink-2">{r.body}</p>}
 
         {lead && (
-          <section className="forest rise-in mt-6 rounded-[var(--radius-lg)] p-5" style={{ "--i": 1 } as React.CSSProperties} aria-label="The offer">
+          <section className="night rise-in mt-6 rounded-[var(--radius-lg)] p-5" style={{ "--i": 1 } as React.CSSProperties} aria-label="The offer">
             <p className="text-[28px] font-semibold leading-tight tracking-[-0.03em]">{lead}</p>
             {details.length > 0 && (
               <ul className="mt-3 space-y-1.5 text-[15px] text-white/85">
                 {details.map((d) => (
                   <li key={d} className="flex gap-2">
-                    <Check size={15} weight="bold" className="mt-1 shrink-0 text-mint" aria-hidden />
+                    <Check size={15} weight="bold" className="mt-1 shrink-0 text-marker" aria-hidden />
                     {d}
                   </li>
                 ))}
@@ -108,7 +108,7 @@ export default function OfferPage({ params }: { params: Promise<{ code: string }
               </div>
               <div className="perforation" aria-hidden />
               <p className="flex items-center justify-center gap-1.5 px-6 py-4 text-sm text-ink-2">
-                <MapPin size={15} className="text-leaf" aria-hidden />
+                <MapPin size={15} className="text-pen" aria-hidden />
                 {data.name}, {data.locality}
               </p>
             </div>
@@ -116,7 +116,7 @@ export default function OfferPage({ params }: { params: Promise<{ code: string }
             <button
               onClick={claim}
               disabled={busy}
-              className="press group flex h-16 w-full items-center justify-between rounded-full bg-leaf pl-7 pr-2 text-[17px] font-semibold text-white shadow-[var(--shadow-lift)] hover:bg-leaf-ink disabled:opacity-60"
+              className="press group flex h-16 w-full items-center justify-between rounded-full bg-pen pl-7 pr-2 text-[17px] font-semibold text-white shadow-[var(--shadow-lift)] hover:bg-pen-ink disabled:opacity-60"
             >
               {busy ? "…" : (CLAIM[data.language] ?? CLAIM.en)}
               <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/15 transition-transform duration-300 group-hover:translate-x-0.5">

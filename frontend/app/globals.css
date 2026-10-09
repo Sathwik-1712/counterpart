@@ -1,49 +1,56 @@
 @import "tailwindcss";
 
-/* Counterpart design tokens.
-   Design read: a mobile-first product app for an independent café owner, demoed to judges. Premium consumer,
-   "Forest" family: green-tinted bone paper, green-black ink, deep forest surfaces for the few hero moments, and
-   ONE accent (banana-leaf green, "verified / go"). Turmeric and kumkum are status colours only, never decoration.
-   Real food photography (the generated post pictures) carries the visual weight.
-   Shape rule: surfaces 22px (bezel shells 28px), inputs 14px, buttons and chips full pill. */
+/* Counterpart design tokens: "the counter book".
+   Design read: a working tool for shop owners across India, not a SaaS landing page. The visual language comes from
+   the things already on a shop counter: a bill book (ruled paper, numbered pages, carbon copies), a ballpoint pen,
+   a highlighter, a rubber stamp, a hand-painted signboard.
+   Three inks, each with one job:
+     ink     black: the owner's words, primary actions, headlines
+     pen     ballpoint blue: Counterpart's work (what the agents wrote, checked, found), links
+     marker  highlighter yellow: what needs the owner NOW (the next step, waiting approvals)
+   Kumkum red is for problems and the live dot only. Real photos of the business carry the colour.
+   Type: Anek (Latin, Kannada, Devanagari in one family). Headlines condensed like a signboard; reading text normal
+   width. Martian Mono for codes, money and the work log.
+   Shape: square-ish. 4px controls, 8px surfaces, hairline rules instead of floating cards. Almost no shadows. */
 @theme {
-  --color-paper: #eff1ec;
+  --color-paper: #f3f2ed;
   --color-surface: #ffffff;
-  --color-sunken: #e6e9e3;
-  --color-ink: #0f1712;
-  --color-ink-2: #39443d;
-  --color-muted: #66706a;
-  --color-line: #dfe3dc;
-  --color-line-strong: #c9cfc7;
+  --color-sunken: #e8e7e0;
+  --color-ink: #16150f;
+  --color-ink-2: #44423a;
+  --color-muted: #6b685d;
+  --color-line: #dcdad1;
+  --color-line-strong: #b9b6aa;
 
-  --color-forest: #0e2a1c;
-  --color-forest-2: #163a28;
-  --color-leaf: #1f6f43;
-  --color-leaf-ink: #154d2f;
-  --color-leaf-soft: #dcefe2;
-  --color-mint: #9fdcb5;
-  --color-turmeric: #9a5806;
-  --color-turmeric-soft: #fbefd3;
-  --color-kumkum: #b42318;
-  --color-kumkum-soft: #fde8e6;
-  --color-receipt: #fcfcfa;
+  --color-pen: #2340c4;
+  --color-pen-ink: #182d8f;
+  --color-pen-soft: #e3e7f8;
+  --color-marker: #ffd43b;
+  --color-marker-soft: #fff3c4;
+  --color-turmeric: #8a5200;
+  --color-turmeric-soft: #fcedc6;
+  --color-kumkum: #c2361b;
+  --color-kumkum-soft: #fae1d9;
+  --color-receipt: #fffffb;
 
-  --font-sans: var(--font-geist), var(--font-kannada), var(--font-devanagari), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-geist), var(--font-kannada), var(--font-devanagari), ui-sans-serif, sans-serif;
-  --font-receipt: var(--font-geist-mono), ui-monospace, monospace;
+  --font-sans: var(--font-anek), var(--font-kannada), var(--font-devanagari), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-anek), var(--font-kannada), var(--font-devanagari), ui-sans-serif, sans-serif;
+  --font-receipt: var(--font-martian), ui-monospace, monospace;
+  --font-mono: var(--font-martian), ui-monospace, monospace;
 
   --text-2xs: 0.6875rem;
-  --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 22px;
-  --radius-xl: 28px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
 
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
-  /* Shadows are tinted with the forest hue, never pure black. */
-  --shadow-soft: 0 1px 2px rgb(14 42 28 / 0.05), 0 10px 30px -14px rgb(14 42 28 / 0.18);
-  --shadow-lift: 0 2px 6px rgb(14 42 28 / 0.06), 0 24px 50px -20px rgb(14 42 28 / 0.32);
-  --shadow-float: 0 30px 60px -24px rgb(14 42 28 / 0.45), 0 8px 18px -8px rgb(14 42 28 / 0.2);
+  --ease-thunk: cubic-bezier(0.5, 1.8, 0.4, 0.8);
+  /* Paper on a counter: a hairline and a short, tight drop. Never a glow. */
+  --shadow-soft: 0 1px 0 rgb(22 21 15 / 0.05);
+  --shadow-lift: 0 1px 0 rgb(22 21 15 / 0.06), 0 10px 22px -16px rgb(22 21 15 / 0.45);
+  --shadow-float: 0 2px 0 rgb(22 21 15 / 0.06), 0 22px 40px -22px rgb(22 21 15 / 0.55);
 }
 
 @layer base {
@@ -51,73 +58,113 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
     scroll-behavior: smooth;
+    scroll-padding-top: 88px;
   }
   body {
     background: var(--color-paper);
     color: var(--color-ink);
     font-family: var(--font-sans);
-    font-size: 15px;
-    line-height: 1.55;
+    font-size: 16px;
+    line-height: 1.5;
   }
   h1, h2, h3 {
     font-family: var(--font-display);
-    font-weight: 600;
-    letter-spacing: -0.03em;
-    line-height: 1.08;
+    font-weight: 700;
+    font-stretch: 80%;
+    letter-spacing: -0.005em;
+    line-height: 1;
     text-wrap: balance;
   }
   p {
     text-wrap: pretty;
   }
   :focus-visible {
-    outline: 2px solid var(--color-leaf);
+    outline: 2px solid var(--color-pen);
     outline-offset: 2px;
-    border-radius: 8px;
+    border-radius: 3px;
   }
   ::selection {
-    background: var(--color-leaf-soft);
+    background: var(--color-marker);
+    color: var(--color-ink);
   }
   button {
     cursor: pointer;
   }
 }
 
-/* Fixed paper grain: one pointer-events-none layer, never on scrolling containers. */
-.grain::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  pointer-events: none;
-  opacity: 0.035;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
+@layer components {
+/* Condensed signboard type for numbers and labels that should read from across the room. */
+.sign { font-family: var(--font-display); font-weight: 700; font-stretch: 75%; letter-spacing: 0; line-height: 0.9; }
+.wide { font-stretch: 112%; }
+.tabular { font-variant-numeric: tabular-nums; }
 
-/* Deep forest hero surface with a soft light from the top left. */
-.forest {
-  background:
-    radial-gradient(90% 120% at 0% 0%, rgb(159 220 181 / 0.16) 0%, transparent 55%),
-    radial-gradient(70% 90% at 100% 100%, rgb(31 111 67 / 0.45) 0%, transparent 60%),
-    var(--color-forest);
+/* The one dark surface: the counter terminal, the photo drop zone, the active step. Flat ink, no gradient. */
+.night {
+  background: var(--color-ink);
   color: #fff;
 }
 
+/* Highlighter stroke behind words that need the owner. It sweeps in once. */
+.hl {
+  background-image: linear-gradient(transparent 58%, var(--color-marker) 58%, var(--color-marker) 92%, transparent 92%);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  padding: 0 0.08em;
+  margin: 0 -0.08em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+@keyframes hl-sweep { from { background-size: 0% 100%; } }
+.hl-in { animation: hl-sweep 700ms var(--ease-out-soft) 250ms both; }
+
+/* Ruled bill-book paper, for the brief notepad. Lines sit under each text line (32px). */
+.ruled {
+  background-image: repeating-linear-gradient(transparent 0 31px, var(--color-line) 31px 32px);
+  background-attachment: local;
+  line-height: 32px;
+}
+/* The red margin line of a school notebook. */
+.margin-rule { box-shadow: inset 2px 0 0 0 rgb(194 54 27 / 0.35); }
+
+/* A rubber stamp: Counterpart's mark on work it has checked. Pen ink, slightly crooked. */
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  padding: 0.1em 0.45em;
+  font-family: var(--font-martian), ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transform: rotate(-2deg);
+  white-space: nowrap;
+}
+@keyframes stamp-in {
+  0% { opacity: 0; transform: scale(1.7) rotate(-8deg); }
+  60% { opacity: 1; transform: scale(0.94) rotate(-1deg); }
+  100% { transform: scale(1) rotate(-2deg); }
+}
+.stamp-in { animation: stamp-in 420ms var(--ease-out-soft) both; animation-delay: calc(var(--i, 0) * 90ms + 150ms); }
+
 /* Press feedback for anything clickable that opts in. */
 .press {
-  transition: transform 220ms var(--ease-spring), background-color 220ms var(--ease-out-soft),
-    border-color 220ms var(--ease-out-soft), color 220ms var(--ease-out-soft), box-shadow 260ms var(--ease-out-soft),
-    opacity 220ms var(--ease-out-soft);
+  transition: transform 160ms var(--ease-out-soft), background-color 160ms var(--ease-out-soft),
+    border-color 160ms var(--ease-out-soft), color 160ms var(--ease-out-soft), box-shadow 200ms var(--ease-out-soft),
+    opacity 160ms var(--ease-out-soft);
 }
 .press:active:not(:disabled) {
-  transform: scale(0.97);
+  transform: translateY(1px);
 }
 
-/* Cards that lift on hover. */
+/* Rows and cards that lift a little on hover, like picking a slip off the counter. */
 .lift {
-  transition: transform 420ms var(--ease-spring), box-shadow 420ms var(--ease-spring);
+  transition: transform 260ms var(--ease-out-soft), box-shadow 260ms var(--ease-out-soft);
 }
 .lift:hover {
-  transform: translateY(-3px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-lift);
 }
 
@@ -139,48 +186,45 @@
 .perforation::after {
   content: "";
   position: absolute;
-  top: -12px;
-  width: 22px;
-  height: 22px;
+  top: -11px;
+  width: 20px;
+  height: 20px;
   border-radius: 999px;
   background: var(--color-paper);
 }
-.perforation::before { left: -12px; }
-.perforation::after { right: -12px; }
+.perforation::before { left: -11px; }
+.perforation::after { right: -11px; }
 
 @keyframes print-in {
   from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: none; }
 }
-.print-in {
-  animation: print-in 260ms var(--ease-out-soft) both;
-}
+.print-in { animation: print-in 260ms var(--ease-out-soft) both; }
 
-/* Entry: a heavy fade-up. Stagger with style={{ "--i": n }}. */
+/* Entry: a short, crisp lift. Stagger with style={{ "--i": n }}. */
 @keyframes rise-in {
-  from { opacity: 0; transform: translateY(14px); filter: blur(4px); }
-  to { opacity: 1; transform: none; filter: none; }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
 }
 .rise-in {
-  animation: rise-in 700ms var(--ease-spring) both;
-  animation-delay: calc(var(--i, 0) * 70ms);
+  animation: rise-in 460ms var(--ease-out-soft) both;
+  animation-delay: calc(var(--i, 0) * 55ms);
 }
 
+/* Posts dealt onto the counter one after another. */
 @keyframes fan-in {
-  from { opacity: 0; transform: translateY(30px) rotate(0deg) scale(0.96); }
+  from { opacity: 0; transform: translate(-40px, 30px) rotate(-14deg); }
 }
 .fan-in {
-  animation: fan-in 900ms var(--ease-spring) both;
-  animation-delay: calc(var(--i, 0) * 110ms + 150ms);
+  animation: fan-in 620ms var(--ease-spring) both;
+  animation-delay: calc(var(--i, 0) * 120ms + 120ms);
 }
 
 @keyframes pulse-dot {
-  0%, 100% { box-shadow: 0 0 0 0 rgb(159 220 181 / 0.7); }
-  50% { box-shadow: 0 0 0 5px rgb(159 220 181 / 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgb(194 54 27 / 0.55); }
+  50% { box-shadow: 0 0 0 5px rgb(194 54 27 / 0); }
 }
-.pulse-dot {
-  animation: pulse-dot 1.6s var(--ease-out-soft) infinite;
-}
+.pulse-dot { animation: pulse-dot 1.6s var(--ease-out-soft) infinite; }
 
 @keyframes shimmer {
   from { background-position: -200% 0; }
@@ -188,31 +232,28 @@
 }
 .skeleton {
   border-radius: var(--radius-md);
-  background: linear-gradient(90deg, var(--color-sunken) 25%, #f5f6f3 50%, var(--color-sunken) 75%) 0 0 / 200% 100%;
+  background: linear-gradient(90deg, var(--color-sunken) 25%, #f6f5f1 50%, var(--color-sunken) 75%) 0 0 / 200% 100%;
   animation: shimmer 1.4s linear infinite;
 }
 
 @keyframes pop {
-  0% { transform: scale(0.92); opacity: 0; }
-  60% { transform: scale(1.02); opacity: 1; }
-  100% { transform: scale(1); }
+  0% { transform: scale(0.96); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }
-.pop {
-  animation: pop 520ms var(--ease-spring) both;
-}
+.pop { animation: pop 260ms var(--ease-out-soft) both; }
 
-/* Page transition: every owner page eases in when navigated to. */
+/* Page transition: every owner page slides in from the right edge a little, like turning a page. */
 @keyframes page-in {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateX(12px); }
   to { opacity: 1; transform: none; }
 }
-.page-in { animation: page-in 480ms var(--ease-spring) both; }
+.page-in { animation: page-in 360ms var(--ease-out-soft) both; }
 
 @keyframes sheet-up {
-  from { opacity: 0; transform: translateY(24px) scale(0.98); }
+  from { opacity: 0; transform: translateY(24px); }
   to { opacity: 1; transform: none; }
 }
-.sheet-up { animation: sheet-up 420ms var(--ease-spring) both; }
+.sheet-up { animation: sheet-up 320ms var(--ease-spring) both; }
 
 @keyframes loading-bar {
   from { transform: translateX(-120%); }
@@ -220,41 +261,22 @@
 }
 .loading-bar { animation: loading-bar 1.1s var(--ease-out-soft) infinite; }
 
-/* Bars that grow from the left when they appear (funnels, shares). */
+/* Bars that grow from the left when they appear (funnels, progress). */
 @keyframes grow-x {
   from { transform: scaleX(0); }
 }
 .grow-x {
   transform-origin: left center;
-  animation: grow-x 1100ms var(--ease-spring) both;
-  animation-delay: calc(var(--i, 0) * 120ms + 200ms);
+  animation: grow-x 900ms var(--ease-spring) both;
+  animation-delay: calc(var(--i, 0) * 110ms + 150ms);
 }
 
 /* Scroll reveal: .reveal elements fade up when they enter the viewport (see <Reveal>). */
-.reveal { opacity: 0; transform: translateY(22px); transition: opacity 800ms var(--ease-spring), transform 900ms var(--ease-spring); }
+.reveal { opacity: 0; transform: translateY(16px); transition: opacity 600ms var(--ease-out-soft), transform 600ms var(--ease-out-soft); }
 .reveal.is-in { opacity: 1; transform: none; }
 
-/* Spotlight: a soft light follows the pointer across a card (position set by <Spotlight>). */
-.spotlight { position: relative; isolation: isolate; }
-.spotlight::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  border-radius: inherit;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 400ms var(--ease-out-soft);
-  background: radial-gradient(360px circle at var(--mx, 50%) var(--my, 50%), rgb(159 220 181 / 0.18), transparent 60%);
-}
-.spotlight:hover::before { opacity: 1; }
-
-/* Gentle float for decorative stacks on the sign-in page. */
-@keyframes float-y {
-  0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); }
-  50% { transform: translateY(-10px) rotate(var(--r, 0deg)); }
-}
-.float-y { animation: float-y 7s ease-in-out infinite; animation-delay: calc(var(--i, 0) * -1.8s); }
+/* Kept for compatibility: no glow effect in this design. */
+.spotlight { position: relative; }
 
 @keyframes typing {
   0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
@@ -264,10 +286,10 @@
 .typing span:nth-child(2) { animation-delay: 0.15s; }
 .typing span:nth-child(3) { animation-delay: 0.3s; }
 
-@keyframes step-in-right { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
-@keyframes step-in-left { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
-.step-in-right { animation: step-in-right 520ms var(--ease-spring) both; }
-.step-in-left { animation: step-in-left 520ms var(--ease-spring) both; }
+@keyframes step-in-right { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+@keyframes step-in-left { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+.step-in-right { animation: step-in-right 380ms var(--ease-out-soft) both; }
+.step-in-left { animation: step-in-left 380ms var(--ease-out-soft) both; }
 
 /* A dot travelling along a pipeline link. */
 @keyframes flow {
@@ -278,17 +300,18 @@
 }
 .flow-dot { animation: flow 2.4s var(--ease-out-soft) infinite; animation-delay: calc(var(--i, 0) * 0.8s); }
 
+/* The journey track: the filled part of a rail grows to the current step. */
+@keyframes fill-x { from { transform: scaleX(0); } }
+.fill-x { transform-origin: left center; animation: fill-x 900ms var(--ease-spring) 200ms both; }
+
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .print-in, .rise-in, .fan-in, .skeleton, .pulse-dot, .pop, .page-in, .sheet-up, .grow-x, .float-y, .typing span,
-  .loading-bar, .step-in-right, .step-in-left, .flow-dot { animation: none; }
+  .print-in, .rise-in, .fan-in, .skeleton, .pulse-dot, .pop, .page-in, .sheet-up, .grow-x, .typing span,
+  .loading-bar, .step-in-right, .step-in-left, .flow-dot, .stamp-in, .hl-in, .fill-x { animation: none; }
   .reveal { opacity: 1; transform: none; transition: none; }
-  .spotlight::before { display: none; }
   .press:active:not(:disabled) { transform: none; }
   .lift:hover { transform: none; }
-}
-@media (prefers-reduced-transparency: reduce) {
-  .backdrop-blur-xl, .backdrop-blur-md { backdrop-filter: none; }
 }

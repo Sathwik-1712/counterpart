@@ -11,39 +11,32 @@ export function Button({
   children,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "accent" | "secondary" | "ghost" | "danger" | "light";
+  variant?: "primary" | "accent" | "secondary" | "ghost" | "danger" | "light" | "marker";
   size?: "sm" | "md" | "lg";
-  /** An icon nested in its own circle at the right edge (button-in-button). */
+  /** An icon at the right edge that nudges forward on hover. */
   trailing?: ReactNode;
 }) {
   return (
     <button
       {...props}
       className={clsx(
-        "press group inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full font-medium disabled:cursor-not-allowed disabled:opacity-45",
-        size === "sm" && "h-8 px-3.5 text-[13px]",
-        size === "md" && "h-10 px-5 text-sm",
-        size === "lg" && "h-12 px-6 text-[15px]",
-        trailing && (size === "lg" ? "pr-1.5" : "pr-1"),
-        variant === "primary" && "bg-ink text-white hover:bg-forest-2",
-        variant === "accent" && "bg-leaf text-white hover:bg-leaf-ink",
-        variant === "light" && "bg-white text-ink hover:bg-mint",
-        variant === "secondary" && "bg-surface text-ink shadow-[inset_0_0_0_1px_var(--color-line-strong)] hover:shadow-[inset_0_0_0_1px_var(--color-ink-2)]",
-        variant === "ghost" && "text-ink-2 hover:bg-sunken hover:text-ink",
-        variant === "danger" && "bg-surface text-kumkum shadow-[inset_0_0_0_1px_rgb(180_35_24/0.35)] hover:bg-kumkum-soft",
+        "press group inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-[var(--radius-sm)] font-semibold disabled:cursor-not-allowed disabled:opacity-45",
+        size === "sm" && "h-8 px-3 text-[13px]",
+        size === "md" && "h-10 px-4 text-[14px]",
+        size === "lg" && "h-12 px-5 text-[15px]",
+        variant === "primary" && "bg-ink text-white hover:bg-ink-2",
+        variant === "accent" && "bg-pen text-white hover:bg-pen-ink",
+        variant === "marker" && "bg-marker text-ink shadow-[inset_0_0_0_1.5px_var(--color-ink)] hover:bg-[#ffcb05]",
+        variant === "light" && "bg-white text-ink hover:bg-marker",
+        variant === "secondary" && "bg-surface text-ink shadow-[inset_0_0_0_1.5px_var(--color-ink)] hover:bg-sunken",
+        variant === "ghost" && "text-ink-2 hover:bg-ink/[0.06] hover:text-ink",
+        variant === "danger" && "bg-surface text-kumkum shadow-[inset_0_0_0_1.5px_rgb(194_54_27/0.5)] hover:bg-kumkum-soft",
         className,
       )}
     >
       {children}
       {trailing && (
-        <span
-          className={clsx(
-            "ml-1.5 inline-flex items-center justify-center rounded-full transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5 group-hover:-translate-y-px",
-            size === "lg" ? "h-9 w-9" : size === "md" ? "h-8 w-8" : "h-6 w-6",
-            variant === "secondary" || variant === "ghost" || variant === "light" ? "bg-ink/[0.06]" : "bg-white/15",
-          )}
-          aria-hidden
-        >
+        <span className="ml-0.5 inline-flex transition-transform duration-200 ease-out group-hover:translate-x-0.5" aria-hidden>
           {trailing}
         </span>
       )}
@@ -53,14 +46,14 @@ export function Button({
 
 const toneClass: Record<Tone, string> = {
   neutral: "bg-sunken text-ink-2",
-  leaf: "bg-leaf-soft text-leaf-ink",
+  leaf: "bg-pen-soft text-pen-ink",
   turmeric: "bg-turmeric-soft text-turmeric",
   kumkum: "bg-kumkum-soft text-kumkum",
 };
 
 export function Pill({ tone = "neutral", children, className }: { tone?: Tone; children: ReactNode; className?: string }) {
   return (
-    <span className={clsx("inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium", toneClass[tone], className)}>
+    <span className={clsx("inline-flex items-center gap-1 whitespace-nowrap rounded-[3px] px-2 py-0.5 text-xs font-semibold", toneClass[tone], className)}>
       {children}
     </span>
   );
@@ -68,7 +61,7 @@ export function Pill({ tone = "neutral", children, className }: { tone?: Tone; c
 
 const STATUS: Record<string, { label: string; tone: Tone }> = {
   draft: { label: "Draft", tone: "neutral" },
-  valid: { label: "Ready to approve", tone: "leaf" },
+  valid: { label: "Ready for you", tone: "turmeric" },
   invalid: { label: "Blocked", tone: "kumkum" },
   approved: { label: "Approved", tone: "leaf" },
   live: { label: "Live", tone: "leaf" },
@@ -84,9 +77,21 @@ export function StatusPill({ status, className }: { status: string; className?: 
   const s = STATUS[status] ?? { label: status, tone: "neutral" as Tone };
   return (
     <Pill tone={s.tone} className={className}>
-      {status === "live" && <span className="h-1.5 w-1.5 rounded-full bg-leaf" aria-hidden />}
+      {(status === "live" || status === "active") && <span className="pulse-dot h-1.5 w-1.5 rounded-full bg-kumkum" aria-hidden />}
       {s.label}
     </Pill>
+  );
+}
+
+/** Counterpart's mark on checked work: a crooked pen-blue rubber stamp. */
+export function Stamp({ children, className, tone = "pen", i = 0 }: { children: ReactNode; className?: string; tone?: "pen" | "kumkum" | "ink"; i?: number }) {
+  return (
+    <span
+      className={clsx("stamp stamp-in", tone === "pen" ? "text-pen" : tone === "kumkum" ? "text-kumkum" : "text-ink", className)}
+      style={{ "--i": i } as CSSProperties}
+    >
+      {children}
+    </span>
   );
 }
 
@@ -97,29 +102,32 @@ export function Card({
   ...rest
 }: { children: ReactNode; className?: string; as?: "section" | "article" | "div" } & HTMLAttributes<HTMLElement>) {
   return (
-    <As {...rest} className={clsx("rounded-[var(--radius-lg)] bg-surface shadow-[var(--shadow-soft)] ring-1 ring-line/80", className)}>
+    <As {...rest} className={clsx("rounded-[var(--radius-lg)] bg-surface ring-1 ring-line", className)}>
       {children}
     </As>
   );
 }
 
-/** Double-bezel: a hairline tray holding an inner plate, for the few elements that deserve to feel like objects. */
+/** A plain bordered plate for the few elements that should feel like objects on the counter. */
 export function Bezel({ children, className, inner, style }: { children: ReactNode; className?: string; inner?: string; style?: CSSProperties }) {
   return (
-    <div className={clsx("rounded-[var(--radius-xl)] bg-ink/[0.035] p-1.5 ring-1 ring-ink/[0.06]", className)} style={style}>
-      <div className={clsx("h-full overflow-hidden rounded-[calc(var(--radius-xl)-6px)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.6)]", inner)}>{children}</div>
+    <div className={clsx("rounded-[var(--radius-xl)] ring-1 ring-ink/15", className)} style={style}>
+      <div className={clsx("h-full overflow-hidden rounded-[var(--radius-xl)]", inner)}>{children}</div>
     </div>
   );
 }
 
-export function SectionHeading({ title, aside, sub, className, id }: { title: string; aside?: ReactNode; sub?: ReactNode; className?: string; id?: string }) {
+export function SectionHeading({ title, aside, sub, className, id, n }: { title: string; aside?: ReactNode; sub?: ReactNode; className?: string; id?: string; n?: number }) {
   return (
-    <div className={clsx("mb-5 flex flex-wrap items-end justify-between gap-x-4 gap-y-2", className)}>
-      <div>
-        <h2 id={id} className="text-[22px] md:text-[24px]">
-          {title}
-        </h2>
-        {sub && <p className="mt-1 text-sm text-muted">{sub}</p>}
+    <div className={clsx("mb-5 flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-ink pb-2.5", className)}>
+      <div className="flex items-baseline gap-3">
+        {n !== undefined && <span className="font-mono text-[12px] font-semibold text-muted">{String(n).padStart(2, "0")}</span>}
+        <div>
+          <h2 id={id} className="text-[26px] md:text-[30px]">
+            {title}
+          </h2>
+          {sub && <p className="mt-1 text-sm text-muted">{sub}</p>}
+        </div>
       </div>
       {aside}
     </div>
@@ -129,9 +137,9 @@ export function SectionHeading({ title, aside, sub, className, id }: { title: st
 export function PageHeader({ title, sub, aside }: { title: ReactNode; sub?: ReactNode; aside?: ReactNode }) {
   return (
     <header className="rise-in mb-10 flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
-      <div className="max-w-[760px]">
-        <h1 className="text-[34px] tracking-[-0.035em] md:text-[48px]">{title}</h1>
-        {sub && <p className="mt-3 max-w-[60ch] text-[15px] text-ink-2 md:text-base">{sub}</p>}
+      <div className="max-w-[780px]">
+        <h1 className="text-[44px] md:text-[64px]">{title}</h1>
+        {sub && <p className="mt-3 max-w-[60ch] text-[16px] text-ink-2 md:text-[17px]">{sub}</p>}
       </div>
       {aside}
     </header>
@@ -140,10 +148,10 @@ export function PageHeader({ title, sub, aside }: { title: ReactNode; sub?: Reac
 
 export function Empty({ children, action, icon }: { children: ReactNode; action?: ReactNode; icon?: ReactNode }) {
   return (
-    <div className="flex items-start gap-4 rounded-[var(--radius-lg)] border border-dashed border-line-strong bg-surface/60 px-5 py-6 text-sm text-ink-2">
-      {icon && <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-leaf-soft text-leaf-ink">{icon}</span>}
+    <div className="flex items-start gap-4 rounded-[var(--radius-lg)] border border-dashed border-line-strong px-5 py-5 text-[15px] text-ink-2">
+      {icon && <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-sunken text-ink-2">{icon}</span>}
       <div>
-        <p className="max-w-[52ch]">{children}</p>
+        <p className="max-w-[56ch]">{children}</p>
         {action && <div className="mt-3">{action}</div>}
       </div>
     </div>
@@ -154,12 +162,12 @@ export function Skeleton({ className }: { className?: string }) {
   return <div className={clsx("skeleton", className)} aria-hidden />;
 }
 
-/** A metric with the number as the hero. */
+/** A metric with the number as the hero, in condensed signboard figures. */
 export function Stat({ label, value, tone, className }: { label: string; value: ReactNode; tone?: "leaf" | "light"; className?: string }) {
   return (
     <div className={className}>
-      <p className={clsx("text-[32px] font-semibold leading-none tracking-[-0.04em] tabular-nums", tone === "leaf" && "text-leaf", tone === "light" && "text-white")}>{value}</p>
-      <p className={clsx("mt-1.5 text-xs", tone === "light" ? "text-white/60" : "text-muted")}>{label}</p>
+      <p className={clsx("sign tabular text-[44px]", tone === "leaf" && "text-pen", tone === "light" && "text-white")}>{value}</p>
+      <p className={clsx("mt-1.5 text-[13px]", tone === "light" ? "text-white/65" : "text-muted")}>{label}</p>
     </div>
   );
 }

@@ -1,16 +1,40 @@
 /* The posts customers see. The picture never carries text: the headline and body are the model's, and the offer
    box and call to action are drawn here from the locked facts, so the wording is exactly what the owner approved.
    Sizes are in container units, so the same layout exports as a crisp 1080px PNG. */
+"use client";
+
 import clsx from "clsx";
 import type { ReactNode } from "react";
+import { usePostStyle } from "@/lib/post-style";
 import type { Asset } from "@/lib/types";
 
 type Rendered = NonNullable<NonNullable<Asset["revision"]>["rendered"]>;
 
-function Picture({ url, className, children }: { url: string | null; className?: string; children?: ReactNode }) {
+/** A faint, tiled copyright mark across the photo plus a clear one in the corner: small enough not to spoil the
+ *  picture, spread out enough that it cannot simply be cropped off. Owners can switch it off on the Brand page. */
+function Watermark({ name }: { name?: string }) {
+  const { watermark } = usePostStyle();
+  if (!watermark || !name) return null;
+  const mark = `© ${name}`;
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+      <div className="absolute left-1/2 top-1/2 grid w-[180%] -translate-x-1/2 -translate-y-1/2 -rotate-[24deg] grid-cols-4 gap-x-[8cqw] gap-y-[11cqw] whitespace-nowrap text-[2.4cqw] font-semibold uppercase tracking-[0.18em] text-white/[0.14]">
+        {Array.from({ length: 28 }, (_, i) => (
+          <span key={i} className={i % 8 >= 4 ? "translate-x-[9cqw]" : ""}>
+            {mark}
+          </span>
+        ))}
+      </div>
+      <span className="absolute bottom-[1.6cqw] right-[2.4cqw] text-[2.3cqw] font-semibold text-white/80 [text-shadow:0_1px_2px_rgba(0,0,0,0.55)]">{mark}</span>
+    </div>
+  );
+}
+
+function Picture({ url, className, children, mark }: { url: string | null; className?: string; children?: ReactNode; mark?: string }) {
   return (
     <div className={clsx("relative overflow-hidden bg-[radial-gradient(120%_90%_at_20%_15%,#3a3830_0%,#16150f_70%)]", className)}>
       {url && <img src={url} alt="" className="absolute inset-0 h-full w-full object-cover" crossOrigin="anonymous" />}
+      {url && <Watermark name={mark} />}
       {children}
     </div>
   );
@@ -30,7 +54,7 @@ function OfferBox({ lines, className, light = true }: { lines: string[]; classNa
 function Cta({ text, code }: { text: string; code: string | null }) {
   return (
     <div className="flex items-center gap-[2cqw]">
-      <span className="rounded-[var(--radius-sm)] bg-[#16150f] px-[4cqw] py-[1.8cqw] text-[3.4cqw] font-semibold text-white">{text}</span>
+      <span className="rounded-[var(--radius-sm)] bg-[var(--color-brand)] px-[4cqw] py-[1.8cqw] text-[3.4cqw] font-semibold text-white">{text}</span>
       {code && <span className="rounded-[var(--radius-sm)] bg-black/55 px-[3cqw] py-[1.8cqw] font-receipt text-[3.2cqw] text-white">{code}</span>}
     </div>
   );
@@ -48,7 +72,7 @@ function Brand({ name }: { name: string }) {
 export function InstagramPost({ r, image, business, code }: { r: Rendered; image: string | null; business: string; code: string | null }) {
   return (
     <div className="bg-white">
-      <Picture url={image} className="@container aspect-square w-full">
+      <Picture url={image} mark={business} className="@container aspect-square w-full">
         <div className="absolute inset-0 flex flex-col justify-between bg-[linear-gradient(180deg,rgba(0,0,0,0.42)_0%,rgba(0,0,0,0)_34%,rgba(0,0,0,0)_52%,rgba(0,0,0,0.6)_100%)] p-[5cqw]">
           <div className="space-y-[3cqw]">
             <Brand name={business} />
@@ -74,7 +98,7 @@ export function InstagramPost({ r, image, business, code }: { r: Rendered; image
 
 export function Story({ r, image, business, code }: { r: Rendered; image: string | null; business: string; code: string | null }) {
   return (
-    <Picture url={image} className="@container aspect-[9/16] w-full">
+    <Picture url={image} mark={business} className="@container aspect-[9/16] w-full">
       <div className="absolute inset-0 flex flex-col justify-between bg-[linear-gradient(180deg,rgba(0,0,0,0.55)_0%,rgba(0,0,0,0)_32%,rgba(0,0,0,0)_50%,rgba(0,0,0,0.75)_100%)] p-[6cqw]">
         <div className="space-y-[3cqw]">
           <Brand name={business} />
@@ -93,7 +117,7 @@ export function Story({ r, image, business, code }: { r: Rendered; image: string
 export function Poster({ r, image, business, code }: { r: Rendered; image: string | null; business: string; code: string | null }) {
   return (
     <div className="@container flex aspect-[3/4] w-full flex-col overflow-hidden bg-white">
-      <Picture url={image} className="h-[54%]">
+      <Picture url={image} mark={business} className="h-[54%]">
         <div className="absolute left-[5cqw] top-[5cqw]">
           <Brand name={business} />
         </div>
@@ -111,7 +135,7 @@ export function Poster({ r, image, business, code }: { r: Rendered; image: strin
             <span className="w-[22cqw] text-center text-[2.6cqw] text-[#71717a]">QR code added when it goes live</span>
           )}
         </div>
-        <p className="mt-[2cqw] text-[3.4cqw] font-semibold text-[#16150f]">{r.cta}</p>
+        <p className="mt-[2cqw] text-[3.4cqw] font-semibold text-[var(--color-brand)]">{r.cta}</p>
       </div>
     </div>
   );

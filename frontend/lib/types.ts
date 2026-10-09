@@ -170,7 +170,7 @@ export interface ExperimentStatus {
   experiment: { id: string; hypothesis: string; dimension: string; status: string; trial_type: string; success_type: string };
   prior: { alpha: number; beta: number; from_campaign_assets: number };
   arms: ExperimentArm[];
-  decision: { winner: string | null; reason: string };
+  decision: { winner: string | null; reason: string; min_trials?: number; loss_threshold?: number };
 }
 
 export interface CampaignDetail {
@@ -188,6 +188,7 @@ export interface CampaignDetail {
   assets: Asset[];
   experiments: ExperimentStatus[];
   inbox: InboxItem[];
+  culture?: Festival[];
 }
 
 export interface ResultRow {
@@ -243,4 +244,47 @@ export interface AgentInfo {
   models: string[];
   calls: number;
   last: ModelCall | null;
+}
+
+export interface Festival {
+  key: string;
+  name: string;
+  meaning: string;
+  greetings: Partial<Record<Lang, string>>;
+  sayings: Partial<Record<Lang, string>>;
+  customs: string[];
+  angles: string[];
+  imagery: string;
+  avoid: string[];
+  colours: string[];
+  dates: { start: string; end: string; label: string }[];
+  region: string;
+  starts_in_days?: number | null;
+}
+
+export interface FunnelGroup {
+  key: string;
+  posts: number;
+  scans: number;
+  claims: number;
+  redeems: number;
+  conversion: number | null;
+}
+
+export interface Tip {
+  priority: number;
+  kind: string;
+  title: string;
+  detail: string;
+  ask: string | null;
+}
+
+export interface Analytics {
+  totals: { posts: number; scans: number; claims: number; redeems: number; claim_rate: number | null; redeem_rate: number | null; conversion: number | null };
+  daily: { date: string; scans: number; claims: number; redeems: number }[];
+  hours: { hour: number; scans: number; redeems: number }[];
+  by: { channel: FunnelGroup[]; language: FunnelGroup[]; segment: FunnelGroup[] };
+  posts: (FunnelGroup & { asset_id: string; code: string; channel: Channel; language: Lang; segment: string; variant: string | null; headline: string | null })[];
+  simulated: number;
+  tips: Tip[];
 }

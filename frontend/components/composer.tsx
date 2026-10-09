@@ -142,7 +142,7 @@ export function Composer({
               </select>
             </>
           )}
-          <span className="min-w-0 flex-1 text-xs text-muted">{note ?? (supported ? "" : "Type here. Voice needs Chrome, Edge or Safari.")}</span>
+          <span className="min-w-0 flex-1 text-[13px] text-muted">{note ?? (supported ? "" : "Type here. Voice needs Chrome, Edge or Safari.")}</span>
           <Button variant="primary" onClick={submit} disabled={busy || !text.trim()} trailing={<ArrowRight size={15} weight="bold" />}>
             {busy ? "Sending…" : submitLabel}
           </Button>

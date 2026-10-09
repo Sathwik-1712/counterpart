@@ -53,6 +53,32 @@ BASELINE_FORBIDDEN: dict[str, list[str]] = {
     "hi": ["मुफ़्त", "मुफ्त", "फ्री", "फ़्री", "असीमित", "अनलिमिटेड", "पूरे दिन", "दिन भर", "गारंटी", "सबसे सस्ता",
            "डिलीवरी", "ऑर्डर"],
 }
+# Phrases that make copy read as machine-written or as an agency ad. Posts must sound like the owner talking to a
+# regular, so the guard blocks these in what the writer typed (owner edits get a warning instead).
+AI_CLICHES: tuple[str, ...] = (
+    "elevate", "elevated", "indulge", "indulgence", "treat yourself", "don't miss out", "dont miss out", "unleash",
+    "unlock", "embark", "delve", "look no further", "game-changer", "game changer", "fast-paced", "whether you're",
+    "nestled", "vibrant", "tantalizing", "tantalising", "mouth-watering", "mouthwatering", "culinary journey",
+    "experience the magic", "fuel your", "step into", "symphony", "taste sensation", "like never before",
+    "next level", "level up", "must-try", "irresistible", "curated", "seamless", "the perfect blend",
+    "perfect harmony", "delightful", "exquisite", "awaits you", "await you", "your go-to", "go-to spot",
+    "it's time to", "get ready to", "say goodbye to", "say hello to", "in the heart of", "hidden gem",
+    "cherish", "savor every", "savour every", "a feast for", "ultimate", "epic", "amazing", "mind-blowing",
+)
+_DASHES = re.compile(r"[\u2014\u2013]")  # em and en dashes: the most common tell of generated copy
+
+
+def machine_voice(text: str) -> list[str]:
+    """Phrases in the text that make it sound machine-written."""
+    low = unicodedata.normalize("NFC", text).casefold().replace("\u2019", "'")
+    hits = [p for p in AI_CLICHES if re.search(rf"(?<!\w){re.escape(p)}(?!\w)", low)]
+    if _DASHES.search(text):
+        hits.append("long dash")
+    if re.search(r"!.*!", text):
+        hits.append("two exclamation marks")
+    return hits
+
+
 HARMLESS_IDIOMS = ("feel free", "sugar-free", "sugar free", "gluten-free", "hands-free")
 
 
@@ -268,6 +294,7 @@ def deterministic_checks(
     lang: str,
     channel: str,
     allowed_phrases: tuple[str, ...] = (),  # business constants containing digits, e.g. "4th Block"
+    strict_voice: bool = True,  # the writer's copy is blocked for machine-sounding phrases; the owner's only warned
 ) -> list[Check]:
     checks: list[Check] = []
     used = slot_keys(content)
@@ -290,6 +317,13 @@ def deterministic_checks(
     checks.append(Check("L1", "well_formed_script", not broken,
                         "Every word is correctly formed." if not broken else
                         f"Misspelt or broken letters: {', '.join(broken)}", evidence=broken))
+
+    # L2: sounds like a person, not a generated ad
+    robotic = machine_voice(" ".join(SLOT.sub(" ", s.text) for f in TEXT_FIELDS for s in getattr(content, f)))
+    checks.append(Check("L2", "sounds_human", not robotic,
+                        "Sounds like a person, not an ad." if not robotic else
+                        f"Sounds machine-written ({', '.join(robotic)}). Say it the way the owner would.",
+                        severity="block" if strict_voice else "warn", evidence=robotic))
 
     # L2: slots exist and are translated
     unknown = [k for k in used if sheet.get(k) is None]

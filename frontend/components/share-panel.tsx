@@ -51,8 +51,8 @@ export function SharePanel({ assets, rows }: { assets: Asset[]; rows: ResultRow[
           ["At the counter", "Print the QR code. Staff type the customer's code on the Counter screen."],
         ].map(([t, d], i) => (
           <li key={t} className="rise-in bg-surface p-5" style={stagger(i)}>
-            <p className="font-mono text-[11px] font-semibold text-muted">{String(i + 1).padStart(2, "0")}</p>
-            <p className="mt-1 text-[19px] font-bold [font-stretch:85%]">{t}</p>
+            <p className="font-mono text-[12px] font-semibold text-muted">{String(i + 1).padStart(2, "0")}</p>
+            <p className="mt-1 text-[19px] font-bold [font-stretch:90%]">{t}</p>
             <p className="mt-1 text-[14px] text-ink-2">{d}</p>
           </li>
         ))}

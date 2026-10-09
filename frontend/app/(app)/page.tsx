@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CampaignLedger } from "@/components/campaign-card";
 import { Composer } from "@/components/composer";
+import { FestivalCard } from "@/components/festival-card";
 import { FindingsList, InboxList } from "@/components/inbox";
 import { InstagramPost } from "@/components/previews";
 import { Shell } from "@/components/shell";
@@ -13,7 +14,7 @@ import { Empty, SectionHeading, Skeleton, stagger } from "@/components/ui";
 import { api, useResource } from "@/lib/api";
 import { useBusiness } from "@/lib/business";
 import { nextAction, stepOfSummary } from "@/lib/journey";
-import type { CampaignDetail, Overview } from "@/lib/types";
+import type { CampaignDetail, Festival, Overview } from "@/lib/types";
 
 function greeting() {
   const h = new Date().getHours();
@@ -63,7 +64,7 @@ function GettingStarted({ campaigns, live }: { campaigns: number; live: number }
   ];
   return (
     <div className="h-full rounded-[var(--radius-lg)] bg-surface p-6 ring-1 ring-ink md:p-8">
-      <p className="text-[22px] font-bold [font-stretch:85%]">Getting started</p>
+      <p className="text-[22px] font-bold [font-stretch:90%]">Getting started</p>
       <ol className="mt-4 divide-y divide-line border-t border-line">
         {steps.map((st, i) => {
           const inner = (
@@ -99,13 +100,16 @@ export default function Today() {
   const router = useRouter();
   const business = useBusiness();
   const { data, error, reload } = useResource<Overview>(`/businesses/${business.slug}`);
+  const { data: culture } = useResource<{ festivals: Festival[] }>(`/businesses/${business.slug}/culture`);
+  const festivals = (culture?.festivals ?? []).filter((f) => (f.starts_in_days ?? 99) <= 30);
   const current = data?.campaigns.filter((c) => !c.is_historical) ?? [];
   const showcase = current.find((c) => c.cover_url);
   const owner = (data?.business.profile as { owner?: { name?: string } } | undefined)?.owner?.name;
   const events = (data?.findings ?? []).filter((f) => f.kind === "event_upcoming").map((f) => f.message.split(" starts ")[0].replace(/\s*\(.*\)/, ""));
   const menu = ((data?.business.profile as { menu?: { name: string }[] } | undefined)?.menu ?? []).map((m) => m.name);
   const suggestions = [
-    ...events.slice(0, 2).map((e) => `Something for ${e}`),
+    ...festivals.slice(0, 2).map((f) => `${f.angles[0]} (${f.name.split(" (")[0]})`),
+    ...events.filter((e) => !festivals.some((f) => e.toLowerCase().includes(f.key))).slice(0, 1).map((e) => `Something for ${e}`),
     ...(menu[0] ? [`A weekday offer on ${menu[0].toLowerCase()}`] : []),
     "Bring regulars back on a slow day",
   ].slice(0, 3);
@@ -128,7 +132,7 @@ export default function Today() {
       <header className="rise-in flex flex-wrap items-end justify-between gap-x-10 gap-y-4">
         <div>
           <p className="font-mono text-[12px] font-semibold text-muted">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</p>
-          <h1 className="mt-2 text-[48px] md:text-[80px]">
+          <h1 className="mt-2 text-[44px] md:text-[64px]">
             {greeting()}
             {owner ? `, ${owner}` : ""}.
           </h1>
@@ -212,9 +216,20 @@ export default function Today() {
         )}
       </section>
 
+      {festivals.length > 0 && (
+        <section className="mt-16" aria-labelledby="fest-h">
+          <SectionHeading id="fest-h" title="Festivals coming up" className="border-b-0" sub="Greetings checked by hand in your languages, the customs people follow, and ideas that fit your business." />
+          <div className="grid gap-4 xl:grid-cols-2">
+            {festivals.slice(0, 2).map((f) => (
+              <FestivalCard key={f.key} f={f} compact />
+            ))}
+          </div>
+        </section>
+      )}
+
       <section className="mt-16 max-w-[760px]" aria-labelledby="noticed-h">
         <SectionHeading id="noticed-h" title="Counterpart noticed" className="border-b-0" sub="From your calendar, your reviews and your campaigns." />
-        {data ? <FindingsList findings={data.findings} /> : <Skeleton className="h-32" />}
+        {data ? <FindingsList findings={data.findings.filter((f) => !(f.kind === "event_upcoming" && festivals.some((x) => x.key === f.festival)))} /> : <Skeleton className="h-32" />}
       </section>
     </Shell>
   );

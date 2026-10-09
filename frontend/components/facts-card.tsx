@@ -73,7 +73,7 @@ export function FactsCard({
     return (
       <>
         <span className={clsx(bad && "text-kumkum underline decoration-dotted underline-offset-4")}>{f.display[l] ?? <span className="text-kumkum">missing</span>}</span>
-        {back && <span className="mt-0.5 block text-xs font-normal tracking-normal text-muted">reads as “{back}”</span>}
+        {back && <span className="mt-0.5 block text-[13px] font-normal tracking-normal text-muted">reads as “{back}”</span>}
       </>
     );
   };
@@ -92,7 +92,7 @@ export function FactsCard({
             <h2 id="facts-h" className="text-[16px] tracking-tight">
               The offer
             </h2>
-            <p className={clsx("text-xs", isDraft ? "text-turmeric" : "text-muted")}>{isDraft ? `Draft ${shown.version}, not locked yet` : `Locked, version ${shown.version}`}</p>
+            <p className={clsx("text-[13px]", isDraft ? "text-turmeric" : "text-muted")}>{isDraft ? `Draft ${shown.version}, not locked yet` : `Locked, version ${shown.version}`}</p>
           </div>
         </div>
         {isDraft && shown.change_reason && <p className="mt-3 text-sm text-ink-2">{shown.change_reason}</p>}
@@ -119,7 +119,7 @@ export function FactsCard({
 
         {lead && (
           <div className="mt-5" lang={active}>
-            <p className="text-xs text-muted">{sentence(lead.label)}</p>
+            <p className="text-[13px] text-muted">{sentence(lead.label)}</p>
             <p className="mt-1 text-[30px] font-semibold leading-[1.1] tracking-[-0.03em]">{value(lead.key, active)}</p>
             {isDraft && assumed.has(lead.key) && <Assumed />}
           </div>
@@ -127,7 +127,7 @@ export function FactsCard({
         <dl className="mt-4 grid gap-3" lang={active}>
           {rest.map((f) => (
             <div key={f.key}>
-              <dt className="text-xs text-muted">
+              <dt className="text-[13px] text-muted">
                 {sentence(f.label)}
                 {!f.required && " (optional)"}
               </dt>
@@ -179,7 +179,7 @@ export function FactsCard({
           </p>
         )}
         {history.length > 0 && (
-          <p className="text-xs text-muted">
+          <p className="text-[13px] text-muted">
             Earlier versions: {history.map((h) => `v${h.version}${h.change_reason ? ` (${h.change_reason})` : ""}`).join("; ")}
           </p>
         )}
@@ -196,7 +196,7 @@ export function FactsCard({
 
 function Assumed() {
   return (
-    <p className="mt-1 inline-flex items-center gap-1 rounded-[var(--radius-sm)] bg-turmeric-soft px-2 py-0.5 text-xs font-medium text-turmeric">
+    <p className="mt-1 inline-flex items-center gap-1 rounded-[var(--radius-sm)] bg-turmeric-soft px-2 py-0.5 text-[13px] font-medium text-turmeric">
       <WarningCircle size={13} aria-hidden /> Counterpart assumed this. Check it.
     </p>
   );

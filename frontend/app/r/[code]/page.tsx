@@ -127,7 +127,7 @@ export default function OfferPage({ params }: { params: Promise<{ code: string }
         </div>
 
         {!claimed && (
-          <p className="mt-8 flex items-center gap-1.5 text-xs text-muted">
+          <p className="mt-8 flex items-center gap-1.5 text-[13px] text-muted">
             <MapPin size={13} aria-hidden />
             {data.name}, {data.locality}, {data.city}
           </p>

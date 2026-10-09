@@ -49,7 +49,7 @@ export default function CounterPage() {
               </div>
             </div>
             <form onSubmit={redeem} className="mt-8 space-y-3">
-              <label htmlFor="code" className="text-xs text-white/60">
+              <label htmlFor="code" className="text-[13px] text-white/60">
                 Offer code
               </label>
               <input

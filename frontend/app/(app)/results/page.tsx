@@ -29,7 +29,7 @@ function CopyLink({ link }: { link: string }) {
         setDone(true);
         setTimeout(() => setDone(false), 1600);
       }}
-      className="press inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] bg-sunken px-3 py-1.5 text-xs font-medium text-ink hover:bg-line"
+      className="press inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] bg-sunken px-3 py-1.5 text-[13px] font-medium text-ink hover:bg-line"
       aria-label={`Copy link ${link}`}
     >
       {done ? <Check size={13} weight="bold" className="text-pen" aria-hidden /> : <Copy size={13} aria-hidden />}
@@ -49,12 +49,12 @@ function PostRow({ r, best, i }: { r: ResultRow; best: boolean; i: number }) {
         <p className="flex items-center gap-2 text-[15px] font-semibold tracking-tight">
           {CHANNEL_LABEL[r.channel]} <span className="font-normal text-muted">in {LANG_LABEL[r.language]}</span>
           {best && (
-            <span className="inline-flex items-center gap-1 rounded-[var(--radius-sm)] bg-pen-soft px-2 py-0.5 text-[11px] font-medium text-pen-ink">
+            <span className="inline-flex items-center gap-1 rounded-[var(--radius-sm)] bg-pen-soft px-2 py-0.5 text-[12px] font-medium text-pen-ink">
               <Trophy size={11} weight="fill" aria-hidden /> Best so far
             </span>
           )}
         </p>
-        <p className="truncate text-xs text-muted">
+        <p className="truncate text-[13px] text-muted">
           For {segmentLabel(r.segment).toLowerCase()}
           {r.variant && `, variant ${r.variant}`} <span className="font-receipt text-ink-2">· {r.code}</span>
         </p>
@@ -67,17 +67,17 @@ function PostRow({ r, best, i }: { r: ResultRow; best: boolean; i: number }) {
         ].map(([l, n]) => (
           <div key={l as string}>
             <dd className="text-[17px] font-semibold leading-none tabular-nums">{n}</dd>
-            <dt className="mt-1 text-[11px] text-muted">{l}</dt>
+            <dt className="mt-1 text-[12px] text-muted">{l}</dt>
           </div>
         ))}
         <div>
           <dd className={clsx("text-[17px] font-semibold leading-none tabular-nums", r.conversion ? "text-pen" : "text-muted")}>{pct(r.conversion)}</dd>
-          <dt className="mt-1 text-[11px] text-muted">Converted</dt>
+          <dt className="mt-1 text-[12px] text-muted">Converted</dt>
         </div>
       </dl>
       <div className="flex gap-1.5">
         <CopyLink link={r.link} />
-        <a href={`/api/public/qr/${r.code}.png`} download={`qr-${r.code}.png`} className="press inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] bg-sunken px-3 py-1.5 text-xs font-medium text-ink hover:bg-line">
+        <a href={`/api/public/qr/${r.code}.png`} download={`qr-${r.code}.png`} className="press inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] bg-sunken px-3 py-1.5 text-[13px] font-medium text-ink hover:bg-line">
           <DownloadSimple size={13} aria-hidden /> QR
         </a>
       </div>
@@ -132,10 +132,10 @@ export default function ResultsPage() {
               {HOW.map(({ icon: Icon, title, text }, i) => (
                 <li key={title} className="bg-surface p-5">
                   <span className="flex items-center justify-between">
-                    <span className="font-mono text-[11px] font-semibold text-muted">{String(i + 1).padStart(2, "0")}</span>
+                    <span className="font-mono text-[12px] font-semibold text-muted">{String(i + 1).padStart(2, "0")}</span>
                     <Icon size={20} weight="bold" className="text-pen" aria-hidden />
                   </span>
-                  <p className="mt-2 text-[19px] font-bold [font-stretch:85%]">{title}</p>
+                  <p className="mt-2 text-[19px] font-bold [font-stretch:90%]">{title}</p>
                   <p className="mt-1 text-[14px] text-ink-2">{text}</p>
                 </li>
               ))}

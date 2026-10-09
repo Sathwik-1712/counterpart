@@ -3,6 +3,8 @@
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { api, ApiError, setLiveBusiness } from "./api";
+import { PostStyle } from "./post-style";
+import { applyTheme, themeFor } from "./theme";
 
 export interface Biz {
   id: string;
@@ -15,6 +17,11 @@ export interface Biz {
   kind: string | null;
   owner_name: string | null;
   role: string;
+  theme: string | null;
+  palette: string[];
+  palette_hex: Record<string, string>;
+  voice: string[];
+  watermark: boolean;
 }
 export interface Me {
   user: { id: string; email: string | null };
@@ -59,6 +66,9 @@ export function BusinessProvider({ children, fallback }: { children: ReactNode; 
 
   const business = me ? (me.businesses.find((b) => b.slug === slug) ?? me.businesses.find((b) => !b.is_demo) ?? me.businesses[0]) : undefined;
   useEffect(() => setLiveBusiness(business?.slug ?? null), [business?.slug]);
+  useEffect(() => {
+    if (business) applyTheme(themeFor(business));
+  }, [business]);
 
   const select = useCallback(
     (s: string) => {
@@ -81,7 +91,11 @@ export function BusinessProvider({ children, fallback }: { children: ReactNode; 
       </div>
     );
   if (!me || !business) return <>{fallback}</>;
-  return <Ctx.Provider value={{ me, business, select, reload }}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={{ me, business, select, reload }}>
+      <PostStyle.Provider value={{ watermark: business.watermark !== false }}>{children}</PostStyle.Provider>
+    </Ctx.Provider>
+  );
 }
 
 export function useWorkspace() {

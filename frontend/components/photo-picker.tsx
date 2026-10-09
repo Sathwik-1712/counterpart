@@ -4,6 +4,7 @@ import { Check, X } from "@phosphor-icons/react";
 import clsx from "clsx";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { api } from "@/lib/api";
 import { useBusiness } from "@/lib/business";
 import type { Photo } from "@/lib/types";
@@ -43,7 +44,7 @@ export function PhotoPicker({ assetId, current, onClose, onPicked }: { assetId: 
     }
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-3 backdrop-blur-[2px] md:items-center" onClick={onClose}>
       <div role="dialog" aria-label="Choose a photo" className="sheet-up flex max-h-[80dvh] w-full max-w-3xl flex-col rounded-[var(--radius-xl)] bg-surface shadow-[var(--shadow-float)]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 pb-3 pt-5">
@@ -83,7 +84,7 @@ export function PhotoPicker({ assetId, current, onClose, onPicked }: { assetId: 
                     className={clsx("rise-in press group relative aspect-square overflow-hidden rounded-[var(--radius-lg)] ring-2", on ? "ring-pen" : "ring-transparent hover:ring-line-strong")}
                   >
                     <img src={p.url} alt={p.caption || ""} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                    <span className="absolute inset-x-0 bottom-0 bg-[linear-gradient(transparent,rgba(8,20,13,0.75))] p-2.5 text-left text-[11px] text-white">
+                    <span className="absolute inset-x-0 bottom-0 bg-[linear-gradient(transparent,rgba(8,20,13,0.75))] p-2.5 text-left text-[12px] text-white">
                       {SOURCE_LABEL[p.source]}
                       {p.caption ? `: ${p.caption}` : ""}
                     </span>
@@ -99,6 +100,7 @@ export function PhotoPicker({ assetId, current, onClose, onPicked }: { assetId: 
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

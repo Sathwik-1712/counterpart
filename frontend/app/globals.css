@@ -32,6 +32,8 @@
   --color-kumkum: #c2361b;
   --color-kumkum-soft: #fae1d9;
   --color-receipt: #fffffb;
+  /* Accent printed on posts; each business theme overrides it (lib/theme.ts). */
+  --color-brand: #16150f;
 
   --font-sans: var(--font-anek), var(--font-kannada), var(--font-devanagari), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-anek), var(--font-kannada), var(--font-devanagari), ui-sans-serif, sans-serif;
@@ -70,9 +72,9 @@
   h1, h2, h3 {
     font-family: var(--font-display);
     font-weight: 700;
-    font-stretch: 80%;
-    letter-spacing: -0.005em;
-    line-height: 1;
+    font-stretch: 90%;
+    letter-spacing: -0.012em;
+    line-height: 1.08;
     text-wrap: balance;
   }
   p {
@@ -94,7 +96,7 @@
 
 @layer components {
 /* Condensed signboard type for numbers and labels that should read from across the room. */
-.sign { font-family: var(--font-display); font-weight: 700; font-stretch: 75%; letter-spacing: 0; line-height: 0.9; }
+.sign { font-family: var(--font-display); font-weight: 700; font-stretch: 82%; letter-spacing: -0.01em; line-height: 0.95; }
 .wide { font-stretch: 112%; }
 .tabular { font-variant-numeric: tabular-nums; }
 
@@ -135,9 +137,9 @@
   border-radius: 3px;
   padding: 0.1em 0.45em;
   font-family: var(--font-martian), ui-monospace, monospace;
-  font-size: 10.5px;
+  font-size: 11.5px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   transform: rotate(-2deg);
   white-space: nowrap;
@@ -299,6 +301,8 @@
   to { left: calc(100% - 7px); opacity: 0; }
 }
 .flow-dot { animation: flow 2.4s var(--ease-out-soft) infinite; animation-delay: calc(var(--i, 0) * 0.8s); }
+
+@keyframes grow-y { from { transform: scaleY(0); } }
 
 /* The journey track: the filled part of a rail grows to the current step. */
 @keyframes fill-x { from { transform: scaleX(0); } }

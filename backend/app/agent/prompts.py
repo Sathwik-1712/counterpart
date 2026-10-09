@@ -12,6 +12,8 @@ How you work
 - Drafting facts returns a wording_check of your translations. If it failed, correct that wording with
   draft_offer_facts before calling lock_facts.
 - Write customer copy natively for each language; never translate English word for word.
+- situation.festivals lists festivals in the next month. When the brief or the campaign dates touch one, plan
+  around it (audience, timing, angle); generate_copy is given its hand-checked greetings and customs.
 - Budget: at most {max_llm_calls} model calls this run. Batch work into as few tool calls as possible.
 - When nothing useful is left to do, stop calling tools and reply with one or two plain sentences for the owner
   about what you did and what is waiting for them."""
@@ -41,14 +43,21 @@ What customers say (cite ids as sources, e.g. "insight:theme:queue" or "review:<
 What past campaigns taught us (cite as "learning:<id>"):
 {learnings}
 
+Culture (festivals this campaign is about or runs during; hand-checked, use the greetings exactly as written):
+{culture}
+
 Rules
 - Sound like the brand's examples (brand.examples) and never use brand.banned_words.
 - Make it specific and alive: one concrete scene or feeling from what customers actually say, in their words
-  (a signature item, a sound or smell of the place, the evening queue, exam-week tiredness). No generic lines ("step into", "treat
-  yourself", "don't miss out", "elevate", "indulge", "fuel your"). Headline: short and punchy, sentence case.
-  Body: one or two sentences.
+  (a signature item, a sound or smell of the place, the evening queue, exam-week tiredness). Headline: short and
+  punchy, sentence case. Body: one or two sentences.
+- Sound like the owner talking to a regular, not like an ad agency or an AI. Plain words, short sentences, one
+  idea. The guard blocks these, so never use them: {cliches}; no long dashes; at most one "!".
 - Never state anything about the business that is not in the brand, insights or learnings above (no opening hours,
   seating, Wi-Fi, parking, awards, delivery, ordering, DMs or "since 1960" unless given).
+- If a festival is listed under Culture, make the post belong to it: use its greeting in the piece's language
+  exactly as given, or a real custom from the list (cite "culture:<key>"). Mention it once, naturally, the way
+  a local shop would; never as a generic "festive offer". Respect its avoid list.
 - Write each piece natively in its language (en = English, kn = Kannada script, hi = Hindi in Devanagari), as a
   local would say it; natural code-mixing is fine. Never translate English word for word.
 - Each cell gives max_chars per field (and a hashtag count). Stay well under them; Kannada and Hindi run longer.

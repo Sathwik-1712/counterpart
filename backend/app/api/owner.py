@@ -2,7 +2,10 @@
 
 import asyncio
 import json
+import random
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from pydantic import BaseModel, Field
@@ -14,6 +17,7 @@ from app.agent.tools import DraftFactsArgs
 from app.api.deps import get_router, require_owner, tool_context
 from app.auth import CurrentUser, User, business_for, require_member
 from app.db import connection, fetch_all, fetch_one, jsonb
+from app.domain import analytics, culture
 from app.domain.facts import AssetContent
 from app.storage import get_storage
 
@@ -167,6 +171,7 @@ async def get_campaign(user: CurrentUser, campaign_id: str) -> dict[str, Any]:
         lib = {p["image_key"]: p for p in await fetch_all(
             conn, "select image_key, source, attribution, caption from business_photos where image_key = any(%s)",
             ([k for k in keys if k],))}
+        b = await fetch_one(conn, "select languages from businesses where id = %s", (c["business_id"],))
     for a in assets:
         rev = a.get("revision") or {}
         a["image_url"] = storage.url(rev["image_key"]) if rev.get("image_key") else None
@@ -174,7 +179,105 @@ async def get_campaign(user: CurrentUser, campaign_id: str) -> dict[str, Any]:
         p = lib.get(rev.get("image_key"))
         a["image_source"] = ({"source": p["source"], "attribution": p["attribution"], "caption": p["caption"]} if p
                              else {"source": "generated"} if rev.get("image_key") else None)
-    return {"campaign": c, "facts": facts, "assets": assets, "experiments": exps, "inbox": inbox}
+    festivals = culture.relevant(f"{c['name']} {c.get('brief') or ''} {json.dumps(c.get('intent') or {})}",
+                                 c.get("starts_on"), c.get("ends_on"))
+    return {"campaign": c, "facts": facts, "assets": assets, "experiments": exps, "inbox": inbox,
+            "culture": [culture.card(f, b["languages"], today=_today()) for f in festivals]}
+
+
+IST = ZoneInfo("Asia/Kolkata")
+CHANNEL_NAMES = {"instagram_post": "Instagram posts", "instagram_story": "Instagram stories", "poster": "Counter posters",
+                 "whatsapp": "WhatsApp"}
+LANGUAGE_NAMES = {"en": "English", "kn": "Kannada", "hi": "Hindi"}
+
+
+def _today() -> date:
+    return datetime.now(IST).date()
+
+
+@api.get("/campaigns/{campaign_id}/analytics")
+async def campaign_analytics(user: CurrentUser, campaign_id: str) -> dict[str, Any]:
+    """Funnel, trend, best hours, breakdowns and optimisation tips for one campaign."""
+    async with connection() as conn:
+        c = await services.get_campaign(conn, campaign_id)
+        await require_member(conn, user, c["business_id"])
+        b = await services.get_business_by_id(conn, c["business_id"])
+        posts = await fetch_all(
+            conn, """select a.id::text as asset_id, t.code, a.channel, a.language, a.segment, a.variant,
+                            r.rendered->>'headline' as headline
+                     from touchpoints t join assets a on a.id = t.asset_id
+                     left join asset_revisions r on r.asset_id = a.id and r.n = a.current_revision
+                     where t.campaign_id = %s order by a.created_at""", (campaign_id,))
+        events = await fetch_all(
+            conn, """select asset_id::text, type, qty, source, occurred_at at time zone 'Asia/Kolkata' as at
+                     from outcome_events where campaign_id = %s""", (campaign_id,))
+        exps = [await services.experiment_status(conn, e["id"]) for e in await fetch_all(
+            conn, "select id from experiments where campaign_id = %s and status <> 'decided'", (campaign_id,))]
+    today = _today()
+    created = c["created_at"].astimezone(IST).date()
+    first = min((e["at"].date() for e in events), default=created)
+    langs = b.get("languages") or ["en"]
+    text = f"{c['name']} {c.get('brief') or ''}"
+    festivals = {f.key: f for f in culture.relevant(text, c.get("starts_on"), c.get("ends_on"))}
+    festivals.update({f.key: f for f, *_ in culture.upcoming(today, days=14)})
+    out = analytics.summarize(
+        posts, events, today=today, since=min(first, created, today - timedelta(days=6)),
+        labels={"channel": CHANNEL_NAMES, "language": LANGUAGE_NAMES},
+        festivals=[culture.card(f, langs, today=today) for f in festivals.values()],
+        experiments=[{"winner": next((a["variant"] for a in e["arms"] if a["asset_id"] == e["decision"]["winner"]),
+                                     e["decision"]["winner"]), "arms": e["arms"]} for e in exps])
+    return out
+
+
+@api.get("/businesses/{slug}/culture")
+async def business_culture(user: CurrentUser, slug: str) -> dict[str, Any]:
+    """Festivals in the next two months, with hand-checked greetings in the business's languages."""
+    async with connection() as conn:
+        b = await business_for(conn, user, slug)
+    today = _today()
+    return {"festivals": [culture.card(f, b["languages"], today=today) for f, *_ in culture.upcoming(today, days=60)]}
+
+
+@api.post("/campaigns/{campaign_id}/simulate")
+async def simulate_week(user: CurrentUser, campaign_id: str) -> dict[str, Any]:
+    """Demo control: a week of plausible opens, claims and redemptions on the live posts, stored as 'simulated'
+    and labelled in the UI, so the analytics can be shown before real customers arrive."""
+    async with connection() as conn:
+        c = await services.get_campaign(conn, campaign_id)
+        await require_member(conn, user, c["business_id"])
+        b = await services.get_business_by_id(conn, c["business_id"])
+        if not b.get("is_demo"):
+            raise services.Conflict("Simulated results can only be added to the demo business.")
+        tps = await fetch_all(conn, """select t.code, a.id as asset_id, a.channel, a.language from touchpoints t
+                                       join assets a on a.id = t.asset_id where t.campaign_id = %s""", (campaign_id,))
+        if not tps:
+            raise services.Conflict("Approve some posts first; simulated results attach to live posts.")
+        rng = random.Random(campaign_id)
+        # Evening-heavy opens; WhatsApp and Kannada a little stronger, so the tips have something to find.
+        hours = [7, 8, 9, 12, 13, 16, 17, 17, 18, 18, 18, 19, 19, 20, 21]
+        now = datetime.now(UTC)
+        rows = []
+        for tp in tps:
+            base = {"whatsapp": 0.3, "instagram_post": 0.16, "instagram_story": 0.12, "poster": 0.2}.get(tp["channel"], 0.15)
+            base *= 1.35 if tp["language"] == "kn" else 1.0
+            for d in range(7):
+                day = now - timedelta(days=6 - d)
+                for _ in range(rng.randint(2, 9) + d):
+                    at = day.astimezone(IST).replace(hour=rng.choice(hours), minute=rng.randint(0, 59)).astimezone(UTC)
+                    rows.append((campaign_id, tp["asset_id"], tp["code"], "scan", at))
+                    if rng.random() < base * 2.2:
+                        rows.append((campaign_id, tp["asset_id"], tp["code"], "click", at + timedelta(minutes=1)))
+                        if rng.random() < 0.55:
+                            rows.append((campaign_id, tp["asset_id"], tp["code"], "redeem", at + timedelta(hours=rng.randint(1, 30))))
+        rows = [r for r in rows if r[4] <= now]
+        async with conn.cursor() as cur:
+            await cur.executemany(
+                """insert into outcome_events (campaign_id, asset_id, touchpoint_code, type, source, occurred_at, meta)
+                   values (%s, %s, %s, %s, 'simulated', %s, '{"synthetic": true}')""", rows)
+        await ledger.record(conn, c["business_id"], "outcome.simulated",
+                            f"Added {len(rows)} simulated results for the demo (labelled as simulated)",
+                            actor="system", campaign_id=c["id"], payload={"synthetic": True, "events": len(rows)})
+    return {"events": len(rows)}
 
 
 class AgentMessage(BaseModel):

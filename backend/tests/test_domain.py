@@ -192,3 +192,55 @@ def test_planned_call_to_action_never_reaches_the_writer_or_checker():
     assert intent_for_copy(intent) == {"core_message": "Christmas membership deal", "tone": "bold"}
     assert intent_for_copy(None) == {}
     assert "never judge them against the intent" in SYSTEM
+
+
+def test_machine_sounding_copy_is_blocked_for_the_writer_and_warned_for_the_owner():
+    from app.domain.facts import machine_voice
+
+    assert machine_voice("Elevate your evenings — indulge!!") == ["elevate", "indulge", "long dash", "two exclamation marks"]
+    assert machine_voice("Your usual filter coffee, still in the steel tumbler.") == []
+    c = content("Treat yourself to the ultimate break")
+    by_writer = {k.name: k for k in deterministic_checks(c, SHEET, lang="en", channel="whatsapp")}
+    assert not by_writer["sounds_human"].passed and by_writer["sounds_human"].severity == "block"
+    by_owner = {k.name: k for k in deterministic_checks(c, SHEET, lang="en", channel="whatsapp", strict_voice=False)}
+    assert by_owner["sounds_human"].severity == "warn"
+
+
+def test_festivals_are_recognised_in_any_script_and_by_date():
+    from datetime import date
+
+    from app.domain import culture
+
+    assert [f.key for f in culture.mentioned("Dasara holidays offer")] == ["dasara"]
+    assert [f.key for f in culture.mentioned("ದಸರಾ ಹಬ್ಬಕ್ಕೆ ವಿಶೇಷ")] == ["dasara"]
+    assert culture.mentioned("dosa and coffee") == []
+    during = culture.relevant("Weekend special", date(2026, 10, 18), date(2026, 10, 25))
+    assert "dasara" in [f.key for f in during]
+    card = culture.card(culture.get("dasara"), ["en", "kn"], today=date(2026, 10, 9))
+    assert card["greetings"] == {"en": "Happy Dasara", "kn": "ದಸರಾ ಹಬ್ಬದ ಶುಭಾಶಯಗಳು"} and card["starts_in_days"] == 2
+    # every hand-written greeting passes the guard's own script check
+    from app.domain.facts import malformed_words
+
+    assert not [g for f in culture.FESTIVALS for g in [*f.greetings.values(), *f.sayings.values()] if malformed_words(g)]
+
+
+def test_analytics_finds_the_better_channel_and_peak_hour():
+    from datetime import date, datetime
+
+    from app.domain.analytics import summarize
+
+    posts = [{"asset_id": "a", "code": "A1", "channel": "whatsapp", "language": "kn", "segment": "students",
+              "variant": None, "headline": "x"},
+             {"asset_id": "b", "code": "B1", "channel": "instagram_post", "language": "en", "segment": "students",
+              "variant": None, "headline": "y"}]
+    ev = [{"asset_id": "a", "type": "scan", "qty": 1, "at": datetime(2026, 10, 8, 18, 5)} for _ in range(20)]
+    ev += [{"asset_id": "a", "type": "redeem", "qty": 1, "at": datetime(2026, 10, 8, 19)} for _ in range(6)]
+    ev += [{"asset_id": "b", "type": "scan", "qty": 1, "at": datetime(2026, 10, 8, 18)} for _ in range(20)]
+    ev += [{"asset_id": "b", "type": "redeem", "qty": 1, "at": datetime(2026, 10, 8, 20)}]
+    out = summarize(posts, ev, today=date(2026, 10, 9), since=date(2026, 10, 3),
+                    labels={"channel": {"whatsapp": "WhatsApp", "instagram_post": "Instagram posts"}})
+    assert out["totals"]["scans"] == 40 and out["totals"]["redeems"] == 7
+    kinds = {t["kind"]: t for t in out["tips"]}
+    assert kinds["best_channel"]["title"].startswith("WhatsApp converts 6.0x better")
+    assert "6 pm" in kinds["timing"]["title"]
+    assert len(out["daily"]) == 7 and out["daily"][-2]["scans"] == 40

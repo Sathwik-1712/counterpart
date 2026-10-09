@@ -122,7 +122,7 @@ export function FindingsList({ findings }: { findings: Finding[] }) {
             {ev ? (
               <span className="flex w-12 shrink-0 flex-col items-center text-pen">
                 <span className="sign tabular text-[34px]">{ev.day}</span>
-                <span className="font-mono text-[10px] font-semibold uppercase">{ev.month}</span>
+                <span className="font-mono text-[12px] font-semibold uppercase">{ev.month}</span>
               </span>
             ) : (
               <span className={`inline-flex h-12 w-12 shrink-0 items-center justify-center ${urgent ? "text-kumkum" : "text-turmeric"}`}>

@@ -29,7 +29,7 @@ function Label({ children, hint }: { children: React.ReactNode; hint?: string })
   return (
     <span className="mb-1.5 block">
       <span className="text-sm font-medium">{children}</span>
-      {hint && <span className="ml-1.5 text-xs text-muted">{hint}</span>}
+      {hint && <span className="ml-1.5 text-[13px] text-muted">{hint}</span>}
     </span>
   );
 }
@@ -243,7 +243,7 @@ export default function Onboarding() {
             <div className="mt-8">
               <p className="mb-5 text-[15px] text-ink-2">Offers can only use these items and prices, so nothing is ever made up. Cost is optional; with it, Counterpart checks every discount still makes money.</p>
               <div className="space-y-3">
-                <div className="hidden grid-cols-[1fr_110px_110px_40px] gap-2 px-1 text-xs text-muted sm:grid">
+                <div className="hidden grid-cols-[1fr_110px_110px_40px] gap-2 px-1 text-[13px] text-muted sm:grid">
                   <span>Item or service</span>
                   <span>Price (₹)</span>
                   <span>Costs you (₹)</span>
@@ -313,7 +313,7 @@ export default function Onboarding() {
                   <GoogleLogo size={20} aria-hidden />
                   <span className="min-w-0 flex-1">
                     <span className="block text-[14px] font-medium">Use photos from our Google Maps listing</span>
-                    <span className="block text-xs text-muted">{googleOn ? "Found by your name and area, with credit to the photographer." : "Not switched on for this server yet. You can add photos later."}</span>
+                    <span className="block text-[13px] text-muted">{googleOn ? "Found by your name and area, with credit to the photographer." : "Not switched on for this server yet. You can add photos later."}</span>
                   </span>
                   {google && googleOn && <SealCheck size={20} weight="fill" className="text-pen" aria-hidden />}
                 </button>
@@ -322,7 +322,7 @@ export default function Onboarding() {
                   <UploadSimple size={20} className="text-pen" aria-hidden />
                   <span className="min-w-0 flex-1">
                     <span className="block text-[14px] font-medium">{files.length ? `${files.length} photo${files.length === 1 ? "" : "s"} ready to add` : "Add photos from your phone or computer"}</span>
-                    <span className="block text-xs text-muted">Your products, counter or space. Up to 12 now, more later from the Photos page.</span>
+                    <span className="block text-[13px] text-muted">Your products, counter or space. Up to 12 now, more later from the Photos page.</span>
                   </span>
                 </label>
                 {files.length > 0 && (

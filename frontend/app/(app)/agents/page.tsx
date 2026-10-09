@@ -3,7 +3,6 @@
 import { Brain, CheckCircle, Eye, ImageSquare, PenNib, ShieldCheck, UserCircle, WarningCircle } from "@phosphor-icons/react";
 import clsx from "clsx";
 import { useEffect, useState } from "react";
-import { Receipt } from "@/components/receipt";
 import { Shell } from "@/components/shell";
 import { PageHeader, SectionHeading, Skeleton, stagger, timeAgo } from "@/components/ui";
 import { useResource } from "@/lib/api";
@@ -91,13 +90,13 @@ export default function AgentsPage() {
       <PageHeader title="Your AI team" sub="Five agents, each with one job and its own model. The one that writes a post is never the one that checks it." />
       <Pipeline live={live} />
 
-      <div className="mt-12 grid gap-10 xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="mt-12">
         <section aria-labelledby="team-h">
           <SectionHeading id="team-h" title="Who does what" />
           {!data ? (
             <Skeleton className="h-64" />
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {data.agents.map((a, i) => {
                 const Icon = ICON[a.role] ?? Brain;
                 const working = live.has(a.role);
@@ -113,7 +112,7 @@ export default function AgentsPage() {
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="text-[17px] font-semibold tracking-tight">{a.name}</p>
-                        <p className={clsx("flex items-center gap-1.5 text-xs", working ? "text-pen-ink" : "text-muted")}>
+                        <p className={clsx("flex items-center gap-1.5 text-[13px]", working ? "text-pen-ink" : "text-muted")}>
                           {working ? (
                             <>
                               <span className="typing font-bold" aria-hidden>
@@ -133,16 +132,16 @@ export default function AgentsPage() {
                     </div>
                     <p className="mt-4 text-[14px] leading-relaxed text-ink-2">{a.job}</p>
                     <div className="mt-auto pt-5">
-                      <p className="mb-1.5 text-[11px] text-muted">Models, in order</p>
+                      <p className="mb-1.5 text-[12px] text-muted">Models, in order</p>
                       <div className="flex flex-wrap gap-1.5">
                         {a.models.length ? (
                           a.models.map((m, j) => (
-                            <span key={m} className={clsx("rounded-[var(--radius-sm)] px-2.5 py-0.5 font-receipt text-[11px]", j === 0 ? "bg-ink text-white" : "bg-sunken text-ink-2")}>
+                            <span key={m} className={clsx("rounded-[var(--radius-sm)] px-2.5 py-0.5 font-receipt text-[12px]", j === 0 ? "bg-ink text-white" : "bg-sunken text-ink-2")}>
                               {m}
                             </span>
                           ))
                         ) : (
-                          <span className="text-xs text-muted">Not configured</span>
+                          <span className="text-[13px] text-muted">Not configured</span>
                         )}
                       </div>
                     </div>
@@ -153,7 +152,7 @@ export default function AgentsPage() {
           )}
 
           <section className="mt-12" aria-labelledby="calls-h">
-            <SectionHeading id="calls-h" title="Recent model calls" sub="Since the server last started. Backups take over when a model is busy or out of quota." />
+            <SectionHeading id="calls-h" title="Recent model calls" sub="Since the server last started. Backups take over when a model is busy or out of quota. For every step the agents take, switch on Log in the top bar." />
             {data && data.calls.length === 0 ? (
               <p className="text-sm text-muted">No model calls yet for this business.</p>
             ) : (
@@ -163,8 +162,8 @@ export default function AgentsPage() {
                     {c.ok ? <CheckCircle size={16} weight="fill" className="shrink-0 text-pen" aria-hidden /> : <WarningCircle size={16} weight="fill" className="shrink-0 text-turmeric" aria-hidden />}
                     <span className="w-28 shrink-0 font-medium">{data.agents.find((a) => a.role === c.role)?.name ?? c.role}</span>
                     <span className="min-w-0 flex-1 truncate text-ink-2">{c.ok ? taskLabel(c.task) : `Moved on: ${c.error ?? "model unavailable"}`}</span>
-                    <span className="hidden font-receipt text-xs text-muted sm:inline">{c.model}</span>
-                    <span className="w-14 shrink-0 text-right text-xs tabular-nums text-muted">{(c.latency_ms / 1000).toFixed(1)}s</span>
+                    <span className="hidden font-receipt text-[13px] text-muted sm:inline">{c.model}</span>
+                    <span className="w-14 shrink-0 text-right text-[13px] tabular-nums text-muted">{(c.latency_ms / 1000).toFixed(1)}s</span>
                   </li>
                 ))}
               </ul>
@@ -172,10 +171,6 @@ export default function AgentsPage() {
           </section>
         </section>
 
-        <aside className="xl:sticky xl:top-24 xl:self-start" aria-label="Work log">
-          <h2 className="mb-4 text-[17px] tracking-tight">Work log</h2>
-          <Receipt className="h-[min(70vh,640px)] overflow-hidden rounded-[var(--radius-lg)] shadow-[var(--shadow-soft)] ring-1 ring-line/70" />
-        </aside>
       </div>
     </Shell>
   );

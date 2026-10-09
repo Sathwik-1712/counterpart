@@ -37,7 +37,7 @@ function Showcase() {
             <div className="relative aspect-square">
               <img src={p.image_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.35),transparent_40%,transparent_55%,rgba(0,0,0,0.55))]" />
-              <p className="absolute left-3 right-3 top-3 text-[17px] font-bold leading-tight text-white [font-stretch:85%]" lang={p.language}>
+              <p className="absolute left-3 right-3 top-3 text-[17px] font-bold leading-tight text-white [font-stretch:90%]" lang={p.language}>
                 {p.headline}
               </p>
               {p.offer && (
@@ -90,7 +90,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
       <section className="relative hidden flex-col justify-between overflow-hidden border-r border-ink px-12 py-10 lg:flex">
         <div className="flex items-center gap-2.5">
           <img src="/icon.svg" alt="" className="h-9 w-9" />
-          <span className="text-[20px] font-bold [font-stretch:85%]">Counterpart</span>
+          <span className="text-[20px] font-bold [font-stretch:90%]">Counterpart</span>
         </div>
         <div>
           <h1 className="rise-in max-w-[14ch] text-[64px] leading-[0.92] xl:text-[76px]">
@@ -105,8 +105,8 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
               ["Results", "Counted at the counter"],
             ].map(([t, d], i) => (
               <li key={t} className={clsx("rise-in px-3 py-3", i > 0 && "border-l border-ink")} style={{ "--i": i + 2 } as React.CSSProperties}>
-                <span className="font-mono text-[11px] font-semibold text-muted">{String(i + 1).padStart(2, "0")}</span>
-                <span className="block text-[19px] font-bold [font-stretch:85%]">{t}</span>
+                <span className="font-mono text-[12px] font-semibold text-muted">{String(i + 1).padStart(2, "0")}</span>
+                <span className="block text-[19px] font-bold [font-stretch:90%]">{t}</span>
                 <span className="block text-[12px] leading-snug text-muted">{d}</span>
               </li>
             ))}
@@ -164,7 +164,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
                   {show ? <EyeSlash size={18} aria-hidden /> : <Eye size={18} aria-hidden />}
                 </button>
               </span>
-              {signup && <span className="mt-1.5 block text-xs text-muted">At least 8 characters.</span>}
+              {signup && <span className="mt-1.5 block text-[13px] text-muted">At least 8 characters.</span>}
             </label>
             {error && (
               <p className="pop rounded-[var(--radius-md)] bg-kumkum-soft px-3.5 py-2.5 text-sm text-kumkum" role="alert">
@@ -176,14 +176,14 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
             </Button>
           </form>
 
-          <div className="rise-in my-6 flex items-center gap-3 text-xs text-muted" style={{ "--i": 3 } as React.CSSProperties}>
+          <div className="rise-in my-6 flex items-center gap-3 text-[13px] text-muted" style={{ "--i": 3 } as React.CSSProperties}>
             <span className="h-px flex-1 bg-line" /> or <span className="h-px flex-1 bg-line" />
           </div>
           <div className="rise-in" style={{ "--i": 4 } as React.CSSProperties}>
             <Button variant="secondary" size="lg" className="w-full" onClick={() => go("demo")} disabled={busy !== null}>
               {busy === "demo" ? "Opening the demo…" : "Try the demo business"}
             </Button>
-            <p className="mt-2 text-center text-xs text-muted">Kaapi Kone, a sample café with past campaigns and synthetic results.</p>
+            <p className="mt-2 text-center text-[13px] text-muted">Kaapi Kone, a sample café with past campaigns and synthetic results.</p>
           </div>
 
           <p className="mt-10 text-center text-sm text-ink-2">
@@ -192,7 +192,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
               {signup ? "Sign in" : "Create an account"}
             </Link>
           </p>
-          <p className="mt-6 flex items-center justify-center gap-1.5 text-xs text-muted">
+          <p className="mt-6 flex items-center justify-center gap-1.5 text-[13px] text-muted">
             <LockKey size={13} aria-hidden /> Your sign-in is kept on the server, never in the page.
           </p>
         </div>

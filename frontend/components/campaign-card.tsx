@@ -27,8 +27,8 @@ export function CampaignRow({ c, i = 0 }: { c: CampaignSummary; i?: number }) {
           )}
         </span>
         <span className="min-w-0">
-          <span className="block truncate text-[20px] font-bold leading-tight [font-stretch:85%] md:text-[22px]">{c.name}</span>
-          <span className="mt-0.5 block truncate text-[13px] text-muted">{dates || (c.is_historical ? "Past campaign" : "Not scheduled")}</span>
+          <span className="block truncate text-[20px] font-bold leading-tight [font-stretch:90%] md:text-[22px]">{c.name}</span>
+          <span className="mt-0.5 block truncate text-[13px] text-muted">{dates || (c.is_historical ? "Past campaign" : c.live ? `Running since ${when(c.created_at)}, no end date` : `Started ${when(c.created_at)}`)}</span>
         </span>
         <span className="col-span-3 min-w-0 md:col-span-1">
           <JourneyMini step={step} className="max-w-[220px]" />
@@ -40,11 +40,11 @@ export function CampaignRow({ c, i = 0 }: { c: CampaignSummary; i?: number }) {
         <span className="col-start-3 row-start-1 flex gap-5 text-right md:col-start-auto md:row-start-auto">
           <span>
             <span className="sign tabular block text-[28px]">{c.live ?? 0}</span>
-            <span className="block text-[11px] text-muted">live</span>
+            <span className="block text-[12px] text-muted">live</span>
           </span>
           <span>
             <span className={clsx("sign tabular block text-[28px]", c.redemptions > 0 && "text-pen")}>{c.redemptions}</span>
-            <span className="block text-[11px] text-muted">redeemed</span>
+            <span className="block text-[12px] text-muted">redeemed</span>
           </span>
         </span>
         <ArrowRight size={18} className="hidden text-muted transition-transform duration-200 group-hover:translate-x-1 group-hover:text-ink md:block" aria-hidden />

@@ -53,7 +53,7 @@ const toneClass: Record<Tone, string> = {
 
 export function Pill({ tone = "neutral", children, className }: { tone?: Tone; children: ReactNode; className?: string }) {
   return (
-    <span className={clsx("inline-flex items-center gap-1 whitespace-nowrap rounded-[3px] px-2 py-0.5 text-xs font-semibold", toneClass[tone], className)}>
+    <span className={clsx("inline-flex items-center gap-1 whitespace-nowrap rounded-[3px] px-2 py-0.5 text-[13px] font-semibold", toneClass[tone], className)}>
       {children}
     </span>
   );

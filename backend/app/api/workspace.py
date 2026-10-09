@@ -15,6 +15,7 @@ from app.api.deps import get_router, require_owner
 from app.auth import CurrentUser, business_for, require_member
 from app.config import get_settings
 from app.db import connection, fetch_all, fetch_one, jsonb
+from app.domain.facts import AI_CLICHES, machine_voice
 from app.storage import get_storage
 
 accounts = APIRouter(prefix="/api", dependencies=[Depends(require_owner)])
@@ -74,8 +75,13 @@ async def me(user: CurrentUser) -> dict[str, Any]:
     async with connection() as conn:
         rows = await fetch_all(
             conn, """select b.id, b.slug, b.name, b.locality, b.city, b.languages, b.is_demo,
-                            b.profile->>'kind' as kind, b.profile->'owner'->>'name' as owner_name, m.role
+                            b.profile->>'kind' as kind, b.profile->'owner'->>'name' as owner_name, m.role,
+                            d.dna->>'theme' as theme, coalesce(d.dna->'palette', '[]') as palette,
+                            coalesce(d.dna->'palette_hex', '{}') as palette_hex,
+                            coalesce(d.dna->'voice', '[]') as voice,
+                            coalesce((d.dna->>'watermark')::boolean, true) as watermark
                      from memberships m join businesses b on b.id = m.business_id
+                     left join brand_dna d on d.business_id = b.id and d.status = 'active'
                      where m.user_id = %s order by b.is_demo, b.created_at""", (user.id,))
     s = get_settings()
     return {"user": user.model_dump(), "businesses": rows,
@@ -110,8 +116,10 @@ class Phrase(BaseModel):
 
 
 class BrandDraft(BaseModel):
-    voice: list[str] = Field(description="3 to 5 adjectives for how the business sounds.")
-    do: list[str] = Field(description="2 to 4 short rules for writing in this voice.")
+    voice: list[str] = Field(description="3 to 5 plain adjectives for how the owner talks to regulars "
+                                         "(e.g. 'chatty', 'no-nonsense'), never marketing words like 'vibrant'.")
+    do: list[str] = Field(description="2 to 4 short, concrete writing rules, e.g. 'name the dish, not the "
+                                      "experience'.")
     avoid: list[str] = Field(description="2 to 4 things never to do.")
     signature_phrases: list[Phrase] = Field(description="One short sign-off line per language, natively written.")
     imagery: str = Field(description="One or two sentences describing what photos of this business should show.")
@@ -140,7 +148,10 @@ async def _draft_brand(request: Request, b: NewBusiness) -> tuple[dict[str, Any]
     prompt = (f"A new {b.kind} called {b.name} in {b.locality}, {b.city} is setting up its marketing. "
               f"They sell: {items}. In the owner's words: {b.description or '(nothing more given)'}. "
               f"Languages: {', '.join(b.languages)} (en English, kn Kannada script, hi Hindi Devanagari). "
-              "Draft a starting brand voice the owner can edit. Do not invent facts about the business.")
+              "Draft a starting brand voice the owner can edit. Do not invent facts about the business. "
+              "It must sound like the owner chatting with a regular at the counter, not like an ad agency or an AI: "
+              "plain everyday words, short sentences, local flavour. Signature lines are things the owner would "
+              "actually say out loud. Never use words such as: " + ", ".join(AI_CLICHES[:30]) + ".")
     try:
         draft, _ = await router.chat_json("reasoning", [{"role": "user", "content": prompt}], BrandDraft)
     except Exception:
@@ -151,6 +162,10 @@ async def _draft_brand(request: Request, b: NewBusiness) -> tuple[dict[str, Any]
         if p.lang in b.languages:
             dna["signature_phrases"].setdefault(p.lang, []).append(p.phrase)
     dna["banned_words"] = sorted({w.strip().lower() for w in dna["banned_words"] if w.strip()})
+    if robotic := machine_voice(" ".join([*dna["voice"], *dna["do"], dna["imagery"]])):
+        dna["voice_note"] = f"Reworded automatically to avoid: {', '.join(robotic)}"
+        dna["voice"] = [v for v in dna["voice"] if not machine_voice(v)] or _default_brand(b)["voice"]
+        dna["do"] = [d for d in dna["do"] if not machine_voice(d)] or _default_brand(b)["do"]
     dna |= {"languages_priority": b.languages, "examples": []}
     return dna, "Drafted by Counterpart from onboarding; the owner can edit it"
 

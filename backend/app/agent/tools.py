@@ -20,9 +20,10 @@ from app.agent import situation
 from app.agent.prompts import GENERATION_SYSTEM
 from app.config import Settings
 from app.db import connection, fetch_all, fetch_one, jsonb
+from app.domain import culture
 from app.domain.audit import intent_for_copy
 from app.domain.economics import offer_economics
-from app.domain.facts import CHANNEL_LIMITS, AssetContent
+from app.domain.facts import AI_CLICHES, CHANNEL_LIMITS, AssetContent
 from app.providers.base import ProviderError
 from app.providers.router import ModelRouter
 
@@ -339,7 +340,13 @@ async def generate_copy(ctx: ToolContext, a: GenerateArgs) -> dict[str, Any]:
         f"- {{{{{f.key}}}}} ({f.label}{', required' if f.required else ''}) is replaced by exactly: "
         + " | ".join(f"{lang}: “{f.display[lang]}”" for lang in langs if lang in f.display)
         for f in sheet.facts)
+    festivals = culture.relevant(
+        " ".join(str(x or "") for x in (campaign.get("name"), campaign.get("brief"), json.dumps(campaign.get("intent") or {}))),
+        campaign.get("starts_on"), campaign.get("ends_on"))
     system = GENERATION_SYSTEM.format(
+        culture=json.dumps([{**culture.card(f, langs), "cite_as": f"culture:{f.key}"} for f in festivals],
+                           ensure_ascii=False) if festivals else "(none)",
+        cliches=", ".join(f'"{c}"' for c in AI_CLICHES),
         business_name=ctx.business["name"], locality=ctx.business["locality"], city=ctx.business["city"],
         brand=json.dumps(brand["dna"] if brand else {}, ensure_ascii=False),
         facts=facts_text, intent=json.dumps(intent_for_copy(campaign.get("intent")), ensure_ascii=False),

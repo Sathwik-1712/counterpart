@@ -35,6 +35,9 @@ from app.domain.stats import Arm, decide, prior_from_history
 from app.providers.base import ProviderError
 from app.providers.router import ModelRouter
 
+MIN_TRIALS = 15  # link opens each version needs before an A/B test is judged
+LOSS_THRESHOLD = 0.01  # decide once picking the leader risks under 1 redemption per 100 visitors
+
 
 class NotFound(Exception):
     pass
@@ -322,7 +325,7 @@ async def add_revision(
                                (asset["id"], asset.get("current_revision")))
         image_key = (prev or {}).get("image_key")
     checks = deterministic_checks(content, sheet, lang=asset["language"], channel=asset["channel"],
-                                  allowed_phrases=allowed)
+                                  allowed_phrases=allowed, strict_voice=created_by != "owner")
     validation = report(checks, facts_version=sheet.version,
                         l3_status="pending" if verifier_available else "skipped:no verifier configured")
     nxt = await fetch_one(conn, "select coalesce(max(n), 0) + 1 as n from asset_revisions where asset_id = %s",
@@ -518,11 +521,11 @@ async def experiment_status(conn: Conn, experiment_id: UUID | str) -> dict[str, 
     )
     pa, pb = prior_from_history([(int(h["s"]), int(h["t"])) for h in history], strength=10)
     arms = [Arm(str(r["id"]), int(r["successes"]), int(r["trials"]), pa, pb) for r in arms_rows]
-    d = decide(arms)
+    d = decide(arms, min_trials=MIN_TRIALS, loss_threshold=LOSS_THRESHOLD)
     return {
         "experiment": exp,
         "prior": {"alpha": round(pa, 3), "beta": round(pb, 3), "from_campaign_assets": len(history)},
         "arms": [{"asset_id": str(r["id"]), "variant": r["variant"], **d.summary.get(str(r["id"]), {})}
                  for r in arms_rows],
-        "decision": {"winner": d.winner, "reason": d.reason},
+        "decision": {"winner": d.winner, "reason": d.reason, "min_trials": MIN_TRIALS, "loss_threshold": LOSS_THRESHOLD},
     }

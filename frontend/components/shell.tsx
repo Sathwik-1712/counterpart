@@ -10,6 +10,7 @@ import {
   Megaphone,
   Plus,
   QrCode,
+  Receipt as ReceiptIcon,
   SignOut,
   SunHorizon,
   UsersThree,
@@ -21,6 +22,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLedgerEvents } from "@/lib/api";
 import { useWorkspace } from "@/lib/business";
+import { useWorkLog } from "@/lib/worklog";
 import { Receipt } from "./receipt";
 
 // Two groups: the work (a campaign's flow) and the business it draws on.
@@ -95,14 +97,14 @@ function BusinessMenu() {
         className="press flex min-w-0 items-center gap-2 rounded-[var(--radius-sm)] px-2 py-1 text-left hover:bg-ink/[0.05]"
       >
         <span className="min-w-0 leading-none">
-          <span className="block max-w-[170px] truncate text-[18px] font-bold [font-stretch:85%]">{business.name}</span>
+          <span className="block max-w-[170px] truncate text-[18px] font-bold [font-stretch:90%]">{business.name}</span>
           <span className="mt-1 block text-[12px] text-muted">{business.is_demo ? "Demo business" : (business.kind ?? business.locality)}</span>
         </span>
         <CaretDown size={13} weight="bold" className={clsx("shrink-0 text-muted transition-transform", open && "rotate-180")} aria-hidden />
       </button>
       {open && (
         <div role="menu" className="pop absolute left-0 top-12 z-50 w-72 rounded-[var(--radius-lg)] bg-surface p-1.5 shadow-[var(--shadow-float)] ring-1 ring-ink/15">
-          <p className="truncate px-3 pb-2 pt-1.5 text-xs text-muted">{me.user.email}</p>
+          <p className="truncate px-3 pb-2 pt-1.5 text-[13px] text-muted">{me.user.email}</p>
           {me.businesses.map((b) => (
             <button
               key={b.slug}
@@ -134,6 +136,49 @@ function BusinessMenu() {
   );
 }
 
+/** Shows or hides the work log beside every page. Off by default; remembered in this browser. */
+export function WorkLogToggle({ className }: { className?: string }) {
+  const [on, setOn] = useWorkLog();
+  return (
+    <button
+      onClick={() => setOn(!on)}
+      aria-pressed={on}
+      title={on ? "Hide the work log" : "Show the work log"}
+      className={clsx(
+        "press inline-flex h-9 items-center gap-1.5 rounded-[var(--radius-sm)] px-2.5 text-[14px] font-semibold",
+        on ? "bg-pen-soft text-pen-ink" : "text-ink-2 hover:bg-ink/[0.06] hover:text-ink",
+        className,
+      )}
+    >
+      <ReceiptIcon size={16} weight={on ? "fill" : "regular"} aria-hidden />
+      <span className="hidden md:inline">Log</span>
+      <span className={clsx("relative ml-0.5 inline-block h-4 w-7 rounded-full transition-colors", on ? "bg-pen" : "bg-line-strong")} aria-hidden>
+        <span className={clsx("absolute left-0.5 top-0.5 h-3 w-3 rounded-full bg-white shadow-sm transition-transform", on ? "translate-x-3" : "translate-x-0")} />
+      </span>
+    </button>
+  );
+}
+
+/** The work log as a panel on the right, below the header. It pushes the page over on wide screens and covers it
+ *  on small ones. Closing it switches the preference off. */
+function WorkLogDrawer({ campaignId }: { campaignId?: string }) {
+  const [, setOn] = useWorkLog();
+  return (
+    <aside className="step-in-right fixed bottom-[68px] right-0 top-16 z-30 flex w-full flex-col border-l border-ink bg-receipt sm:w-[360px] lg:bottom-0" aria-label="Work log">
+      <div className="flex items-center justify-between border-b border-line px-4 py-3">
+        <div>
+          <p className="text-[17px] font-bold">Work log</p>
+          <p className="text-[13px] text-muted">{campaignId ? "Everything done on this campaign" : "Everything Counterpart and you did"}</p>
+        </div>
+        <button onClick={() => setOn(false)} className="press rounded-[var(--radius-sm)] p-2 text-ink-2 hover:bg-sunken" aria-label="Close the work log">
+          <X size={18} aria-hidden />
+        </button>
+      </div>
+      <Receipt campaignId={campaignId} className="min-h-0 flex-1" />
+    </aside>
+  );
+}
+
 /** Who is working right now. Links to the agents page. */
 function TeamLink({ working, active }: { working: boolean; active: boolean }) {
   return (
@@ -157,6 +202,7 @@ export function Shell({ children, campaignId, log = true }: { children: ReactNod
   const { business } = useWorkspace();
   const [more, setMore] = useState(false);
   const working = useAgentWorking();
+  const [showLog] = useWorkLog();
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
   useEffect(() => setMore(false), [path]);
@@ -197,6 +243,7 @@ export function Shell({ children, campaignId, log = true }: { children: ReactNod
           </nav>
           <span className="flex-1" />
           {business.is_demo && <span className="stamp hidden text-turmeric xl:inline-flex">Demo data</span>}
+          <WorkLogToggle />
           <TeamLink working={working} active={active("/agents")} />
           <Link
             href="/counter"
@@ -210,16 +257,13 @@ export function Shell({ children, campaignId, log = true }: { children: ReactNod
         </div>
       </header>
 
-      <div className="mx-auto flex w-full max-w-[1440px] flex-1 gap-10 px-4 md:px-8">
+      <div className={clsx("mx-auto flex w-full max-w-[1440px] flex-1 px-4 transition-[padding] duration-300 md:px-8", log && showLog && "xl:pr-[392px]")}>
         <main id="main" className="page-in min-w-0 flex-1 pb-32 pt-8 md:pb-20 md:pt-12">
           {children}
         </main>
-        {log && path !== "/agents" && (
-          <div className="hidden w-[290px] shrink-0 2xl:block">
-            <Receipt campaignId={campaignId} className="sticky top-24 mt-12 h-[calc(100dvh-8rem)] overflow-hidden rounded-[var(--radius-md)] ring-1 ring-line" />
-          </div>
-        )}
       </div>
+
+      {log && showLog && <WorkLogDrawer campaignId={campaignId} />}
 
       {more && (
         <div className="fixed inset-0 z-40 bg-ink/30 lg:hidden" onClick={() => setMore(false)}>

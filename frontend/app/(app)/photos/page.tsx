@@ -30,14 +30,14 @@ function PhotoCard({ p, i, onToggle }: { p: Photo; i: number; onToggle: () => vo
         <img src={p.url} alt={p.caption || "Photo of the business"} loading="lazy" className={clsx("w-full transition-[filter] duration-500", hidden && "grayscale")} />
         <button
           onClick={onToggle}
-          className="press absolute right-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] bg-white/95 px-3 py-1.5 text-xs font-medium text-ink opacity-0 shadow-[var(--shadow-soft)] transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+          className="press absolute right-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] bg-white/95 px-3 py-1.5 text-[13px] font-medium text-ink opacity-0 shadow-[var(--shadow-soft)] transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
         >
           {hidden ? <Eye size={13} aria-hidden /> : <EyeSlash size={13} aria-hidden />}
           {hidden ? "Use in posts" : "Don't use"}
         </button>
       </div>
       <div className="relative z-10 p-4">
-        <p className="text-xs text-muted">
+        <p className="text-[13px] text-muted">
           <span className="font-medium text-ink-2">{SOURCE_LABEL[p.source]}</span>
           {p.attribution && p.source === "google" ? `, ${p.attribution.replace(/^Google Maps,?\s*/, "")}` : ""}
         </p>
@@ -51,7 +51,7 @@ function PhotoCard({ p, i, onToggle }: { p: Photo; i: number; onToggle: () => vo
         {p.tags.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
             {p.tags.slice(0, 5).map((t) => (
-              <span key={t} className="rounded-[var(--radius-sm)] bg-sunken px-2 py-0.5 text-[11px] text-ink-2">
+              <span key={t} className="rounded-[var(--radius-sm)] bg-sunken px-2 py-0.5 text-[12px] text-ink-2">
                 {t}
               </span>
             ))}
@@ -136,7 +136,7 @@ export default function PhotosPage() {
         >
           <div>
             <UploadSimple size={28} className="text-marker" aria-hidden />
-            <p className="mt-4 text-[34px] font-bold leading-none [font-stretch:80%]">Add photos from your phone</p>
+            <p className="mt-4 text-[34px] font-bold leading-none [font-stretch:90%]">Add photos from your phone</p>
             <p className="mt-3 max-w-[38ch] text-[15px] text-white/75">Your products, your counter, your space. Phone photos are perfect; natural light works best. Or drop them here.</p>
           </div>
           <div className="mt-8">

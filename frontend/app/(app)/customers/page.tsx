@@ -32,7 +32,7 @@ function Trend({ t, light }: { t: Theme; light?: boolean }) {
   return (
     <span
       className={clsx(
-        "inline-flex items-center gap-1 rounded-[var(--radius-sm)] px-2 py-0.5 text-xs font-medium tabular-nums",
+        "inline-flex items-center gap-1 rounded-[var(--radius-sm)] px-2 py-0.5 text-[13px] font-medium tabular-nums",
         light ? "bg-white/12 text-white" : bad ? "bg-kumkum-soft text-kumkum" : delta > 0 ? "bg-pen-soft text-pen-ink" : "bg-sunken text-ink-2",
       )}
     >
@@ -144,7 +144,7 @@ export default function CustomersPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-[17px] font-semibold tracking-tight">{human(t.theme)}</p>
-                    <p className={clsx("text-xs", (t.sentiment ?? 0) < 0 ? "text-kumkum" : "text-muted")}>
+                    <p className={clsx("text-[13px]", (t.sentiment ?? 0) < 0 ? "text-kumkum" : "text-muted")}>
                       {mentions(t.recent)}, {mood(t.sentiment).toLowerCase()}
                     </p>
                   </div>
@@ -185,7 +185,7 @@ export default function CustomersPage() {
                 <p className="text-sm text-muted">{s.data.peak}</p>
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {(s.data.motivations ?? []).map((m: string) => (
-                    <span key={m} className="rounded-[var(--radius-sm)] bg-sunken px-2.5 py-0.5 text-xs text-ink-2">
+                    <span key={m} className="rounded-[var(--radius-sm)] bg-sunken px-2.5 py-0.5 text-[13px] text-ink-2">
                       {m}
                     </span>
                   ))}
@@ -203,7 +203,7 @@ export default function CustomersPage() {
                 <li key={e.key} className="rise-in flex items-center gap-4 rounded-[var(--radius-lg)] bg-surface p-4 shadow-[var(--shadow-soft)] ring-1 ring-line/80" style={stagger(i)}>
                   <span className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-[var(--radius-lg)] bg-ink text-white">
                     <span className="text-[20px] font-semibold leading-none tabular-nums">{d ? d.getDate() : "?"}</span>
-                    <span className="mt-0.5 text-[11px] uppercase tracking-wide text-marker">{d ? d.toLocaleDateString("en-IN", { month: "short" }) : ""}</span>
+                    <span className="mt-0.5 text-[12px] uppercase tracking-wide text-marker">{d ? d.toLocaleDateString("en-IN", { month: "short" }) : ""}</span>
                   </span>
                   <span className="min-w-0">
                     <span className="block text-[15px] font-medium leading-snug">{e.data.name}</span>
@@ -215,11 +215,11 @@ export default function CustomersPage() {
           </ol>
           {data && (
             <div className="mt-6 flex flex-wrap gap-6 rounded-[var(--radius-lg)] bg-surface/60 p-5 ring-1 ring-line/80">
-              <p className="w-full text-xs text-muted">Messages by language</p>
+              <p className="w-full text-[13px] text-muted">Messages by language</p>
               {data.language_mix.map((l) => (
                 <div key={l.language}>
                   <p className="text-[24px] font-semibold leading-none tracking-tight tabular-nums">{l.n}</p>
-                  <p className="mt-1 text-xs text-muted">{LANG_LABEL[l.language] ?? (l.language === "kn-Latn" ? "Kannada in English letters" : l.language)}</p>
+                  <p className="mt-1 text-[13px] text-muted">{LANG_LABEL[l.language] ?? (l.language === "kn-Latn" ? "Kannada in English letters" : l.language)}</p>
                 </div>
               ))}
             </div>
@@ -235,7 +235,7 @@ export default function CustomersPage() {
             const Icon = src.icon;
             return (
               <article key={r.id} className="rise-in mb-4 break-inside-avoid rounded-[var(--radius-lg)] bg-surface p-5 shadow-[var(--shadow-soft)] ring-1 ring-line/80" style={stagger(Math.min(i, 8))}>
-                <div className="mb-3 flex items-center gap-2 text-xs text-muted">
+                <div className="mb-3 flex items-center gap-2 text-[13px] text-muted">
                   <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sunken text-ink">
                     <Icon size={14} aria-hidden />
                   </span>
@@ -246,7 +246,7 @@ export default function CustomersPage() {
                 <p className={clsx("leading-relaxed text-ink", r.body.length < 70 ? "text-[17px] tracking-tight" : "text-[15px]")} lang={r.language}>
                   {r.body}
                 </p>
-                <p className="mt-3 text-xs text-muted">
+                <p className="mt-3 text-[13px] text-muted">
                   {SEGMENT_LABEL[r.segment ?? ""] ?? "Customer"}, {timeAgo(r.occurred_at)}
                   {r.themes.length ? `, about ${r.themes.map((t) => t.replace(/_/g, " ")).join(", ")}` : ""}
                 </p>

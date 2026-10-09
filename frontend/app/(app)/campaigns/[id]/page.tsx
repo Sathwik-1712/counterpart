@@ -11,8 +11,8 @@ import { ExperimentPanel } from "@/components/experiment-panel";
 import { FactsCard } from "@/components/facts-card";
 import { InboxList } from "@/components/inbox";
 import { JourneyTrack } from "@/components/journey";
-import { CountUp } from "@/components/motion";
-import { Receipt } from "@/components/receipt";
+import { CampaignAnalytics } from "@/components/campaign-analytics";
+import { FestivalCard } from "@/components/festival-card";
 import { SharePanel } from "@/components/share-panel";
 import { Shell } from "@/components/shell";
 import { Button, CHANNEL_LABEL, Empty, SectionHeading, Skeleton, StatusPill } from "@/components/ui";
@@ -33,33 +33,6 @@ function LoadingCampaign() {
         <Skeleton className="aspect-square" />
         <Skeleton className="aspect-square" />
       </div>
-    </div>
-  );
-}
-
-/** Step 4 for one campaign: the three numbers that matter, as big figures. */
-function CampaignResults({ rows }: { rows: Results["posts"] }) {
-  const t = rows.reduce((s, r) => ({ scans: s.scans + r.scans, claims: s.claims + r.claims, redeemed: s.redeemed + r.redeemed }), { scans: 0, claims: 0, redeemed: 0 });
-  const best = rows.filter((r) => r.scans >= 5).sort((a, b) => (b.conversion ?? 0) - (a.conversion ?? 0))[0];
-  return (
-    <div className="grid gap-px overflow-hidden rounded-[var(--radius-lg)] bg-ink ring-1 ring-ink sm:grid-cols-3">
-      {[
-        ["opened a link", t.scans, false],
-        ["claimed a code", t.claims, false],
-        ["redeemed at your counter", t.redeemed, true],
-      ].map(([label, n, hero], i) => (
-        <div key={label as string} className={clsx("rise-in p-6", hero ? "bg-marker" : "bg-surface")} style={{ "--i": i } as React.CSSProperties}>
-          <p className="sign tabular text-[64px]">
-            <CountUp value={n as number} />
-          </p>
-          <p className="mt-1 text-[14px] text-ink-2">{label as string}</p>
-        </div>
-      ))}
-      {best && (best.conversion ?? 0) > 0 && (
-        <p className="bg-surface px-6 py-4 text-[15px] sm:col-span-3">
-          Working best: <span className="font-semibold">{CHANNEL_LABEL[best.channel]}</span> for {best.segment.replace(/_/g, " ")}, {Math.round((best.conversion ?? 0) * 100)}% of people who opened it redeemed.
-        </p>
-      )}
     </div>
   );
 }
@@ -117,19 +90,19 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
   const TELL_SUGGESTIONS = ["Write a calmer headline", "Add a Hindi version", "Make it weekends only"];
 
   return (
-    <Shell campaignId={id} log={false}>
+    <Shell campaignId={id}>
       <Link href="/campaigns" className="press mb-6 inline-flex items-center gap-1.5 text-[14px] font-semibold text-ink-2 hover:text-ink">
         <ArrowLeft size={14} weight="bold" aria-hidden /> All campaigns
       </Link>
 
       <header id="brief" className="rise-in">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <h1 className="text-[44px] md:text-[72px]">{c.name}</h1>
+          <h1 className="text-[36px] md:text-[52px]">{c.name}</h1>
           <StatusPill status={c.status} />
         </div>
         {c.brief && (
-          <blockquote className="mt-5 max-w-[72ch] border-l-[3px] border-ink pl-4 text-[17px] text-ink-2">
-            <span className="mb-1 block text-[13px] font-semibold text-muted">Your brief</span>
+          <blockquote className="mt-4 max-w-[70ch] border-l-[3px] border-ink pl-4 text-[16px] leading-relaxed text-ink-2">
+            <span className="mb-0.5 block text-[13px] font-semibold text-muted">Your brief</span>
             {c.brief}
           </blockquote>
         )}
@@ -140,8 +113,8 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
       </div>
 
       {step < 5 && (
-        <a href={`#${target}`} className="rise-in group mt-5 flex items-center gap-3 text-[20px] font-bold [font-stretch:90%] md:text-[24px]" style={{ "--i": 3 } as React.CSSProperties}>
-          <span className="font-mono text-[12px] font-semibold text-muted">NEXT</span>
+        <a href={`#${target}`} className="rise-in group mt-5 flex items-center gap-3 text-[19px] font-bold md:text-[21px]" style={{ "--i": 3 } as React.CSSProperties}>
+          <span className="text-[14px] font-semibold text-muted">Next:</span>
           <span className="hl hl-in">{nextAction(step, data)}</span>
           <ArrowDown size={18} weight="bold" className="transition-transform duration-200 group-hover:translate-y-0.5" aria-hidden />
         </a>
@@ -162,8 +135,35 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
 
       <div className="grid gap-12 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-16">
+          {live.length > 0 && (
+            <section id="results" aria-labelledby="results-h">
+              <SectionHeading
+                id="results-h"
+                title="Performance"
+                sub="Who opened, who claimed, who came in, and what to change to get more of them."
+                aside={
+                  <Link href="/results" className="press pb-1 text-[14px] font-semibold underline decoration-ink/30 underline-offset-4 hover:decoration-ink">
+                    All results
+                  </Link>
+                }
+              />
+              <CampaignAnalytics campaignId={id} assets={data.assets} />
+            </section>
+          )}
+
+          {(data.culture?.length ?? 0) > 0 && (
+            <section aria-labelledby="culture-h">
+              <SectionHeading id="culture-h" title="Festival notes" sub="This campaign touches a festival. The writer uses these greetings and customs, so the posts sound local, not generic." />
+              <div className="space-y-4">
+                {data.culture!.map((f) => (
+                  <FestivalCard key={f.key} f={f} onUse={(idea) => tell(`Use this festival angle in the posts: ${idea}`)} />
+                ))}
+              </div>
+            </section>
+          )}
+
           <section id="offer" aria-labelledby="offer-h">
-            <SectionHeading id="offer-h" n={2} title="The offer" sub="Every post uses exactly this wording, in every language. Check it, then lock it." />
+            <SectionHeading id="offer-h" title="The offer" sub="Every post uses exactly this wording, in every language. Check it, then lock it." />
             <div className="grid gap-8 md:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
               <FactsCard campaignId={id} versions={data.facts} onChange={reload} />
               <div className="space-y-4 text-[15px] text-ink-2">
@@ -180,7 +180,6 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
           <section id="posts" aria-labelledby="posts-h">
             <SectionHeading
               id="posts-h"
-              n={3}
               title="Posts"
               sub={
                 visible.length
@@ -224,7 +223,7 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
           </section>
 
           <section id="share" aria-labelledby="share-h">
-            <SectionHeading id="share-h" n={4} title="Share" sub="Every approved post has its own link and QR code, so you can see which one brought people in." />
+            <SectionHeading id="share-h" title="Share" sub="Every approved post has its own link and QR code, so you can see which one brought people in." />
             {live.length ? (
               <SharePanel assets={live} rows={rows} />
             ) : (
@@ -232,28 +231,23 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
             )}
           </section>
 
-          <section id="results" aria-labelledby="results-h">
-            <SectionHeading
-              id="results-h"
-              n={5}
-              title="Results"
-              aside={
-                <Link href="/results" className="press pb-1 text-[14px] font-semibold underline decoration-ink/30 underline-offset-4 hover:decoration-ink">
-                  All results
-                </Link>
-              }
-            />
-            {rows.length ? <CampaignResults rows={rows} /> : <Empty>Results appear once posts are live and customers open them.</Empty>}
-            {data.experiments.length > 0 && (
-              <div className="mt-10 space-y-4">
-                <h3 className="text-[22px]">Which message works better</h3>
-                <p className="-mt-2 text-[14px] text-muted">Each version has its own code, so redemptions show which message brought people in.</p>
+          {live.length === 0 && (
+            <section id="results" aria-labelledby="results-h">
+              <SectionHeading id="results-h" title="Performance" />
+              <Empty>Once posts are live, this shows who opened them, who came in, the best time to post and what to change.</Empty>
+            </section>
+          )}
+
+          {data.experiments.length > 0 && (
+            <section aria-labelledby="ab-h">
+              <SectionHeading id="ab-h" title="A/B tests" sub="Each version has its own code, so redemptions show which message brought people in." />
+              <div className="space-y-4">
                 {data.experiments.map((e) => (
-                  <ExperimentPanel key={e.experiment.id} exp={e} />
+                  <ExperimentPanel key={e.experiment.id} exp={e} labels={Object.fromEntries(data.assets.map((a) => [a.id, a.revision?.rendered?.headline ?? ""]))} />
                 ))}
               </div>
-            )}
-          </section>
+            </section>
+          )}
         </div>
 
         <aside className="space-y-6 xl:sticky xl:top-24 xl:self-start" aria-label="Talk to Counterpart">
@@ -261,11 +255,7 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
             <h2 className="text-[24px]">Tell Counterpart</h2>
             <p className="mb-3 mt-1 text-[14px] text-muted">Ask for changes in plain words. Offer changes come back to you to lock.</p>
             <Composer rows={3} placeholder="Make it Sunday only, Saturday has a private booking." submitLabel="Send" onSubmit={tell} suggestions={TELL_SUGGESTIONS} />
-            {sent && <p className="mt-3 text-[14px] text-pen">On it: “{sent}”. Watch the work log below.</p>}
-          </div>
-          <div>
-            <h2 className="mb-2 text-[20px]">Work log</h2>
-            <Receipt campaignId={id} className="h-[420px] overflow-hidden rounded-[var(--radius-md)] ring-1 ring-line" />
+            {sent && <p className="mt-3 text-[14px] text-pen">On it: “{sent}”. The banner at the top shows progress.</p>}
           </div>
         </aside>
       </div>

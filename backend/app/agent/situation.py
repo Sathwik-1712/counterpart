@@ -8,6 +8,7 @@ from datetime import date
 from typing import Any
 
 from app.db import Conn, fetch_all, fetch_one
+from app.domain import culture
 from app.services import experiment_status
 
 
@@ -95,6 +96,7 @@ async def detect(conn: Conn, business: dict[str, Any], campaign_id: Any | None,
             add(2, "complaint_spike", f"Complaints about '{t['theme']}' rose to {t['recent']} in 14 days "
                 f"(from {t['previous']}).", theme=t["theme"])
 
+    covered: set[str] = set()
     for ev in await fetch_all(
         conn,
         """select key, period_start, data from customer_insights
@@ -102,8 +104,17 @@ async def detect(conn: Conn, business: dict[str, Any], campaign_id: Any | None,
            order by period_start""",
         (business["id"], today, today),
     ):
-        add(3, "event_upcoming", f"{ev['data'].get('name', ev['key'])} starts {ev['period_start']:%a %d %b}.",
-            event=ev["key"])
+        name = ev["data"].get("name", ev["key"])
+        fest = next(iter(culture.mentioned(name)), None)
+        if fest:
+            covered.add(fest.key)
+        add(3, "event_upcoming", f"{name} starts {ev['period_start']:%a %d %b}.", event=ev["key"],
+            festival=fest.key if fest else None)
+    # Festivals from the built-in calendar that the business's own events don't already cover.
+    for fest, start, _end, _label in culture.upcoming(today, days=21):
+        if fest.key not in covered:
+            add(3, "event_upcoming", f"{fest.name} starts {max(start, today):%a %d %b}.", event=fest.key,
+                festival=fest.key)
 
     return sorted(findings, key=lambda f: f["priority"])
 
@@ -112,6 +123,9 @@ async def snapshot(conn: Conn, business: dict[str, Any], campaign_id: Any | None
     out: dict[str, Any] = {
         "business": {"name": business["name"], "locality": business["locality"], "languages": business["languages"]},
         "today": date.today().isoformat(),
+        # Festivals in the next month, so the agent can plan around them (greetings and customs are hand-checked).
+        "festivals": [{"key": f.key, "name": f.name, "when": label, "angles": list(f.angles)}
+                      for f, _s, _e, label in culture.upcoming(date.today(), days=30)],
     }
     if campaign_id:
         c = await fetch_one(conn, "select id, name, status, brief, goal, plan, intent from campaigns where id = %s",

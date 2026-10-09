@@ -6,21 +6,11 @@ import { useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { Asset, Fact, Validation } from "@/lib/types";
 import { PhotoPicker, SOURCE_LABEL } from "./photo-picker";
+import { PostEditor } from "./post-editor";
 import { ChannelPreview } from "./previews";
 import { Button, CHANNEL_LABEL, LANG_LABEL, segmentLabel, stagger, StatusPill } from "./ui";
 
 const CHANNEL_ICON = { instagram_post: InstagramLogo, instagram_story: DeviceMobile, poster: Storefront, whatsapp: WhatsappLogo } as const;
-
-/** Owner edits plain text. Exact approved wording becomes a fact slot again;
- *  anything else (e.g. a different discount) stays literal and the guard blocks it. */
-function toSlots(text: string, facts: Fact[], lang: string) {
-  let out = text;
-  for (const f of [...facts].sort((a, b) => (b.display[lang as "en"]?.length ?? 0) - (a.display[lang as "en"]?.length ?? 0))) {
-    const d = f.display[lang as "en"];
-    if (d) out = out.split(d).join(`{{${f.key}}}`);
-  }
-  return out;
-}
 
 function GuardSummary({ v }: { v: Validation | null }) {
   const [open, setOpen] = useState(false);
@@ -40,7 +30,7 @@ function GuardSummary({ v }: { v: Validation | null }) {
           <span className={clsx("block", v.passed ? "text-pen-ink" : "text-kumkum")}>
             {v.passed ? "Matches the locked offer" : blocking[0]?.detail ?? "Blocked"}
           </span>
-          <span className="block text-xs text-muted">{l3}</span>
+          <span className="block text-[13px] text-muted">{l3}</span>
         </span>
         <CaretDown size={14} className={clsx("mt-1 shrink-0 text-muted transition-transform", open && "rotate-180")} aria-hidden />
       </button>
@@ -74,7 +64,6 @@ async function renderPng(node: HTMLElement) {
 export function AssetCard({ asset, facts, business, onChange, i = 0 }: { asset: Asset; facts: Fact[]; business: string; onChange: () => void; i?: number }) {
   const [editing, setEditing] = useState(false);
   const [picking, setPicking] = useState(false);
-  const [draft, setDraft] = useState({ headline: "", body: "" });
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const postRef = useRef<HTMLDivElement>(null);
@@ -130,22 +119,6 @@ export function AssetCard({ asset, facts, business, onChange, i = 0 }: { asset: 
     }
   }
 
-  function startEdit() {
-    setDraft({ headline: rev?.rendered?.headline ?? "", body: rev?.rendered?.body ?? "" });
-    setEditing(true);
-  }
-
-  async function saveEdit() {
-    const seg = (t: string, field: string) => (t.trim() ? [{ text: toSlots(t, facts, asset.language), sources: [`owner:${field}`] }] : []);
-    const ok = await act("save", () =>
-      api(`/assets/${asset.id}`, {
-        method: "PATCH",
-        json: { content: { headline: seg(draft.headline, "headline"), body: seg(draft.body, "body"), cta: [], hashtags: rev?.rendered?.hashtags ?? [] } },
-      }),
-    );
-    if (ok) setEditing(false);
-  }
-
   const ChannelIcon = CHANNEL_ICON[asset.channel];
 
   return (
@@ -164,7 +137,7 @@ export function AssetCard({ asset, facts, business, onChange, i = 0 }: { asset: 
           <p className="truncate text-[15px] font-semibold">
             {CHANNEL_LABEL[asset.channel]} <span className="font-normal text-muted">in {LANG_LABEL[asset.language]}</span>
           </p>
-          <p className="truncate text-xs text-muted">
+          <p className="truncate text-[13px] text-muted">
             For {segmentLabel(asset.segment).toLowerCase()}
             {asset.variant && `, variant ${asset.variant}`}
           </p>
@@ -172,29 +145,12 @@ export function AssetCard({ asset, facts, business, onChange, i = 0 }: { asset: 
         <StatusPill status={asset.status} />
       </div>
 
-      {editing ? (
-        <div className="space-y-3 rounded-[var(--radius-xl)] bg-sunken/70 p-4">
-          {(["headline", "body"] as const).map((f) => (
-            <label key={f} className="block">
-              <span className="text-xs font-medium text-ink-2">{f === "headline" ? "Headline" : "Message"}</span>
-              <textarea
-                value={draft[f]}
-                onChange={(e) => setDraft({ ...draft, [f]: e.target.value })}
-                rows={f === "body" ? 4 : 2}
-                lang={asset.language}
-                className="mt-1.5 w-full resize-y rounded-[var(--radius-md)] bg-surface px-3.5 py-2.5 text-[15px] text-ink shadow-[inset_0_0_0_1.5px_var(--color-ink)] outline-none focus:shadow-[inset_0_0_0_1.5px_var(--color-ink),0_0_0_3px_var(--color-marker)]"
-              />
-            </label>
-          ))}
-          <p className="text-xs text-muted">The offer box and “show this at the counter” come from the locked offer. To change the offer, tell Counterpart.</p>
-        </div>
-      ) : (
-        <div ref={postRef} className="overflow-hidden rounded-[var(--radius-xl)] ring-1 ring-black/5" lang={asset.language}>
-          <ChannelPreview asset={asset} business={business} />
-        </div>
-      )}
-      {!editing && asset.channel !== "whatsapp" && asset.image_source && (
-        <div className="flex items-center gap-2 px-3 pt-2.5 text-xs text-muted">
+      <div ref={postRef} className="overflow-hidden rounded-[var(--radius-lg)] ring-1 ring-black/5" lang={asset.language}>
+        <ChannelPreview asset={asset} business={business} />
+      </div>
+      {editing && <PostEditor asset={asset} facts={facts} onClose={() => setEditing(false)} onSaved={onChange} />}
+      {asset.channel !== "whatsapp" && asset.image_source && (
+        <div className="flex items-center gap-2 px-3 pt-2.5 text-[13px] text-muted">
           {asset.image_source.source === "generated" ? <Sparkle size={13} className="shrink-0 text-turmeric" aria-hidden /> : <Camera size={13} className="shrink-0 text-pen" aria-hidden />}
           <span className="min-w-0 flex-1 truncate">
             {asset.image_source.source === "generated"
@@ -211,9 +167,9 @@ export function AssetCard({ asset, facts, business, onChange, i = 0 }: { asset: 
       {picking && <PhotoPicker assetId={asset.id} current={asset.image_url} onClose={() => setPicking(false)} onPicked={onChange} />}
 
       <div className="mt-auto space-y-3 px-3 pb-2 pt-4">
-        {!editing && <GuardSummary v={v} />}
+        <GuardSummary v={v} />
         {code && (
-          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted">
             <span className="rounded-[var(--radius-sm)] bg-sunken px-2.5 py-1 font-receipt text-[12px] tracking-wider text-ink">{code}</span>
             {asset.outcomes && (
               <span className="tabular-nums">
@@ -224,17 +180,7 @@ export function AssetCard({ asset, facts, business, onChange, i = 0 }: { asset: 
         )}
         {error && <p className="text-sm text-kumkum">{error}</p>}
         <div className="flex flex-wrap items-center gap-1.5 border-t border-line pt-3">
-          {editing ? (
-            <>
-              <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
-                Cancel
-              </Button>
-              <span className="flex-1" />
-              <Button size="sm" variant="accent" onClick={saveEdit} disabled={busy !== null}>
-                {busy === "save" ? "Checking…" : "Save and check"}
-              </Button>
-            </>
-          ) : (
+          {
             <>
               {asset.status === "valid" && (
                 <Button
@@ -248,8 +194,8 @@ export function AssetCard({ asset, facts, business, onChange, i = 0 }: { asset: 
                 </Button>
               )}
               {!["live", "retired", "rejected"].includes(asset.status) && (
-                <Button size="sm" variant="ghost" onClick={startEdit}>
-                  <PencilSimple size={14} aria-hidden /> Edit
+                <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
+                  <PencilSimple size={14} aria-hidden /> Edit post
                 </Button>
               )}
               <span className="flex-1" />
@@ -262,7 +208,7 @@ export function AssetCard({ asset, facts, business, onChange, i = 0 }: { asset: 
                 </Button>
               )}
             </>
-          )}
+          }
         </div>
       </div>
     </article>

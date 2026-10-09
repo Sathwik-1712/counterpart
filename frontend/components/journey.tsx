@@ -18,14 +18,14 @@ export function JourneyTrack({ step, notes }: { step: number; notes?: Partial<Re
               style={stagger(i)}
             >
               <span className="flex items-center justify-between gap-2">
-                <span className={clsx("font-mono text-[11px] font-semibold", now ? "text-ink" : "text-muted")}>{String(i + 1).padStart(2, "0")}</span>
+                <span className={clsx("font-mono text-[12px] font-semibold", now ? "text-ink" : "text-muted")}>{String(i + 1).padStart(2, "0")}</span>
                 {done && (
                   <span className="stamp-in inline-flex h-5 w-5 items-center justify-center rounded-full bg-pen text-white" style={stagger(i)}>
                     <Check size={11} weight="bold" aria-label="done" />
                   </span>
                 )}
               </span>
-              <span className={clsx("truncate text-[17px] font-bold [font-stretch:85%] md:text-[20px]", !done && !now && "text-muted")}>{s.label}</span>
+              <span className={clsx("truncate text-[17px] font-bold [font-stretch:90%] md:text-[20px]", !done && !now && "text-muted")}>{s.label}</span>
               <span className={clsx("hidden truncate text-[12px] md:block", now ? "text-ink" : "text-muted")}>{notes?.[s.key] ?? s.who}</span>
             </a>
           </li>

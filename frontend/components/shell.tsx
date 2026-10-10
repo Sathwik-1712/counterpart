@@ -8,6 +8,7 @@ import {
   DotsThreeOutline,
   Images,
   Megaphone,
+  Plugs,
   Plus,
   QrCode,
   Receipt as ReceiptIcon,
@@ -35,6 +36,7 @@ const BUSINESS = [
   { href: "/photos", label: "Photos", icon: Images },
   { href: "/brand", label: "Brand", icon: BookOpenText },
   { href: "/customers", label: "Customers", icon: UsersThree },
+  { href: "/channels", label: "Channels", icon: Plugs },
 ];
 const NAV = [...WORK, ...BUSINESS];
 

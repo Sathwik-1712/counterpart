@@ -1,10 +1,11 @@
 "use client";
 
-import { Camera, CaretDown, Check, DeviceMobile, DownloadSimple, InstagramLogo, PencilSimple, SealCheck, ShareNetwork, Sparkle, Storefront, WarningOctagon, WhatsappLogo, X } from "@phosphor-icons/react";
+import { ArrowSquareOut, Camera, CaretDown, Check, DeviceMobile, DownloadSimple, InstagramLogo, LinkSimple, PencilSimple, SealCheck, ShareNetwork, Sparkle, Storefront, WarningOctagon, WhatsappLogo, X } from "@phosphor-icons/react";
 import clsx from "clsx";
 import { useRef, useState } from "react";
 import { api } from "@/lib/api";
-import type { Asset, Fact, Validation } from "@/lib/types";
+import type { Asset, ChannelsStatus, Fact, Validation } from "@/lib/types";
+import { InstagramPicker } from "./instagram-picker";
 import { PhotoPicker, SOURCE_LABEL } from "./photo-picker";
 import { PostEditor } from "./post-editor";
 import { ChannelPreview } from "./previews";
@@ -61,8 +62,28 @@ async function renderPng(node: HTMLElement) {
   return blob;
 }
 
-export function AssetCard({ asset, facts, business, onChange, i = 0 }: { asset: Asset; facts: Fact[]; business: string; onChange: () => void; i?: number }) {
+/** Instagram takes JPEG only: redraw the PNG on white and encode it. */
+async function toJpeg(png: Blob) {
+  const bmp = await createImageBitmap(png);
+  const canvas = Object.assign(document.createElement("canvas"), { width: bmp.width, height: bmp.height });
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(bmp, 0, 0);
+  return canvas.toDataURL("image/jpeg", 0.9);
+}
+
+/** Post a live Instagram post exactly as drawn on its card (found by `data-post`), from anywhere on the page. */
+export async function postToInstagram(assetId: string) {
+  const node = document.querySelector<HTMLElement>(`[data-post="${assetId}"]`);
+  if (!node) throw new Error("Show this post in the Posts section above (pick “All”), then try again.");
+  const data_url = await toJpeg(await renderPng(node));
+  return api<{ media_id: string; permalink: string | null }>(`/assets/${assetId}/instagram/publish`, { method: "POST", json: { data_url } });
+}
+
+export function AssetCard({ asset, facts, business, onChange, i = 0, channels }: { asset: Asset; facts: Fact[]; business: string; onChange: () => void; i?: number; channels?: ChannelsStatus | null }) {
   const [editing, setEditing] = useState(false);
+  const [linking, setLinking] = useState(false);
   const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -145,7 +166,7 @@ export function AssetCard({ asset, facts, business, onChange, i = 0 }: { asset: 
         <StatusPill status={asset.status} />
       </div>
 
-      <div ref={postRef} className="overflow-hidden rounded-[var(--radius-lg)] ring-1 ring-black/5" lang={asset.language}>
+      <div ref={postRef} data-post={asset.id} className="overflow-hidden rounded-[var(--radius-lg)] ring-1 ring-black/5" lang={asset.language}>
         <ChannelPreview asset={asset} business={business} />
       </div>
       {editing && <PostEditor asset={asset} facts={facts} onClose={() => setEditing(false)} onSaved={onChange} />}
@@ -164,6 +185,7 @@ export function AssetCard({ asset, facts, business, onChange, i = 0 }: { asset: 
           )}
         </div>
       )}
+      {linking && <InstagramPicker assetId={asset.id} onClose={() => setLinking(false)} onLinked={onChange} />}
       {picking && <PhotoPicker assetId={asset.id} current={asset.image_url} onClose={() => setPicking(false)} onPicked={onChange} />}
 
       <div className="mt-auto space-y-3 px-3 pb-2 pt-4">
@@ -202,6 +224,27 @@ export function AssetCard({ asset, facts, business, onChange, i = 0 }: { asset: 
               <Button size="sm" variant="ghost" onClick={download} disabled={busy !== null} aria-label="Download as image">
                 <DownloadSimple size={15} aria-hidden /> {busy === "download" ? "Saving…" : "Download"}
               </Button>
+              {asset.status === "live" && asset.channel === "instagram_post" && channels?.instagram && (
+                asset.instagram ? (
+                  <a href={asset.instagram.permalink ?? "#"} target="_blank" rel="noreferrer" className="press inline-flex h-8 items-center gap-1.5 rounded-[var(--radius-sm)] px-2.5 text-[13px] font-semibold text-pen hover:bg-pen-soft">
+                    <InstagramLogo size={15} aria-hidden /> On Instagram <ArrowSquareOut size={13} aria-hidden />
+                  </a>
+                ) : (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      disabled={busy !== null}
+                      onClick={() => act("instagram", () => postToInstagram(asset.id))}
+                    >
+                      <InstagramLogo size={15} aria-hidden /> {busy === "instagram" ? "Posting…" : "Post to Instagram"}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setLinking(true)} disabled={busy !== null}>
+                      <LinkSimple size={14} aria-hidden /> Link one I posted
+                    </Button>
+                  </>
+                )
+              )}
               {asset.status === "live" && (
                 <Button size="sm" variant="primary" onClick={share} disabled={busy !== null}>
                   <ShareNetwork size={15} aria-hidden /> {busy === "share" ? "Preparing…" : "Share"}

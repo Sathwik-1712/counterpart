@@ -1,113 +1,145 @@
 "use client";
 
-import { CheckCircle, QrCode, WarningCircle } from "@phosphor-icons/react";
-import clsx from "clsx";
-import { useRef, useState } from "react";
+import { Check, Copy, DeviceMobile, QrCode, WhatsappLogo } from "@phosphor-icons/react";
+import { useState } from "react";
+import { RedeemDesk, type DeskCall } from "@/components/redeem-desk";
 import { Shell } from "@/components/shell";
-import { Button, Empty, PageHeader } from "@/components/ui";
-import { api } from "@/lib/api";
+import { Button, Empty, PageHeader, SectionHeading } from "@/components/ui";
+import { api, useResource } from "@/lib/api";
+import { useBusiness } from "@/lib/business";
 
-/** Staff screen: a customer shows a code, staff type it, the redemption is attributed. */
-export default function CounterPage() {
-  const [code, setCode] = useState("");
-  const [log, setLog] = useState<{ code: string; ok: boolean; msg: string; at: Date }[]>([]);
-  const [busy, setBusy] = useState(false);
-  const input = useRef<HTMLInputElement>(null);
-  const last = log[0];
-  const redeemed = log.filter((l) => l.ok).length;
+interface CounterInfo {
+  pin_set: boolean;
+  staff_phones: number;
+  whatsapp: string | null;
+  staff_link: string;
+  recent: { at: string; code: string; campaign: string; bill_amount: number | null; outside_rules: string | null }[];
+}
 
-  async function redeem(e: React.FormEvent) {
-    e.preventDefault();
-    const c = code.trim().toUpperCase();
-    if (!c) return;
-    setBusy(true);
+const call: DeskCall = (action, body) => api(`/counter/${action}`, { method: "POST", json: body });
+
+const field =
+  "h-11 w-full rounded-[var(--radius-md)] bg-surface px-3.5 text-[15px] shadow-[inset_0_0_0_1.5px_var(--color-line-strong)] outline-none focus:shadow-[inset_0_0_0_1.5px_var(--color-ink)]";
+
+function Settings({ info, onChange }: { info: CounterInfo; onChange: () => void }) {
+  const business = useBusiness();
+  const [pin, setPin] = useState("");
+  const [wa, setWa] = useState(info.whatsapp ? `+${info.whatsapp}` : "");
+  const [saved, setSaved] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function save(json: Record<string, string>, what: string) {
+    setError(null);
     try {
-      await api("/counter/redeem", { method: "POST", json: { code: c } });
-      setLog((l) => [{ code: c, ok: true, msg: "Redeemed", at: new Date() }, ...l]);
-      setCode("");
-    } catch (err) {
-      setLog((l) => [{ code: c, ok: false, msg: err instanceof Error ? err.message : "Failed", at: new Date() }, ...l]);
-    } finally {
-      setBusy(false);
-      input.current?.focus();
+      await api(`/businesses/${business.slug}/counter`, { method: "PUT", json });
+      setSaved(what);
+      setPin("");
+      onChange();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     }
   }
 
   return (
+    <div className="space-y-8">
+      <section aria-labelledby="staff-h">
+        <h2 id="staff-h" className="flex items-center gap-2 text-[20px]">
+          <DeviceMobile size={20} aria-hidden /> Staff phones
+        </h2>
+        <p className="mt-1 text-[14px] text-ink-2">
+          Staff don't need an account. Set a PIN, open the staff link on their phone and enter it once. Then they scan the QR on a customer's screen with the phone camera and tap Redeem.
+        </p>
+        <form
+          className="mt-3 flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            save({ pin }, info.pin_set ? "New PIN saved. Staff phones sign in again." : "PIN saved.");
+          }}
+        >
+          <input className={field} inputMode="numeric" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder={info.pin_set ? "New PIN (4 to 6 digits)" : "Set a PIN (4 to 6 digits)"} aria-label="Counter PIN" />
+          <Button type="submit" variant="primary" disabled={pin.length < 4}>
+            Save
+          </Button>
+        </form>
+        <p className="mt-2 text-[13px] text-muted">
+          {info.pin_set ? `PIN is set · ${info.staff_phones} staff phone${info.staff_phones === 1 ? "" : "s"} signed in` : "No PIN yet, so only you can redeem, from this page."}
+        </p>
+        {info.pin_set && (
+          <button
+            type="button"
+            onClick={() => navigator.clipboard?.writeText(info.staff_link).then(() => setCopied(true))}
+            className="press mt-3 flex w-full items-center gap-2 rounded-[var(--radius-md)] bg-paper px-3.5 py-2.5 text-left text-[14px] ring-1 ring-line"
+          >
+            <span className="min-w-0 flex-1 truncate font-receipt text-[12px]">{info.staff_link}</span>
+            {copied ? <Check size={16} className="text-pen" aria-hidden /> : <Copy size={16} aria-hidden />}
+            <span className="sr-only">Copy the staff link</span>
+          </button>
+        )}
+      </section>
+
+      <section aria-labelledby="wa-h">
+        <h2 id="wa-h" className="flex items-center gap-2 text-[20px]">
+          <WhatsappLogo size={20} aria-hidden /> Claims on WhatsApp
+        </h2>
+        <p className="mt-1 text-[14px] text-ink-2">
+          With a number here, customers can also get their code by sending you a WhatsApp message with the code already typed in. You get their number and a chat you can reply to.
+        </p>
+        <form
+          className="mt-3 flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            save({ whatsapp: wa }, wa.trim() ? "WhatsApp number saved." : "WhatsApp claims switched off.");
+          }}
+        >
+          <input className={field} inputMode="tel" value={wa} onChange={(e) => setWa(e.target.value)} placeholder="+91 98450 12345" aria-label="WhatsApp number" />
+          <Button type="submit" variant="secondary">
+            Save
+          </Button>
+        </form>
+      </section>
+
+      {saved && !error && <p className="text-[14px] text-pen">{saved}</p>}
+      {error && (
+        <p className="rounded-[var(--radius-md)] bg-kumkum-soft px-3.5 py-2.5 text-[14px] text-kumkum" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** The counter: check a customer's code against the locked offer, then redeem it once. */
+export default function CounterPage() {
+  const business = useBusiness();
+  const { data, reload } = useResource<CounterInfo>(`/businesses/${business.slug}/counter`, (e) => e.type === "outcome.redeem");
+
+  return (
     <Shell>
-      <PageHeader title="Counter" sub="Type the code from the customer's phone or poster. Each redemption counts for the message that brought them in." />
-      <div className="grid gap-8 lg:grid-cols-12">
+      <PageHeader title="Counter" sub="A customer shows their code. Counterpart checks it against the locked offer: right day, right time, not used before. Each redemption counts for the post that brought them in." />
+      <div className="grid gap-12 lg:grid-cols-12">
         <section className="rise-in lg:col-span-7" aria-label="Redeem a code">
-          <div className="night rounded-[var(--radius-xl)] p-6 md:p-10">
-            <div className="flex items-center gap-3">
-              <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-marker">
-                <QrCode size={22} aria-hidden />
-              </span>
-              <div>
-                <p className="text-[17px] font-semibold tracking-tight">Redeem a code</p>
-                <p className="text-sm text-white/60">Six letters and numbers, printed under “Show this at the counter”.</p>
-              </div>
-            </div>
-            <form onSubmit={redeem} className="mt-8 space-y-3">
-              <label htmlFor="code" className="text-[13px] text-white/60">
-                Offer code
-              </label>
-              <input
-                id="code"
-                ref={input}
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
-                placeholder="K7QF3M"
-                autoCapitalize="characters"
-                autoComplete="off"
-                autoFocus
-                maxLength={12}
-                className="h-20 w-full rounded-[var(--radius-md)] bg-white/[0.07] px-6 font-receipt text-[34px] uppercase tracking-[0.3em] text-white outline-none ring-1 ring-white/15 placeholder:text-white/20 focus:ring-2 focus:ring-marker md:text-[40px]"
-              />
-              <Button type="submit" variant="light" size="lg" className="w-full" disabled={busy || !code.trim()}>
-                {busy ? "Checking…" : "Redeem"}
-              </Button>
-            </form>
-            {last && (
-              <div
-                key={log.length}
-                role="status"
-                className={clsx("pop mt-6 flex items-center gap-3 rounded-[var(--radius-md)] p-4", last.ok ? "bg-marker/15 text-marker" : "bg-kumkum/20 text-[#ffb4ab]")}
-              >
-                {last.ok ? <CheckCircle size={26} weight="fill" aria-hidden /> : <WarningCircle size={26} weight="fill" aria-hidden />}
-                <div>
-                  <p className="font-receipt text-[15px] tracking-widest text-white">{last.code}</p>
-                  <p className="text-sm">{last.ok ? "Redeemed. Give the customer their offer." : last.msg}</p>
-                </div>
-              </div>
+          <RedeemDesk call={call} onRedeemed={reload} />
+          <div className="mt-10">
+            <SectionHeading title="Recent redemptions" />
+            {!data?.recent.length ? (
+              <Empty icon={<QrCode size={17} aria-hidden />}>Redeemed codes appear here, from this page and from staff phones.</Empty>
+            ) : (
+              <ul className="overflow-hidden rounded-[var(--radius-lg)] bg-receipt font-receipt text-[13px] ring-1 ring-line/80">
+                {data.recent.map((r, i) => (
+                  <li key={i} className="flex flex-wrap items-center gap-x-3 gap-y-0.5 border-b border-dashed border-line px-5 py-3 last:border-0">
+                    <span className="tracking-widest">{r.code}</span>
+                    <span className="min-w-0 flex-1 truncate text-ink-2">{r.campaign}</span>
+                    {r.bill_amount != null && <span className="tabular-nums">₹{r.bill_amount.toLocaleString("en-IN")}</span>}
+                    <span className="text-muted">{new Date(r.at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</span>
+                    {r.outside_rules && <span className="w-full text-turmeric">Outside the offer rules: {r.outside_rules}</span>}
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         </section>
-
-        <section className="lg:col-span-5" aria-labelledby="session-h">
-          <div className="mb-5 flex items-end justify-between">
-            <h2 id="session-h" className="text-[22px]">
-              This shift
-            </h2>
-            <p className="text-sm text-muted">
-              <span className="text-[22px] font-semibold tabular-nums text-ink">{redeemed}</span> redeemed
-            </p>
-          </div>
-          {log.length === 0 ? (
-            <Empty icon={<QrCode size={17} aria-hidden />}>Codes you redeem on this screen appear here.</Empty>
-          ) : (
-            <ul className="overflow-hidden rounded-[var(--radius-lg)] bg-receipt font-receipt text-[13px] shadow-[var(--shadow-soft)] ring-1 ring-line/80">
-              {log.map((l, i) => (
-                <li key={i} className="print-in flex items-center gap-3 border-b border-dashed border-line px-5 py-3 last:border-0">
-                  {l.ok ? <CheckCircle size={16} weight="fill" className="text-pen" aria-hidden /> : <WarningCircle size={16} weight="fill" className="text-kumkum" aria-hidden />}
-                  <span className="tracking-widest">{l.code}</span>
-                  <span className={clsx("min-w-0 flex-1 truncate", l.ok ? "text-pen-ink" : "text-kumkum")}>{l.msg}</span>
-                  <span className="text-muted">{l.at.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <aside className="lg:col-span-5">{data && <Settings info={data} onChange={reload} />}</aside>
       </div>
     </Shell>
   );

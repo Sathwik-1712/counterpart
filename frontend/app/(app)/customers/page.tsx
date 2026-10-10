@@ -1,8 +1,10 @@
 "use client";
 
-import { ArrowDownRight, ArrowRight, ArrowUpRight, ChatCircleText, ForkKnife, GoogleLogo, InstagramLogo, Plus, Star, WhatsappLogo } from "@phosphor-icons/react";
+import { ArrowDownRight, ArrowRight, ArrowUpRight, ChatCircleText, ClipboardText, ForkKnife, Globe, GoogleLogo, InstagramLogo, Plus, SealCheck, Star, WhatsappLogo } from "@phosphor-icons/react";
 import clsx from "clsx";
 import { useState } from "react";
+import { GoogleLink, needsReply, ReplyBox, type ReviewRow, VisitSummary, type Visits } from "@/components/review-desk";
+import { ReviewImport } from "@/components/review-import";
 import { Shell } from "@/components/shell";
 import { Button, LANG_LABEL, PageHeader, SectionHeading, SEGMENT_LABEL, Skeleton, stagger, timeAgo } from "@/components/ui";
 import { api, useResource } from "@/lib/api";
@@ -11,7 +13,10 @@ import { useBusiness } from "@/lib/business";
 interface Theme { theme: string; recent: number; previous: number; sentiment: number | null; quotes: { id: string; text: string; language?: string }[] }
 interface Customers {
   themes: Theme[];
-  recent: { id: string; source: string; language: string; segment: string | null; rating: number | null; body: string; occurred_at: string; sentiment: number | null; themes: string[] }[];
+  recent: (ReviewRow & { segment: string | null; occurred_at: string; sentiment: number | null; themes: string[] })[];
+  visits: Visits;
+  instagram_comments: Record<string, number>; // count per category ("unread" until the model has read them)
+  google_review_url: string | null;
   insights: { kind: string; key: string; period_start: string | null; period_end: string | null; data: Record<string, any> }[];
   language_mix: { language: string; n: number; sentiment: number | null }[];
 }
@@ -23,6 +28,23 @@ const SOURCE: Record<string, { icon: typeof GoogleLogo; label: string }> = {
   instagram_comment: { icon: InstagramLogo, label: "Instagram comment" },
   whatsapp: { icon: WhatsappLogo, label: "WhatsApp" },
   zomato_review: { icon: ForkKnife, label: "Zomato review" },
+  website_review: { icon: Globe, label: "From your website" },
+  pasted_review: { icon: ClipboardText, label: "Added by you" },
+  visit_review: { icon: SealCheck, label: "Verified visit" },
+};
+const FILTERS = [
+  { key: "all", label: "All" },
+  { key: "visits", label: "Verified visits" },
+  { key: "instagram", label: "Instagram" },
+  { key: "reply", label: "Needs a reply" },
+] as const;
+// What an Instagram comment is, as read by Counterpart. Yellow = the owner should answer it.
+const CATEGORY: Record<string, { label: string; plural: string; tone: string }> = {
+  praise: { label: "Praise", plural: "praise", tone: "bg-pen-soft text-pen-ink" },
+  complaint: { label: "Complaint", plural: "complaints", tone: "bg-kumkum-soft text-kumkum" },
+  question: { label: "Question", plural: "questions", tone: "bg-marker-soft text-ink" },
+  suggestion: { label: "Suggestion", plural: "suggestions", tone: "bg-sunken text-ink-2" },
+  mention: { label: "Tagged a friend", plural: "tagged a friend", tone: "bg-sunken text-ink-2" },
 };
 
 function Trend({ t, light }: { t: Theme; light?: boolean }) {
@@ -56,6 +78,13 @@ export default function CustomersPage() {
   const business = useBusiness();
   const { data, reload } = useResource<Customers>(`/businesses/${business.slug}/customers`, (e) => e.type.startsWith("customers."));
   const [busy, setBusy] = useState(false);
+  const [filter, setFilter] = useState<(typeof FILTERS)[number]["key"]>("all");
+  const shown = (data?.recent ?? []).filter((r) =>
+    filter === "visits" ? r.source === "visit_review" : filter === "instagram" ? r.source === "instagram_comment" : filter === "reply" ? needsReply(r) : true,
+  );
+  const ig = data?.instagram_comments ?? {};
+  const igTotal = Object.values(ig).reduce((n, v) => n + v, 0);
+  const fixFirst = (data?.themes ?? []).filter((t) => (t.sentiment ?? 0) < -0.1 && t.recent > 0).sort((a, b) => b.recent - a.recent).slice(0, 3);
   const events = data?.insights.filter((i) => i.kind === "event") ?? [];
   const segments = data?.insights.filter((i) => i.kind === "segment") ?? [];
   const [top, ...others] = data?.themes ?? [];
@@ -83,8 +112,10 @@ export default function CustomersPage() {
           <p className="mt-4 max-w-[24ch] text-[30px] font-semibold leading-tight tracking-[-0.03em]">Your customers' words will show up here.</p>
           <p className="mt-3 max-w-[60ch] text-[15px] text-white/70">
             Counterpart reads reviews and messages in every language they were written in, groups them into topics, and writes campaigns that answer what people actually say.
-            Connecting Google reviews and WhatsApp is next on our list. Until then, campaigns are written from your brief and your brand voice.
           </p>
+          <div className="mt-8">
+            <ReviewImport onDone={reload} dark />
+          </div>
         </div>
       </Shell>
     );
@@ -219,7 +250,7 @@ export default function CustomersPage() {
               {data.language_mix.map((l) => (
                 <div key={l.language}>
                   <p className="text-[24px] font-semibold leading-none tracking-tight tabular-nums">{l.n}</p>
-                  <p className="mt-1 text-[13px] text-muted">{LANG_LABEL[l.language] ?? (l.language === "kn-Latn" ? "Kannada in English letters" : l.language)}</p>
+                  <p className="mt-1 text-[13px] text-muted">{LANG_LABEL[l.language] ?? { "kn-Latn": "Kannada in English letters", "hi-Latn": "Hindi in English letters", other: "Other languages" }[l.language] ?? l.language}</p>
                 </div>
               ))}
             </div>
@@ -227,10 +258,38 @@ export default function CustomersPage() {
         </section>
       </div>
 
+      <section className="mt-16" aria-labelledby="visits-h">
+        <SectionHeading id="visits-h" title="Reviews from visits" sub="Asked automatically after a code is redeemed, on the customer's phone or on WhatsApp. Every one is a real visit, so nobody can fake them." />
+        {data && <VisitSummary v={data.visits} fixFirst={fixFirst} />}
+        <div className="mt-5">{data && <GoogleLink url={data.google_review_url} onSaved={reload} />}</div>
+      </section>
+
       <section className="mt-16" aria-labelledby="reviews-h">
-        <SectionHeading id="reviews-h" title="Latest reviews and messages" sub="Synthetic demo data" />
+        <SectionHeading id="reviews-h" title="Latest reviews and messages" sub={business.is_demo ? "Synthetic demo data, labelled as such" : "Newest first, in the language they were written in"} />
+        <div className="no-scrollbar mb-5 flex gap-1 overflow-x-auto" role="tablist" aria-label="Show">
+          {FILTERS.map((f) => (
+            <button key={f.key} role="tab" aria-selected={filter === f.key} onClick={() => setFilter(f.key)} className={clsx("press shrink-0 rounded-[var(--radius-sm)] px-3 py-1.5 text-[14px] font-semibold", filter === f.key ? "bg-ink text-white" : "text-ink-2 hover:bg-sunken")}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+        {igTotal > 0 && (filter === "all" || filter === "instagram") && (
+          <p className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px] text-ink-2">
+            <span className="inline-flex items-center gap-1.5 font-semibold text-ink">
+              <InstagramLogo size={15} aria-hidden /> {igTotal} Instagram comment{igTotal === 1 ? "" : "s"}
+            </span>
+            {Object.entries(CATEGORY).filter(([k]) => ig[k]).map(([k, c]) => (
+              <span key={k} className={clsx("rounded-[var(--radius-sm)] px-2 py-0.5 text-[13px] tabular-nums", c.tone)}>
+                {ig[k]} {ig[k] === 1 && k !== "praise" && k !== "mention" ? c.label.toLowerCase() : c.plural}
+              </span>
+            ))}
+            {ig.unread ? <span className="text-[13px] text-muted">{ig.unread} still being read</span> : null}
+            {ig.spam ? <span className="text-[13px] text-muted">{ig.spam} spam hidden</span> : null}
+          </p>
+        )}
+        {!shown.length && <p className="text-[15px] text-ink-2">{filter === "reply" ? "Nothing waiting for a reply." : "No reviews here yet."}</p>}
         <div className="columns-1 gap-4 md:columns-2 xl:columns-3">
-          {data?.recent.slice(0, 18).map((r, i) => {
+          {shown.slice(0, 24).map((r, i) => {
             const src = SOURCE[r.source] ?? { icon: ChatCircleText, label: human(r.source) };
             const Icon = src.icon;
             return (
@@ -240,20 +299,35 @@ export default function CustomersPage() {
                     <Icon size={14} aria-hidden />
                   </span>
                   <span>{src.label}</span>
+                  {r.category && CATEGORY[r.category] && (
+                    <span className={clsx("rounded-[var(--radius-sm)] px-1.5 py-0.5 text-[12px] font-semibold", CATEGORY[r.category].tone)}>{CATEGORY[r.category].label}</span>
+                  )}
                   <span className="flex-1" />
                   {r.rating ? <Rating n={r.rating} /> : null}
                 </div>
                 <p className={clsx("leading-relaxed text-ink", r.body.length < 70 ? "text-[17px] tracking-tight" : "text-[15px]")} lang={r.language}>
                   {r.body}
                 </p>
+                {r.translation && <p className="mt-1.5 text-[14px] italic text-ink-2">“{r.translation}”</p>}
+                {!r.body && r.source === "visit_review" && <p className="text-[14px] text-muted">Stars only, no comment.</p>}
                 <p className="mt-3 text-[13px] text-muted">
-                  {SEGMENT_LABEL[r.segment ?? ""] ?? "Customer"}, {timeAgo(r.occurred_at)}
+                  {r.source === "visit_review"
+                    ? `Came in through “${r.campaign ?? "a campaign"}”${r.via === "whatsapp" ? ", on WhatsApp" : ""}`
+                    : r.source === "instagram_comment"
+                      ? `@${r.author ?? "someone"}${r.campaign ? ` on a “${r.campaign}” post` : ""}`
+                      : (SEGMENT_LABEL[r.segment ?? ""] ?? "Customer")}
+                  , {timeAgo(r.occurred_at)}
                   {r.themes.length ? `, about ${r.themes.map((t) => t.replace(/_/g, " ")).join(", ")}` : ""}
                 </p>
+                {!business.is_demo || r.source === "visit_review" ? <ReplyBox r={r} onSaved={reload} /> : null}
               </article>
             );
           })}
         </div>
+      </section>
+
+      <section className="mt-12" aria-label="Add reviews">
+        <ReviewImport onDone={reload} />
       </section>
     </Shell>
   );

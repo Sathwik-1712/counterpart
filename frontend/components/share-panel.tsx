@@ -3,7 +3,9 @@
 import { ArrowSquareOut, Check, Copy, DeviceMobile, DownloadSimple, InstagramLogo, Storefront, WhatsappLogo } from "@phosphor-icons/react";
 import clsx from "clsx";
 import { useState } from "react";
-import type { Asset, ResultRow } from "@/lib/types";
+import { api } from "@/lib/api";
+import type { Asset, ChannelsStatus, ResultRow } from "@/lib/types";
+import { postToInstagram } from "./asset-card";
 import { CHANNEL_LABEL, LANG_LABEL, segmentLabel, stagger } from "./ui";
 
 const CHANNEL_ICON = { instagram_post: InstagramLogo, instagram_story: DeviceMobile, poster: Storefront, whatsapp: WhatsappLogo } as const;
@@ -40,15 +42,100 @@ function captionFor(a: Asset, link: string) {
   return [r.body, (r.offer ?? []).join(" · "), `Get your code: ${link}`, tags].filter(Boolean).join("\n\n");
 }
 
+interface SendResult {
+  sent: number;
+  template: number;
+  skipped: number;
+  failed: number;
+  errors: string[];
+}
+
+/** Send a live post from the business's own WhatsApp number to customers who asked for offers. */
+function SendOnWhatsApp({ asset, channels }: { asset: Asset; channels: ChannelsStatus }) {
+  const [busy, setBusy] = useState(false);
+  const [res, setRes] = useState<SendResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const c = channels.whatsapp!.contacts;
+  return (
+    <div className="w-full">
+      <button
+        disabled={busy || c.reachable === 0}
+        onClick={async () => {
+          setBusy(true);
+          setError(null);
+          try {
+            setRes(await api<SendResult>(`/assets/${asset.id}/whatsapp/send`, { method: "POST" }));
+          } catch (e) {
+            setError(e instanceof Error ? e.message : String(e));
+          } finally {
+            setBusy(false);
+          }
+        }}
+        className="press inline-flex h-9 items-center gap-1.5 rounded-[var(--radius-sm)] bg-[#128c4a] px-3 text-[13px] font-semibold text-white hover:brightness-110 disabled:opacity-50"
+      >
+        <WhatsappLogo size={15} weight="fill" aria-hidden />
+        {busy ? "Sending…" : c.reachable ? `Send to ${c.reachable} customer${c.reachable === 1 ? "" : "s"}` : "No WhatsApp customers yet"}
+      </button>
+      {res && (
+        <p className="mt-1.5 text-[13px] text-ink-2">
+          Sent {res.sent + res.template}
+          {res.template > 0 && ` (${res.template} by paid template)`}
+          {res.skipped > 0 && ` · ${res.skipped} skipped: they wrote over 24 hours ago and there is no approved template`}
+          {res.failed > 0 && ` · ${res.failed} failed: ${res.errors[0] ?? ""}`}
+        </p>
+      )}
+      {error && <p className="mt-1.5 text-[13px] text-kumkum">{error}</p>}
+    </div>
+  );
+}
+
+/** Put a live Instagram post on the connected account, drawn exactly as its card above shows it. */
+function PostOnInstagram({ asset, channels }: { asset: Asset; channels: ChannelsStatus }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [permalink, setPermalink] = useState<string | null>(null);
+  const done = asset.instagram?.permalink ?? permalink;
+  if (asset.instagram || permalink)
+    return (
+      <a href={done ?? "#"} target="_blank" rel="noreferrer" className="press inline-flex h-9 items-center gap-1.5 rounded-[var(--radius-sm)] px-3 text-[13px] font-semibold text-pen hover:bg-pen-soft">
+        <InstagramLogo size={15} aria-hidden /> On Instagram <ArrowSquareOut size={13} aria-hidden />
+      </a>
+    );
+  return (
+    <div className="w-full">
+      <button
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          setError(null);
+          try {
+            setPermalink((await postToInstagram(asset.id)).permalink ?? "#");
+          } catch (e) {
+            setError(e instanceof Error ? e.message : String(e));
+          } finally {
+            setBusy(false);
+          }
+        }}
+        className="press inline-flex h-9 items-center gap-1.5 rounded-[var(--radius-sm)] bg-ink px-3 text-[13px] font-semibold text-white hover:bg-ink-2 disabled:opacity-50"
+      >
+        <InstagramLogo size={15} aria-hidden /> {busy ? "Posting…" : `Post to ${channels.instagram!.username}`}
+      </button>
+      {error && <p className="mt-1.5 text-[13px] text-kumkum">{error}</p>}
+    </div>
+  );
+}
+
 /** Step 3: everything the owner needs to put live posts in front of customers, each with its own tracking link. */
-export function SharePanel({ assets, rows }: { assets: Asset[]; rows: ResultRow[] }) {
+export function SharePanel({ assets, rows, channels }: { assets: Asset[]; rows: ResultRow[]; channels?: ChannelsStatus | null }) {
   return (
     <div>
       <ol className="mb-6 grid gap-px overflow-hidden rounded-[var(--radius-lg)] bg-ink ring-1 ring-ink md:grid-cols-3">
         {[
-          ["Instagram", "Download the picture from the post above and paste the caption. The caption carries your link."],
+          ["Instagram", channels?.instagram
+            ? `Post straight to ${channels.instagram.username}. The caption carries the post's code for the counter.`
+            : "Download the picture from the post above and paste the caption. The caption carries your link."],
           ["WhatsApp", "Send the message to your customers or your status. Each one has its own link."],
-          ["At the counter", "Print the QR code. Staff type the customer's code on the Counter screen."],
+          ["At the counter", "Print the QR code. Each customer gets their own code; staff scan it with a phone or type it on the Counter screen."],
         ].map(([t, d], i) => (
           <li key={t} className="rise-in bg-surface p-5" style={stagger(i)}>
             <p className="font-mono text-[12px] font-semibold text-muted">{String(i + 1).padStart(2, "0")}</p>
@@ -91,6 +178,8 @@ export function SharePanel({ assets, rows }: { assets: Asset[]; rows: ResultRow[
                 )}
               </div>
               <div className="flex flex-wrap gap-1.5">
+                {a.channel === "whatsapp" && channels?.whatsapp && <SendOnWhatsApp asset={a} channels={channels} />}
+                {a.channel === "instagram_post" && channels?.instagram && <PostOnInstagram asset={a} channels={channels} />}
                 {a.channel === "whatsapp" || a.channel === "instagram_story" ? (
                   <a
                     href={`https://wa.me/?text=${encodeURIComponent(messageFor(a, link))}`}
@@ -98,7 +187,7 @@ export function SharePanel({ assets, rows }: { assets: Asset[]; rows: ResultRow[
                     rel="noreferrer"
                     className="press inline-flex h-9 items-center gap-1.5 rounded-[var(--radius-sm)] bg-ink px-3 text-[13px] font-semibold text-white hover:bg-ink-2"
                   >
-                    <WhatsappLogo size={15} weight="fill" aria-hidden /> Send on WhatsApp
+                    <WhatsappLogo size={15} weight="fill" aria-hidden /> {channels?.whatsapp ? "Forward from my phone" : "Send on WhatsApp"}
                   </a>
                 ) : (
                   <CopyButton text={captionFor(a, link)} label="Copy caption" />

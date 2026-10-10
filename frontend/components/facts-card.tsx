@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Lock, LockOpen, SealCheck, WarningCircle } from "@phosphor-icons/react";
+import { Check, CheckSquare, Lock, LockOpen, SealCheck, Square, WarningCircle } from "@phosphor-icons/react";
 import clsx from "clsx";
 import { useState } from "react";
 import { api } from "@/lib/api";
@@ -22,6 +22,7 @@ export function FactsCard({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lang, setLang] = useState<Lang>("en");
+  const [autopublish, setAutopublish] = useState(true);
   const draft = versions.find((v) => v.status === "draft");
   const locked = versions.find((v) => v.status === "locked");
   const shown = draft ?? locked;
@@ -57,7 +58,7 @@ export function FactsCard({
     setBusy(true);
     setError(null);
     try {
-      await api(`/campaigns/${campaignId}/facts/lock`, { method: "POST" });
+      await api(`/campaigns/${campaignId}/facts/lock?autopublish=${autopublish}`, { method: "POST" });
       onChange();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -185,8 +186,22 @@ export function FactsCard({
         )}
         {error && <p className="text-kumkum">{error}</p>}
         {isDraft && (
+          <button
+            type="button"
+            onClick={() => setAutopublish(!autopublish)}
+            aria-pressed={autopublish}
+            className="press flex w-full items-start gap-2.5 rounded-[var(--radius-md)] bg-paper p-3 text-left ring-1 ring-line"
+          >
+            {autopublish ? <CheckSquare size={20} weight="fill" className="mt-px shrink-0 text-pen" aria-hidden /> : <Square size={20} className="mt-px shrink-0" aria-hidden />}
+            <span>
+              <span className="block font-semibold text-ink">Also approve the posts</span>
+              <span className="block text-[13px] text-muted">Posts written for this offer go live by themselves once they pass every check. Untick to approve each one yourself.</span>
+            </span>
+          </button>
+        )}
+        {isDraft && (
           <Button variant="accent" size="lg" onClick={lock} disabled={busy || !canLock} className="w-full" trailing={<Lock size={15} weight="bold" />}>
-            {busy ? "Locking…" : !check ? "Checking wording…" : check.status === "failed" ? "Fix wording to lock" : assumed.size ? "Confirm and lock" : "Lock the offer"}
+            {busy ? "Locking…" : !check ? "Checking wording…" : check.status === "failed" ? "Fix wording to lock" : assumed.size ? "Confirm and lock" : autopublish ? "Lock the offer and approve" : "Lock the offer"}
           </Button>
         )}
       </div>

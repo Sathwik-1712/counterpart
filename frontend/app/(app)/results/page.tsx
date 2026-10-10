@@ -101,6 +101,9 @@ export default function ResultsPage() {
       ) : (
         <>
           <section aria-label="Totals">
+            {(t?.simulated ?? 0) > 0 && (
+              <p className="stamp mb-4 text-turmeric">Includes {t!.simulated} simulated results (demo)</p>
+            )}
             <div className="grid gap-px overflow-hidden rounded-[var(--radius-lg)] bg-ink ring-1 ring-ink sm:grid-cols-2 lg:grid-cols-4">
               {[
                 { n: t?.scans ?? 0, label: "opened a post's link" },
@@ -118,9 +121,14 @@ export default function ResultsPage() {
                 <p className="sign tabular text-[72px] text-marker">
                   {t?.conversion == null ? "–" : <CountUp value={(t.conversion ?? 0) * 100} format={(n) => `${n.toFixed(1)}%`} />}
                 </p>
-                <p className="mt-1 text-[14px] text-white/70">{t?.conversion == null ? "conversion shows once people open links" : "of people who opened a link redeemed"}</p>
+                <p className="mt-1 text-[14px] text-white/70">{t?.conversion == null ? "conversion shows once people open links" : "of people who opened a link came in and redeemed"}</p>
               </div>
             </div>
+            {t && t.sales > 0 && (
+              <p className="mt-3 text-[15px] text-ink-2">
+                <span className="font-semibold text-ink">₹{t.sales.toLocaleString("en-IN")}</span> in sales came with redeemed codes, from the bills staff typed in at the counter.
+              </p>
+            )}
             {t && t.redeemed > t.scans && (
               <p className="mt-3 text-[13px] text-muted">Some codes were redeemed from printed posters or forwarded messages without opening the link, so redemptions can be higher than visits.</p>
             )}

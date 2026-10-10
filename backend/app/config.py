@@ -51,6 +51,20 @@ class Settings(BaseSettings):
     cerebras_model: str = "gpt-oss-120b"
     cerebras_rpm: int = 20
 
+    # Sarvam AI (Indian languages): speech to text for the owner's voice briefs, and an independent machine
+    # translation the checker compares against. Optional; without a key the browser's voice input and the LLM's own
+    # back-translation are used.
+    sarvam_api_key: SecretStr | None = None
+    sarvam_base_url: str = "https://api.sarvam.ai"
+    sarvam_stt_model: str = "saaras:v4"
+    sarvam_translate_model: str = "mayura:v1"
+
+    # Meta: WhatsApp Cloud API and Instagram API with Instagram Login. Each business connects its own number and
+    # account (tokens in channel_accounts); these are the app-level values for the webhook.
+    meta_graph_version: str = "v25.0"
+    meta_app_secret: SecretStr | None = None  # verifies X-Hub-Signature-256 on every webhook POST
+    whatsapp_verify_token: SecretStr | None = None  # the "Verify token" typed into the Meta webhook settings
+
     # Optional second OpenAI-compatible LLM (independent verifier / live model swap).
     alt_llm_base_url: str | None = None
     alt_llm_api_key: SecretStr | None = None

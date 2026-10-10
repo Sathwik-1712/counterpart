@@ -171,13 +171,12 @@ function LookPanel({ slug, dna, onSaved }: { slug: string; dna: Record<string, a
         }}
         disabled={busy !== null}
         aria-pressed={on}
-        className={clsx("press flex min-w-0 flex-col gap-2 rounded-[var(--radius-md)] p-3 text-left", on ? "bg-surface ring-2 ring-ink" : "ring-1 ring-line hover:ring-ink/40")}
+        className={clsx("press flex w-full min-w-0 flex-col items-stretch gap-2 rounded-[var(--radius-md)] p-3 text-left", on ? "bg-surface ring-2 ring-ink" : "ring-1 ring-line hover:ring-ink/40")}
       >
-        <span className="flex h-8 overflow-hidden rounded-[3px] ring-1 ring-ink/10" aria-hidden>
-          <span className="flex-1" style={{ background: t.paper }} />
-          <span className="flex-1" style={{ background: t.marker }} />
-          <span className="flex-1" style={{ background: t.pen }} />
-          <span className="flex-1" style={{ background: t.brand }} />
+        <span className="grid h-8 w-full grid-cols-4 overflow-hidden rounded-[3px] ring-1 ring-ink/10" aria-hidden>
+          {[t.paper, t.marker, t.pen, t.brand].map((c, i) => (
+            <span key={i} className="block h-full w-full" style={{ backgroundColor: c }} />
+          ))}
         </span>
         <span className="truncate text-[14px] font-semibold">{busy === (id ?? "auto") ? "Saving…" : name}</span>
       </button>
@@ -269,7 +268,7 @@ export default function BrandPage() {
                 return (
                   <span key={p} className="inline-flex items-center gap-2.5 rounded-[var(--radius-sm)] py-1 pl-1 pr-3 text-[14px] ring-1 ring-line">
                     <span
-                      className="h-9 w-9 rounded-[3px] ring-1 ring-black/10"
+                      className="block h-9 w-9 shrink-0 rounded-[3px] ring-1 ring-black/10"
                       style={{ background: hex ?? "repeating-linear-gradient(45deg,#ddd 0 4px,#fff 4px 8px)" }}
                       aria-hidden
                     />

@@ -152,6 +152,7 @@ export interface Asset {
   outcomes: Record<string, number> | null;
   image_url: string | null;
   image_source?: { source: Photo["source"]; attribution?: string | null; caption?: string | null } | null;
+  instagram?: { media_id: string; permalink: string | null } | null;
 }
 
 export interface ExperimentArm {
@@ -183,6 +184,7 @@ export interface CampaignDetail {
     plan: Record<string, any> | null;
     intent: Record<string, any> | null;
     is_historical: boolean;
+    autopublish_version?: number | null;
   };
   facts: FactsVersion[];
   assets: Asset[];
@@ -203,12 +205,13 @@ export interface ResultRow {
   scans: number;
   claims: number;
   redeemed: number;
+  sales: number;
   link: string;
   conversion: number | null;
 }
 export interface Results {
   posts: ResultRow[];
-  totals: { scans: number; claims: number; redeemed: number; conversion: number | null };
+  totals: { scans: number; claims: number; redeemed: number; sales: number; simulated: number; conversion: number | null };
 }
 
 export interface Photo {
@@ -269,6 +272,7 @@ export interface FunnelGroup {
   claims: number;
   redeems: number;
   conversion: number | null;
+  likely: [number, number] | null;
 }
 
 export interface Tip {
@@ -280,11 +284,57 @@ export interface Tip {
 }
 
 export interface Analytics {
-  totals: { posts: number; scans: number; claims: number; redeems: number; claim_rate: number | null; redeem_rate: number | null; conversion: number | null };
+  totals: { posts: number; scans: number; claims: number; redeems: number; sales: number; bills: number; average_bill: number | null; claim_rate: number | null; redeem_rate: number | null; conversion: number | null };
   daily: { date: string; scans: number; claims: number; redeems: number }[];
   hours: { hour: number; scans: number; redeems: number }[];
   by: { channel: FunnelGroup[]; language: FunnelGroup[]; segment: FunnelGroup[] };
   posts: (FunnelGroup & { asset_id: string; code: string; channel: Channel; language: Lang; segment: string; variant: string | null; headline: string | null })[];
   simulated: number;
   tips: Tip[];
+  ratings?: Record<string, { n: number; average: number }>; // stars from verified visits, per post
+  channels?: {
+    whatsapp: Record<string, WhatsAppStats>;
+    instagram: Record<string, InstagramStats>;
+    whatsapp_connected: boolean;
+    instagram_connected: boolean;
+  };
+}
+
+export interface WhatsAppStats {
+  sent: number;
+  delivered: number;
+  read: number;
+  failed: number;
+  clicked: number;
+  claimed_on_whatsapp?: number;
+  redeemed_from_whatsapp?: number;
+}
+
+export interface InstagramStats {
+  media_id: string;
+  permalink: string | null;
+  metrics_at: string | null;
+  published_by: "counterpart" | "owner";
+  reach?: number;
+  likes?: number;
+  comments?: number;
+  saved?: number;
+  shares?: number;
+  views?: number;
+  total_interactions?: number;
+  engagement_rate: number | null;
+}
+
+export interface ChannelsStatus {
+  public_url: string;
+  public_ok: boolean;
+  webhook: { url: string; verify_token_set: boolean; app_secret_set: boolean; last_message_at: string | null };
+  whatsapp: {
+    display: string;
+    phone_number_id: string;
+    template: { name: string; language: string } | null;
+    connected_at: string;
+    contacts: { all: number; reachable: number; free_now: number };
+  } | null;
+  instagram: { username: string; connected_at: string; posts_linked: number } | null;
 }

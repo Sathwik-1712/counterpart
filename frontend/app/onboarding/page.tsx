@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Check, GoogleLogo, Globe, Plus, SealCheck, Sparkle, Trash, UploadSimple } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowRight, Check, GoogleLogo, Globe, LinkSimple, Plus, SealCheck, Sparkle, Trash, UploadSimple } from "@phosphor-icons/react";
 import clsx from "clsx";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui";
@@ -20,6 +20,18 @@ interface Item {
   name: string;
   price: string;
   cost: string;
+}
+
+interface ReadLink {
+  name?: string;
+  kind?: string;
+  city?: string;
+  locality?: string;
+  phone?: string;
+  website?: string;
+  languages?: string[];
+  offerings: { name: string; price: number }[];
+  notes: string[];
 }
 
 const field =
@@ -56,6 +68,12 @@ export default function Onboarding() {
   const [locality, setLocality] = useState("");
   const [langs, setLangs] = useState<string[]>(["en"]);
   const [items, setItems] = useState<Item[]>([{ name: "", price: "", cost: "" }]);
+  const [whatsapp, setWhatsapp] = useState("");
+  // Start from one link; the form fills itself and the owner checks everything on one page.
+  const [mode, setMode] = useState<"link" | "review" | "steps">("link");
+  const [link, setLink] = useState("");
+  const [reading, setReading] = useState(false);
+  const [notes, setNotes] = useState<string[]>([]);
   const [website, setWebsite] = useState("");
   const [google, setGoogle] = useState(true);
   const [googleOn, setGoogleOn] = useState(false);
@@ -80,6 +98,36 @@ export default function Onboarding() {
     true,
   ];
 
+  const review = mode === "review";
+  const show = (n: number) => (review ? true : step === n);
+
+  async function readLink(e: React.FormEvent) {
+    e.preventDefault();
+    setReading(true);
+    setError(null);
+    try {
+      const r = await api<ReadLink>("/onboarding/read-link", { method: "POST", json: { link: link.trim() } });
+      if (r.name) setName(r.name);
+      if (r.kind) {
+        const k = KINDS.find((x) => x.toLowerCase() === r.kind!.toLowerCase());
+        setKind(k ?? "Other");
+        if (!k) setOtherKind(r.kind);
+      }
+      if (r.city) setCity(r.city);
+      if (r.locality) setLocality(r.locality);
+      if (r.phone) setWhatsapp(r.phone);
+      if (r.website) setWebsite(r.website);
+      if (r.languages?.length) setLangs(r.languages);
+      if (r.offerings.length) setItems(r.offerings.map((o) => ({ name: o.name, price: String(o.price), cost: "" })));
+      setNotes(r.notes);
+      setMode("review");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setReading(false);
+    }
+  }
+
   function go(n: number) {
     setDir(n > step ? 1 : -1);
     setStep(n);
@@ -103,6 +151,7 @@ export default function Onboarding() {
           languages: langs,
           offerings: goodItems.map((i) => ({ name: i.name.trim(), price: Number(i.price), unit_cost: i.cost ? Number(i.cost) : null })),
           website: website.trim() || null,
+          whatsapp: whatsapp.trim() || null,
           find_on_google: google && googleOn,
           description: description.trim() || null,
         },
@@ -146,6 +195,41 @@ export default function Onboarding() {
       </main>
     );
 
+  if (mode === "link")
+    return (
+      <main className="min-h-dvh px-5 py-8 md:py-14">
+        <div className="mx-auto max-w-[620px]">
+          <div className="mb-14 flex items-center gap-2.5">
+            <img src="/icon.svg" alt="" className="h-9 w-9" />
+            <span className="text-[16px] font-semibold tracking-tight">Counterpart</span>
+          </div>
+          <h1 className="text-[34px] tracking-[-0.035em] md:text-[46px]">Let's set up your business</h1>
+          <p className="mt-3 max-w-[52ch] text-[16px] text-ink-2">Paste your website or your Google Maps link. Counterpart reads your name, area, phone and prices from it, and you check everything before anything is saved.</p>
+          <form onSubmit={readLink} className="mt-8 space-y-3">
+            <label className="block">
+              <Label>
+                <LinkSimple size={14} className="mr-1 inline" aria-hidden />
+                Website or Google Maps link
+              </Label>
+              <input className={field} value={link} onChange={(e) => setLink(e.target.value)} placeholder="e.g. shearjoy.in or maps.app.goo.gl/…" inputMode="url" autoFocus />
+            </label>
+            <Button type="submit" variant="primary" size="lg" className="w-full" disabled={reading || link.trim().length < 4} trailing={!reading && <ArrowRight size={15} weight="bold" />}>
+              {reading ? "Reading your page…" : "Fill it in for me"}
+            </Button>
+          </form>
+          {reading && <p className="mt-3 text-[14px] text-muted">This takes about 10 to 20 seconds.</p>}
+          {error && (
+            <p className="pop mt-4 rounded-[var(--radius-md)] bg-kumkum-soft px-3.5 py-2.5 text-sm text-kumkum" role="alert">
+              {error}
+            </p>
+          )}
+          <button type="button" onClick={() => { setError(null); setMode("steps"); }} className="press mt-8 text-[15px] font-semibold underline decoration-ink/30 underline-offset-4 hover:decoration-ink">
+            No website? Type it in yourself
+          </button>
+        </div>
+      </main>
+    );
+
   return (
     <main className="min-h-dvh px-5 py-8 md:py-14">
       <div className="mx-auto max-w-[620px]">
@@ -154,12 +238,14 @@ export default function Onboarding() {
             <img src="/icon.svg" alt="" className="h-9 w-9" />
             <span className="text-[16px] font-semibold tracking-tight">Counterpart</span>
           </div>
-          <span className="text-sm text-muted">
-            Step {step + 1} of {STEPS.length}
-          </span>
+          {!review && (
+            <span className="text-sm text-muted">
+              Step {step + 1} of {STEPS.length}
+            </span>
+          )}
         </div>
 
-        <ol className="mb-10 grid grid-cols-4 gap-2" aria-label="Progress">
+        <ol className={clsx("mb-10 grid grid-cols-4 gap-2", review && "hidden")} aria-label="Progress">
           {STEPS.map((s, i) => (
             <li key={s} className="h-1.5 overflow-hidden rounded-full bg-sunken" aria-current={i === step ? "step" : undefined}>
               <span
@@ -172,13 +258,24 @@ export default function Onboarding() {
         </ol>
 
         <div key={step} className={dir > 0 ? "step-in-right" : "step-in-left"}>
-          <h1 className="text-[34px] tracking-[-0.035em] md:text-[42px]">{STEPS[step]}</h1>
+          <h1 className="text-[34px] tracking-[-0.035em] md:text-[42px]">{review ? "Check your details" : STEPS[step]}</h1>
+          {review && (
+            <div className="mt-4 space-y-1.5 text-[15px] text-ink-2">
+              {(notes.length ? notes : ["Filled in what your page says. Fix anything that is wrong, and add what is missing."]).map((n) => (
+                <p key={n} className="flex gap-2">
+                  <SealCheck size={17} weight="fill" className="mt-0.5 shrink-0 text-pen" aria-hidden />
+                  {n}
+                </p>
+              ))}
+            </div>
+          )}
 
-          {step === 0 && (
+          {review && <h2 className="mt-14 border-t border-ink pt-6 text-[24px]">{STEPS[0]}</h2>}
+          {show(0) && (
             <div className="mt-8 space-y-6">
               <label className="block">
                 <Label>Business name</Label>
-                <input className={field} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Shear Joy Salon" autoFocus />
+                <input className={field} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Shear Joy Salon" autoFocus={!review} />
               </label>
               <div>
                 <Label>What kind of business?</Label>
@@ -195,7 +292,7 @@ export default function Onboarding() {
                     </button>
                   ))}
                 </div>
-                {kind === "Other" && <input className={clsx(field, "mt-3")} value={otherKind} onChange={(e) => setOtherKind(e.target.value)} placeholder="e.g. Flower shop" autoFocus />}
+                {kind === "Other" && <input className={clsx(field, "mt-3")} value={otherKind} onChange={(e) => setOtherKind(e.target.value)} placeholder="e.g. Flower shop" autoFocus={!review} />}
               </div>
               <label className="block">
                 <Label hint="optional">Your first name</Label>
@@ -204,18 +301,23 @@ export default function Onboarding() {
             </div>
           )}
 
-          {step === 1 && (
+          {review && <h2 className="mt-14 border-t border-ink pt-6 text-[24px]">{STEPS[1]}</h2>}
+          {show(1) && (
             <div className="mt-8 space-y-6">
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block">
                   <Label>City</Label>
-                  <input className={field} value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Mysuru" autoFocus />
+                  <input className={field} value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Mysuru" autoFocus={!review} />
                 </label>
                 <label className="block">
                   <Label>Area or street</Label>
                   <input className={field} value={locality} onChange={(e) => setLocality(e.target.value)} placeholder="e.g. Kuvempunagar" />
                 </label>
               </div>
+              <label className="block">
+                <Label hint="optional, customers can claim offers by messaging you">WhatsApp number</Label>
+                <input className={field} value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="+91 98450 12345" inputMode="tel" />
+              </label>
               <div>
                 <Label hint="posts are written natively in each">Languages your customers read</Label>
                 <div className="flex flex-wrap gap-2">
@@ -239,7 +341,8 @@ export default function Onboarding() {
             </div>
           )}
 
-          {step === 2 && (
+          {review && <h2 className="mt-14 border-t border-ink pt-6 text-[24px]">{STEPS[2]}</h2>}
+          {show(2) && (
             <div className="mt-8">
               <p className="mb-5 text-[15px] text-ink-2">Offers can only use these items and prices, so nothing is ever made up. Cost is optional; with it, Counterpart checks every discount still makes money.</p>
               <div className="space-y-3">
@@ -291,7 +394,8 @@ export default function Onboarding() {
             </div>
           )}
 
-          {step === 3 && (
+          {review && <h2 className="mt-14 border-t border-ink pt-6 text-[24px]">{STEPS[3]}</h2>}
+          {show(3) && (
             <div className="mt-8 space-y-6">
               <div className="rounded-[var(--radius-lg)] bg-surface p-5 ring-1 ring-line/80">
                 <p className="text-[15px] font-semibold tracking-tight">Real photos of your place</p>
@@ -354,13 +458,29 @@ export default function Onboarding() {
         )}
 
         <div className="mt-10 flex items-center gap-3">
-          {step > 0 && (
+          {(review || step === 0) && (
+            <Button variant="ghost" size="lg" onClick={() => { setError(null); setMode("link"); }}>
+              <ArrowLeft size={15} aria-hidden /> Back
+            </Button>
+          )}
+          {!review && step > 0 && (
             <Button variant="ghost" size="lg" onClick={() => go(step - 1)}>
               <ArrowLeft size={15} aria-hidden /> Back
             </Button>
           )}
           <span className="flex-1" />
-          {step < STEPS.length - 1 ? (
+          {review ? (
+            <div className="flex flex-col items-end gap-2">
+              <Button variant="accent" size="lg" onClick={finish} disabled={!valid.every(Boolean)} trailing={<Sparkle size={15} weight="fill" />}>
+                Set up my workspace
+              </Button>
+              {!valid.every(Boolean) && (
+                <p className="text-right text-[13px] text-turmeric">
+                  Still needed: {[!valid[0] && "name and kind of business", !valid[1] && "city, area and a language", !valid[2] && "at least one item with a price"].filter(Boolean).join(", ")}
+                </p>
+              )}
+            </div>
+          ) : step < STEPS.length - 1 ? (
             <Button variant="primary" size="lg" disabled={!valid[step]} onClick={() => go(step + 1)} trailing={<ArrowRight size={15} weight="bold" />}>
               Continue
             </Button>

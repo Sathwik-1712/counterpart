@@ -106,7 +106,7 @@ def test_margin_check_without_costs_says_so():
 
 async def test_results_report_conversion_per_post(client):
     r = (await client.get("/api/businesses/kaapi-kone/results")).json()
-    assert set(r["totals"]) == {"scans", "claims", "redeemed", "conversion"}
+    assert set(r["totals"]) == {"scans", "claims", "redeemed", "sales", "simulated", "conversion"}
     for p in r["posts"]:
         assert p["link"].endswith("/r/" + p["code"])
 
@@ -148,3 +148,34 @@ async def test_posts_use_a_matching_library_photo_and_spread_across_photos(clien
     detail = (await client.get(f"/api/campaigns/{cid}")).json()
     srcs = {a["id"]: a["image_source"] for a in detail["assets"]}
     assert srcs[str(assets[0]["id"])]["source"] == "upload"
+
+
+async def test_staff_phone_uses_the_counter_pin(client):
+    from app.db import connection
+
+    assert (await client.put("/api/businesses/kaapi-kone/counter", json={"pin": "12ab"})).status_code == 422
+    r = await client.put("/api/businesses/kaapi-kone/counter", json={"pin": "4321", "whatsapp": "98450 12345"})
+    assert r.status_code == 200
+    s = (await client.get("/api/businesses/kaapi-kone/counter")).json()
+    assert s["pin_set"] and s["whatsapp"] == "919845012345" and s["staff_link"].endswith("/k/desk/kaapi-kone")
+
+    # without a session the staff routes refuse; with the PIN they work
+    assert (await client.post("/api/public/counter/check", json={"code": "ABCDEFG"})).status_code == 401
+    assert (await client.post("/api/public/counter/session", json={"pin": "0000", "business": "kaapi-kone"})).status_code == 409
+    r = await client.post("/api/public/counter/session", json={"pin": "4321", "business": "kaapi-kone"})
+    token = r.json()["token"]
+    r = await client.post("/api/public/counter/check", json={"token": token, "code": "ZZZZZZZ"})
+    assert r.status_code == 404
+
+    # five wrong PINs lock it, even the right one, for a while
+    for _ in range(5):
+        await client.post("/api/public/counter/session", json={"pin": "1111", "business": "kaapi-kone"})
+    r = await client.post("/api/public/counter/session", json={"pin": "4321", "business": "kaapi-kone"})
+    assert r.status_code == 409 and "Too many" in r.json()["detail"]
+
+    # a new PIN signs every staff phone out and clears the lock
+    await client.put("/api/businesses/kaapi-kone/counter", json={"pin": "5678"})
+    assert (await client.post("/api/public/counter/check", json={"token": token, "code": "ZZZZZZZ"})).status_code == 401
+    async with connection() as conn:
+        await conn.execute("update businesses set counter_pin_hash = null, profile = profile - 'whatsapp' "
+                           "where slug = 'kaapi-kone'")

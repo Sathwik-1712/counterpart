@@ -25,6 +25,14 @@ os.environ.pop("AGNES_API_KEY", None)
 os.environ.pop("OWNER_API_TOKEN", None)
 
 
+@pytest.fixture(autouse=True)
+def no_sarvam(monkeypatch):
+    """backend/.env may hold a real Sarvam key; tests never call it."""
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "sarvam_api_key", None)
+
+
 @pytest.fixture(scope="session")
 async def db():
     from app import db as dbmod

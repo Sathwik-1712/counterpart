@@ -10,6 +10,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from app import sarvam
 from app.domain.facts import Check, FactSheet
 from app.providers.router import ModelRouter
 
@@ -49,7 +50,10 @@ are printed on the post, so the copy need not repeat them. Set intent_preserved 
 contradicts the intent's core message or tone, or says something in must_not_say; leaving a detail out is fine.
 Finally judge, as a native speaker of the asset's language, whether it reads naturally: no repeated words, no
 phrase said twice, no dangling fragments, correct grammar and spelling. If not, set reads_naturally false and
-name the exact problem in language_issue (one sentence)."""
+name the exact problem in language_issue (one sentence).
+Some assets carry `independent_translation`: an English translation made by a separate translation system, not by
+the writer. Use it as a second reading. If it shows a promise, time, item or meaning that your own reading missed,
+judge by the stricter of the two."""
 
 
 def intent_for_copy(intent: dict[str, Any] | None) -> dict[str, Any]:
@@ -62,6 +66,10 @@ async def audit(
     router: ModelRouter, items: list[dict[str, Any]], sheet: FactSheet, intent: dict[str, Any] | None
 ) -> tuple[dict[str, list[Check]], dict[str, str]]:
     """items: [{ref, language, channel, rendered}] -> (checks per ref, back-translation per ref)."""
+    # A dedicated translation model reads Kannada and Hindi posts first, so the checker is not the only reader.
+    texts = [("\n".join(str(i["rendered"].get(f) or "") for f in ("headline", "body")).strip(), i["language"]) for i in items]
+    independent = await sarvam.many_to_english(texts)
+    items = [{**i, "independent_translation": t} if t else i for i, t in zip(items, independent, strict=True)]
     user = {
         "fact_sheet": [{"key": f.key, "label": f.label, "value": f.value, "display": f.display} for f in sheet.facts],
         "forbidden_claims": sheet.forbidden_claims,
@@ -89,6 +97,9 @@ async def audit(
                   "Reads naturally." if a.reads_naturally else (a.language_issue or "Does not read naturally.")),
         ]
         translations[a.ref] = a.back_translation
+    for i in items:  # show the owner the independent translation when there is one
+        if i.get("independent_translation") and i["ref"] in translations:
+            translations[i["ref"]] = i["independent_translation"]
     missing = {i["ref"] for i in items} - set(checks)
     for ref in missing:  # the auditor skipped an asset: that is a failure, not a pass
         checks[ref] = [Check("L3", "claims_supported", False, "Auditor returned no result for this asset.")]
@@ -114,6 +125,8 @@ WORDING_SYSTEM = """You check the translated wording of a small business's offer
 For each item, translate `wording` into plain, literal English. Then decide whether it means exactly the same
 as `english` (and `value`). Any difference a customer could act on is a mismatch: days, dates, times, amounts,
 items, who qualifies, conditions. Ignore style, word order and politeness. Be strict.
+Some items carry `independent_translation`, made by a separate translation system. Use it as a second reading:
+if it differs from `english` in anything a customer could act on, that is a mismatch.
 Reply with JSON: {"checks": [{"key", "language", "back_translation", "same_meaning", "issue"}]}.
 `issue` is null when the meaning is the same, otherwise ONE short sentence naming the difference."""
 
@@ -125,6 +138,8 @@ async def audit_fact_wording(router: ModelRouter, sheet: FactSheet) -> tuple[lis
              for f in sheet.facts for lang, text in f.display.items() if lang != "en"]
     if not items:
         return [], {}
+    independent = await sarvam.many_to_english([(i["wording"], i["language"]) for i in items])
+    items = [{**i, "independent_translation": t} if t else i for i, t in zip(items, independent, strict=True)]
     result, _ = await router.chat_json(
         "verification",
         [{"role": "system", "content": WORDING_SYSTEM},
@@ -141,7 +156,7 @@ async def audit_fact_wording(router: ModelRouter, sheet: FactSheet) -> tuple[lis
             issues.append({"key": it["key"], "label": labels[it["key"]], "lang": it["language"],
                            "wording": it["wording"], "issue": "The checker returned no result for this wording."})
             continue
-        translations.setdefault(c.key, {})[c.language] = c.back_translation
+        translations.setdefault(c.key, {})[c.language] = it.get("independent_translation") or c.back_translation
         if not c.same_meaning:
             issue = (c.issue or "It does not mean the same as the English.").strip()
             issues.append({"key": c.key, "label": labels.get(c.key, c.key), "lang": c.language,

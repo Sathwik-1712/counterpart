@@ -5,6 +5,9 @@
     uv run python -m scripts.set_secret GROQ_API_KEY        (free, no card: console.groq.com > API Keys)
     uv run python -m scripts.set_secret CEREBRAS_API_KEY    (free, no card: cloud.cerebras.ai > API Keys)
     uv run python -m scripts.set_secret GEMINI_API_KEY_2    (a second Google project's key, aistudio.google.com)
+    uv run python -m scripts.set_secret SARVAM_API_KEY      (Kannada/Hindi voice and translation, dashboard.sarvam.ai)
+    uv run python -m scripts.set_secret META_APP_SECRET     (Meta app > App settings > Basic > App secret)
+    uv run python -m scripts.set_secret WHATSAPP_VERIFY_TOKEN (any phrase you choose; type the same into Meta's webhook form)
 
 The value is typed hidden and checked against the service before it is saved.
 """
@@ -24,6 +27,9 @@ ALLOWED = {
     "GEMINI_API_KEY_2": "Gemini API key from a DIFFERENT Google project (same-project keys share one quota)",
     "GROQ_API_KEY": "Groq API key (console.groq.com > API Keys, gsk_...)",
     "CEREBRAS_API_KEY": "Cerebras API key (cloud.cerebras.ai > API Keys, csk-...)",
+    "SARVAM_API_KEY": "Sarvam AI API subscription key (dashboard.sarvam.ai > API Keys)",
+    "META_APP_SECRET": "Meta app secret (developers.facebook.com > your app > App settings > Basic > App secret)",
+    "WHATSAPP_VERIFY_TOKEN": "A phrase of your choice, 8+ characters; type the same one as 'Verify token' in Meta's webhook form",
 }
 # Free backup providers: (models URL, preferred models best first). The first one the key can use is saved too.
 BACKUPS = {
@@ -49,6 +55,15 @@ def check(name: str, value: str) -> str | None:
         headers = {"apikey": value, **({"Authorization": f"Bearer {value}"} if value.startswith("eyJ") else {})}
         r = httpx.get(f"{base}/auth/v1/admin/users", params={"per_page": 1}, headers=headers, timeout=15)
         return None if r.status_code == 200 else f"Supabase said {r.status_code}; check you copied the secret key"
+    if name == "META_APP_SECRET":  # Meta cannot check it without the app id; the shape catches copy mistakes
+        return None if len(value) == 32 and all(c in "0123456789abcdef" for c in value.lower()) else \
+            "an app secret is 32 letters and digits (0-9, a-f); press Show next to App secret and copy all of it"
+    if name == "WHATSAPP_VERIFY_TOKEN":
+        return None if len(value) >= 8 and " " not in value else "use 8 or more characters, no spaces"
+    if name == "SARVAM_API_KEY":
+        r = httpx.post("https://api.sarvam.ai/translate", timeout=20, headers={"api-subscription-key": value},
+                       json={"input": "Good morning", "source_language_code": "en-IN", "target_language_code": "kn-IN"})
+        return None if r.status_code == 200 else f"Sarvam said {r.status_code}: {r.text[:160]}"
     if name.startswith("GEMINI_API_KEY"):
         r = httpx.get("https://generativelanguage.googleapis.com/v1beta/openai/models", timeout=15,
                       headers={"Authorization": f"Bearer {value}"})

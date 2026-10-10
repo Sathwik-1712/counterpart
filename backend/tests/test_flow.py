@@ -2,10 +2,12 @@
 owner edit blocked -> publish -> live attribution -> fact change propagates staleness."""
 
 import json
+from zoneinfo import ZoneInfo
 
 import psycopg
 import pytest
 
+from app import services
 from app.agent import runtime
 from app.agent.tools import ToolContext
 from app.config import get_settings
@@ -141,6 +143,10 @@ async def test_full_campaign_flow(client, scripted):
     # agent publishing is gated; owner publishing works and issues a tracking code
     res = await runtime.execute(ctx, "publish_assets", {"asset_ids": [good["asset_id"]], "summary": "Send A"})
     assert res.get("queued_for_owner_approval")
+    # approving in advance puts every post that passed all checks live, and only those
+    r = await client.put(f"/api/campaigns/{cid}/autopublish", json={"on": True})
+    assert r.status_code == 200 and [a["asset_id"] for a in r.json()["went_live"]] == [good["asset_id"]]
+    assert (await client.put(f"/api/campaigns/{cid}/autopublish", json={"on": False})).json()["went_live"] == []
     r = await client.post(f"/api/campaigns/{cid}/publish", json={"asset_ids": [good["asset_id"]]})
     assert r.status_code == 200, r.text
     code = r.json()["published"][0]["code"]
@@ -149,8 +155,18 @@ async def test_full_campaign_flow(client, scripted):
     # --- a customer scans and claims; staff redeem at the counter
     r = await client.post(f"/api/public/r/{code}/visit")
     assert r.status_code == 200 and "20% off" in r.json()["rendered"]["body"]
-    assert (await client.post(f"/api/public/r/{code}/claim")).status_code == 200
-    assert (await client.post("/api/counter/redeem", json={"code": code.lower()})).status_code == 200
+    r = await client.post(f"/api/public/r/{code}/claim", json={"device": "phone-one-abc"})
+    mine = r.json()["code"]
+    assert r.status_code == 200 and len(mine) == 7 and mine != code
+    # the same phone gets the same code back, and is counted once
+    assert (await client.post(f"/api/public/r/{code}/claim", json={"device": "phone-one-abc"})).json()["code"] == mine
+    chk = (await client.post("/api/counter/check", json={"code": mine.lower()})).json()
+    assert chk["kind"] == "claim" and chk["checks"] == ["Dine-in only"] and "20% off" in chk["offer"]
+    assert chk["verdict"] in ("ok", "not_valid")  # the test offer runs on fixed dates
+    r = await client.post("/api/counter/redeem", json={"code": mine, "bill_amount": 240, "outside_rules": "test"})
+    assert r.status_code == 200 and r.json()["verdict"] == "redeemed"
+    r = await client.post("/api/counter/redeem", json={"code": mine, "outside_rules": "test"})
+    assert r.status_code == 409 and "Already used" in r.json()["detail"]
     assert (await client.get(f"/api/public/qr/{code}.png")).headers["content-type"] == "image/png"
 
     camp = (await client.get(f"/api/campaigns/{cid}")).json()
@@ -176,6 +192,25 @@ async def test_full_campaign_flow(client, scripted):
     led = (await client.get("/api/businesses/kaapi-kone/ledger", params={"campaign_id": cid, "limit": 200})).json()
     types = {e["type"] for e in led}
     assert {"facts.locked", "approval.requested", "approval.decided", "outcome.click", "outcome.redeem", "asset.revised"} <= types
+
+    # demo simulation: only inside the campaign's life and the offer's rules, and it replaces itself
+    from app.domain import redeem
+
+    r = await client.post(f"/api/campaigns/{cid}/simulate")
+    assert r.status_code == 200 and r.json()["days"] == 1
+    again = (await client.post(f"/api/campaigns/{cid}/simulate")).json()["events"]
+    async with connection() as conn:
+        rows = await (await conn.execute(
+            """select o.type, o.occurred_at, c.created_at from outcome_events o join campaigns c on c.id = o.campaign_id
+               where o.campaign_id = %s and o.source = 'simulated'""", (cid,))).fetchall()
+        sheet = await services.locked_sheet(conn, cid)
+    assert len(rows) == again  # the second run replaced the first
+    ist = ZoneInfo("Asia/Kolkata")
+    rules = redeem.rules([f.model_dump() for f in sheet.facts])
+    for row in rows:
+        assert row["occurred_at"].astimezone(ist).date() >= row["created_at"].astimezone(ist).date()
+        if row["type"] == "redeem":
+            assert redeem.evaluate(rules, row["occurred_at"].astimezone(ist).replace(tzinfo=None))[0]
 
 
 async def test_overview_and_detectors(client):

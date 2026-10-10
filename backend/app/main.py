@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import db
+from app.api.channels import channels_api, webhook
 from app.api.owner import api
 from app.api.public import public
 from app.api.workspace import accounts
@@ -34,6 +35,8 @@ app.add_middleware(CORSMiddleware, allow_origins=_s.cors_origins, allow_methods=
 app.include_router(api)
 app.include_router(accounts)
 app.include_router(public)
+app.include_router(channels_api)
+app.include_router(webhook)
 if _s.storage_backend == "local":
     _s.storage_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/files", StaticFiles(directory=_s.storage_dir), name="files")

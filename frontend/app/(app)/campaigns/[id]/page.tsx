@@ -19,7 +19,7 @@ import { Button, CHANNEL_LABEL, Empty, SectionHeading, Skeleton, StatusPill } fr
 import { api, useResource } from "@/lib/api";
 import { useBusiness } from "@/lib/business";
 import { nextAction, STEPS, stepOfDetail } from "@/lib/journey";
-import type { CampaignDetail, Channel, Results } from "@/lib/types";
+import type { CampaignDetail, Channel, ChannelsStatus, Results } from "@/lib/types";
 
 const CHANNEL_ORDER: Channel[] = ["instagram_post", "instagram_story", "poster", "whatsapp"];
 
@@ -42,6 +42,7 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
   const business = useBusiness();
   const { data, error, reload } = useResource<CampaignDetail>(`/campaigns/${id}`, (e) => e.campaign_id === id);
   const { data: results } = useResource<Results>(`/businesses/${business.slug}/results`, (e) => e.type.startsWith("outcome.") || e.type === "assets.published");
+  const { data: channelStatus } = useResource<ChannelsStatus>(`/businesses/${business.slug}/channels`, (e) => e.type.startsWith("channel."));
   const [channel, setChannel] = useState<Channel | "all">("all");
   const [sent, setSent] = useState<string | null>(null);
   const [approving, setApproving] = useState(false);
@@ -63,6 +64,11 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
     setSent(text);
   }
 
+  async function setAuto(on: boolean) {
+    await api(`/campaigns/${id}/autopublish`, { method: "PUT", json: { on } });
+    reload();
+  }
+
   async function approveAll() {
     setApproving(true);
     try {
@@ -76,6 +82,7 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
   if (error) return <Shell campaignId={id}><p className="text-kumkum">{error}</p></Shell>;
   if (!data) return <Shell campaignId={id}><LoadingCampaign /></Shell>;
   const c = data.campaign;
+  const auto = !!locked && c.autopublish_version === locked.version;
   const step = stepOfDetail(data);
   const target = step < 5 ? STEPS[step].key : "results";
   const redeemed = rows.reduce((n, r) => n + r.redeemed, 0);
@@ -194,6 +201,17 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
                 )
               }
             />
+            {locked && (
+              <div className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px]">
+                <span className={clsx("inline-flex items-center gap-1.5 font-semibold", auto ? "text-pen" : "text-ink-2")}>
+                  <span className={clsx("h-2 w-2 rounded-full", auto ? "bg-pen" : "bg-line-strong")} aria-hidden />
+                  {auto ? "Posts that pass every check go live by themselves" : "Each post waits for your OK"}
+                </span>
+                <button onClick={() => setAuto(!auto)} className="press font-semibold underline decoration-ink/30 underline-offset-4 hover:decoration-ink">
+                  {auto ? "Ask me each time" : "Approve them in advance"}
+                </button>
+              </div>
+            )}
             {channels.length > 1 && (
               <div className="no-scrollbar mb-5 flex max-w-full gap-1 overflow-x-auto" role="tablist" aria-label="Channel">
                 {(["all", ...channels] as const).map((ch) => (
@@ -216,7 +234,7 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
             ) : (
               <div className="grid gap-6 md:grid-cols-2">
                 {assets.map((a, i) => (
-                  <AssetCard key={a.id} asset={a} i={i} facts={locked?.facts ?? []} business={business.name} onChange={reload} />
+                  <AssetCard key={a.id} asset={a} i={i} facts={locked?.facts ?? []} business={business.name} onChange={reload} channels={channelStatus} />
                 ))}
               </div>
             )}
@@ -225,7 +243,7 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
           <section id="share" aria-labelledby="share-h">
             <SectionHeading id="share-h" title="Share" sub="Every approved post has its own link and QR code, so you can see which one brought people in." />
             {live.length ? (
-              <SharePanel assets={live} rows={rows} />
+              <SharePanel assets={live} rows={rows} channels={channelStatus} />
             ) : (
               <Empty icon={<LinkSimple size={17} aria-hidden />}>Approve a post and its link, QR code and WhatsApp message appear here, ready to send.</Empty>
             )}

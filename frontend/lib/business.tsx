@@ -26,6 +26,7 @@ export interface Biz {
 export interface Me {
   user: { id: string; email: string | null };
   businesses: Biz[];
+  features?: { google_photos?: boolean; sarvam?: boolean };
 }
 
 const KEY = "cp_business";

@@ -13,6 +13,8 @@ async function forward(req: NextRequest, url: string, body: ArrayBuffer | null, 
   if (ct) headers.set("content-type", ct);
   const accept = req.headers.get("accept");
   if (accept) headers.set("accept", accept);
+  const signature = req.headers.get("x-hub-signature-256"); // Meta signs WhatsApp webhooks; the backend checks it
+  if (signature && isPublic) headers.set("x-hub-signature-256", signature);
   if (token && !isPublic) headers.set("authorization", `Bearer ${token}`);
   return fetch(url, { method: req.method, headers, body, cache: "no-store" });
 }

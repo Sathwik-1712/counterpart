@@ -1,4 +1,4 @@
-// Owner pages need a session; without one, send people to sign in. Customer-facing QR pages (/r/...), the sign-in
+// Owner pages need a session; without one, send people to sign in. Customer-facing QR pages (/r/..., /c/...), staff phone pages (/k/..., PIN-gated by the API), the sign-in
 // pages and the API (which answers 401 itself) stay open.
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -11,5 +11,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!r/|login|signup|api/|_next/|files/|favicon|icon|fonts/).*)"],
+  matcher: ["/((?!r/|k/|c/|login|signup|api/|_next/|files/|favicon|icon|fonts/).*)"],
 };

@@ -241,6 +241,108 @@ def test_analytics_finds_the_better_channel_and_peak_hour():
                     labels={"channel": {"whatsapp": "WhatsApp", "instagram_post": "Instagram posts"}})
     assert out["totals"]["scans"] == 40 and out["totals"]["redeems"] == 7
     kinds = {t["kind"]: t for t in out["tips"]}
-    assert kinds["best_channel"]["title"].startswith("WhatsApp converts 6.0x better")
+    assert kinds["best_channel"]["title"].startswith("WhatsApp converts 6.0x as often as")
     assert "6 pm" in kinds["timing"]["title"]
     assert len(out["daily"]) == 7 and out["daily"][-2]["scans"] == 40
+
+
+def test_reviews_keep_only_text_found_on_the_page():
+    from app.reviews import Found, verified
+    page = "Our story since 1962.\nWhat guests say:\n“The decoction is strong, just like my grandfather's café.”\nಕಾಫಿ ತುಂಬಾ ಚೆನ್ನಾಗಿದೆ, ಮತ್ತೆ ಬರುತ್ತೇನೆ."
+
+    def f(text: str, lang: str = "en") -> Found:
+        return Found(text=text, language=lang, sentiment=0.8, themes=["coffee_strength"])
+
+    kept, skipped = verified([
+        f("The decoction is strong, just like my grandfather's café."),   # on the page
+        f("ಕಾಫಿ ತುಂಬಾ ಚೆನ್ನಾಗಿದೆ, ಮತ್ತೆ ಬರುತ್ತೇನೆ.", "kn"),                # on the page, Kannada
+        f("Best coffee in Bengaluru, five stars!"),                         # invented by the model
+        f("Our story since 1962."),                                         # already stored
+        f("the decoction is strong,   just like my grandfather's café."),  # same review twice
+    ], page, existing={"our story since 1962."})
+    assert [k.text for k in kept] == ["The decoction is strong, just like my grandfather's café.", "ಕಾಫಿ ತುಂಬಾ ಚೆನ್ನಾಗಿದೆ, ಮತ್ತೆ ಬರುತ್ತೇನೆ."]
+    assert skipped == 3
+
+
+def test_sarvam_chunks_stay_under_the_limit():
+    from app.sarvam import MAX_CHARS, _chunks
+    text = ("ಇದು ಒಂದು ವಾಕ್ಯ. " * 200).strip()
+    parts = _chunks(text)
+    assert all(len(p) <= MAX_CHARS for p in parts) and len(parts) > 1
+    assert " ".join(parts).replace("  ", " ") == text
+
+
+def test_offer_rules_come_from_the_locked_facts():
+    from datetime import date, datetime
+
+    from app.domain import redeem
+
+    facts = [
+        {"key": "discount", "type": "percent", "value": 15, "display": {"en": "15% off"}},
+        {"key": "hours", "type": "time_range", "value": "16:00-19:00", "display": {"en": "4 to 7 pm"}},
+        {"key": "days", "type": "text", "value": "weekdays", "display": {"en": "Monday to Friday"}},
+        {"key": "dates", "type": "date_range", "value": ["2026-10-12", "2026-10-31"], "display": {"en": "till 31 Oct"}},
+        {"key": "id", "type": "condition", "value": "college ID", "display": {"en": "with a valid college ID"}},
+    ]
+    r = redeem.rules(facts)
+    assert r.days == {0, 1, 2, 3, 4} and r.start == date(2026, 10, 12) and r.end == date(2026, 10, 31)
+    assert r.checks == ["With a valid college ID"]
+    assert redeem.evaluate(r, datetime(2026, 10, 14, 17, 30)) == (True, None)  # Wednesday 5:30 pm
+    ok, why = redeem.evaluate(r, datetime(2026, 10, 17, 17, 30))  # Saturday
+    assert not ok and "Saturday" in why
+    ok, why = redeem.evaluate(r, datetime(2026, 10, 14, 20, 5))
+    assert not ok and "4 pm to 7 pm" in why and "8:05 pm" in why
+    assert not redeem.evaluate(r, datetime(2026, 11, 2, 17, 0))[0]  # after the offer ended
+    assert not redeem.evaluate(r, datetime(2026, 10, 9, 17, 0))[0]  # before it starts
+
+
+def test_weekday_phrases():
+    from app.domain.redeem import weekdays
+
+    assert weekdays("weekends only") == {5, 6}
+    assert weekdays("Mon-Wed") == {0, 1, 2}
+    assert weekdays("this Saturday and Sunday, 8 to 11 am") == {5, 6}
+    assert weekdays("Friday to Monday") == {4, 5, 6, 0}
+    assert weekdays("with a valid college ID") is None
+    assert weekdays("sunny mornings") is None
+
+
+def test_autofill_keeps_only_what_the_page_says():
+    from app.autofill import Item, Read, checked, is_maps_link, name_in_maps_url
+
+    page = "Kaapi Kone, 11th Main, Jayanagar, Bengaluru. WhatsApp 98450-12345. Filter coffee ₹30 · Masala dosa Rs. 90"
+    read = Read(name="Kaapi Kone", kind="cafe", city="Bengaluru", locality="Jayanagar", phone="+91 98450 12345",
+                offerings=[Item(name="Filter coffee", price=30), Item(name="Masala dosa", price=95),
+                           Item(name="Idli vada", price=60)])
+    fields, dropped = checked(read, page)
+    assert fields["name"] == "Kaapi Kone" and fields["city"] == "Bengaluru" and fields["phone"] == "+919845012345"
+    assert fields["offerings"] == [{"name": "Filter coffee", "price": 30}] and dropped == 2  # wrong price, not on page
+    assert "phone" not in checked(Read(phone="1800 103 7455"), "Call 1800 103 7455")[0]  # toll-free: no WhatsApp
+    assert is_maps_link("https://maps.app.goo.gl/abc123") and is_maps_link("https://www.google.com/maps/place/X")
+    assert not is_maps_link("https://kaapikone.in/menu")
+    assert name_in_maps_url("https://www.google.com/maps/place/Kaapi+Kone/@12.9,77.5,17z") == "Kaapi Kone"
+
+
+def test_whatsapp_numbers():
+    from app.services import whatsapp_number
+
+    assert whatsapp_number("98450 12345") == "919845012345"
+    assert whatsapp_number("+91 98450-12345") == "919845012345"
+    assert whatsapp_number("12345") is None and whatsapp_number(None) is None
+
+
+def test_no_tip_when_the_gap_could_be_luck():
+    from datetime import date, datetime
+
+    from app.domain.analytics import summarize
+
+    posts = [{"asset_id": "a", "code": "A1", "channel": "whatsapp", "language": "kn", "segment": "s", "variant": None},
+             {"asset_id": "b", "code": "B1", "channel": "instagram_post", "language": "en", "segment": "s", "variant": None}]
+    ev = [{"asset_id": "a", "type": "scan", "qty": 1, "at": datetime(2026, 10, 8, 18)} for _ in range(8)]
+    ev += [{"asset_id": "a", "type": "redeem", "qty": 1, "at": datetime(2026, 10, 8, 19)} for _ in range(3)]
+    ev += [{"asset_id": "b", "type": "scan", "qty": 1, "at": datetime(2026, 10, 8, 18)} for _ in range(8)]
+    ev += [{"asset_id": "b", "type": "redeem", "qty": 1, "at": datetime(2026, 10, 8, 20)} for _ in range(2)]
+    out = summarize(posts, ev, today=date(2026, 10, 9), since=date(2026, 10, 8))
+    assert "best_channel" not in {t["kind"] for t in out["tips"]}  # 3 of 8 against 2 of 8 proves nothing
+    lo, hi = out["by"]["channel"][0]["likely"]
+    assert lo < 0.375 < hi and hi - lo > 0.3  # and the range says so

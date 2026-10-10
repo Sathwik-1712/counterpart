@@ -8,16 +8,20 @@ Rules that make the system trustworthy live here, not in prompts:
     against the currently locked fact version.
 """
 
+import hashlib
+import hmac
 import json
 import secrets
 from dataclasses import asdict
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import Any
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from app import ledger
 from app.db import Conn, fetch_all, fetch_one, jsonb
 from app.domain import audit as audit_mod
+from app.domain import redeem
 from app.domain.facts import (
     LANG_NAMES,
     AssetContent,
@@ -490,6 +494,204 @@ async def record_outcome(conn: Conn, code: str, type: str, *, source: str, meta:
                         actor="customer" if source == "live" else "owner", campaign_id=campaign["id"],
                         payload={"code": tp["code"], "asset_id": str(tp["asset_id"]), "source": source})
     return tp
+
+
+# ------------------------------------------------------------------ coupons and the counter
+# A post's own code (6 letters) tracks the post. A customer who taps "Get my code" gets a personal code (7 letters),
+# still attributed to that post, that works once and only when the locked offer allows.
+
+CLAIM_LEN = 7
+PIN_TRIES = 5
+PIN_LOCK_MINUTES = 15
+COUNTER_SESSION_DAYS = 30
+
+
+async def claim(conn: Conn, post_code: str, *, device: str | None, via: str = "web") -> tuple[dict[str, Any], bool]:
+    """A personal code for one customer. The same phone gets its code back. -> (claim, newly made)."""
+    tp = await fetch_one(conn, """select t.* from touchpoints t join assets a on a.id = t.asset_id
+                                  where t.code = %s and a.status = 'live'""", (post_code.upper(),))
+    if not tp:
+        raise NotFound("This offer is not available.")
+    if device and (row := await fetch_one(conn, "select * from claims where campaign_id = %s and device = %s",
+                                         (tp["campaign_id"], device))):
+        return row, False
+    for _ in range(5):
+        code = "".join(secrets.choice(_ALPHABET) for _ in range(CLAIM_LEN))
+        row = await fetch_one(
+            conn, """insert into claims (code, touchpoint_code, campaign_id, asset_id, device, via)
+                     values (%s, %s, %s, %s, %s, %s) on conflict do nothing returning *""",
+            (code, tp["code"], tp["campaign_id"], tp["asset_id"], device, via))
+        if row:
+            await record_outcome(conn, tp["code"], "click", source="live", meta={"claim": code, "via": via})
+            return row, True
+        if device and (row := await fetch_one(conn, "select * from claims where campaign_id = %s and device = %s",
+                                             (tp["campaign_id"], device))):
+            return row, False  # the same phone claimed twice at once
+    raise Conflict("Could not make a code. Please try again.")
+
+
+async def find_code(conn: Conn, code: str) -> dict[str, Any]:
+    """A personal code or a post's own code -> what it belongs to."""
+    code = code.strip().upper()
+    row = await fetch_one(
+        conn, """select 'claim' as kind, cl.code, cl.touchpoint_code, cl.campaign_id, cl.asset_id, cl.status,
+                        cl.redeemed_at, cl.bill_amount, c.business_id
+                 from claims cl join campaigns c on c.id = cl.campaign_id where cl.code = %s""", (code,))
+    row = row or await fetch_one(
+        conn, """select 'post' as kind, t.code, t.code as touchpoint_code, t.campaign_id, t.asset_id,
+                        null as status, null as redeemed_at, null as bill_amount, c.business_id
+                 from touchpoints t join campaigns c on c.id = t.campaign_id where t.code = %s""", (code,))
+    if not row:
+        raise NotFound("No offer has this code. Check the letters.")
+    return row
+
+
+async def counter_check(conn: Conn, code: str) -> dict[str, Any]:
+    """What staff see before they redeem: the offer, whether it can be used now, and what to check by eye."""
+    it = await find_code(conn, code)
+    campaign = await get_campaign(conn, it["campaign_id"])
+    business = await get_business_by_id(conn, it["business_id"])
+    sheet = await locked_sheet(conn, campaign["id"])
+    facts = [f.model_dump() for f in sheet.facts] if sheet else []
+    rules = redeem.rules(facts, starts_on=campaign.get("starts_on"), ends_on=campaign.get("ends_on"))
+    now = datetime.now(ZoneInfo(business.get("timezone") or "Asia/Kolkata"))
+    allowed, why = redeem.evaluate(rules, now)
+    post = await fetch_one(conn, """select a.channel, a.language, r.rendered->>'headline' as headline
+                                    from assets a join asset_revisions r on r.asset_id = a.id and r.n = a.current_revision
+                                    where a.id = %s""", (it["asset_id"],)) if it["asset_id"] else None
+    if it["kind"] == "claim" and it["status"] == "redeemed":
+        verdict, reason = "used", f"Already used on {it['redeemed_at'].astimezone(now.tzinfo).strftime('%a %-d %b, %-I:%M %p')}."
+    elif campaign["status"] in ("concluded", "archived"):
+        verdict, reason = "not_valid", "This campaign has ended."
+    elif not allowed:
+        verdict, reason = "not_valid", why
+    elif it["kind"] == "post":
+        verdict, reason = "post_code", ("This is the post's code, not a personal one, so it cannot be blocked from "
+                                        "being used twice. Personal codes come from tapping 'Get my code' on the post.")
+    else:
+        verdict, reason = "ok", None
+    return {"code": it["code"], "kind": it["kind"], "verdict": verdict, "reason": reason,
+            "business": {"name": business["name"], "slug": business["slug"]},
+            "campaign": {"id": str(campaign["id"]), "name": campaign["name"]},
+            "offer": [f["display"].get("en") for f in facts if f["type"] != "condition" and f["display"].get("en")],
+            "checks": rules.checks, "when": rules.describe(), "post": post,
+            "redeemed_at": it["redeemed_at"], "bill_amount": it["bill_amount"]}
+
+
+async def counter_redeem(conn: Conn, code: str, *, by: str, bill_amount: float | None = None,
+                         outside_rules: str | None = None) -> dict[str, Any]:
+    """Use a code once. Outside the offer rules only with a reason, which is kept."""
+    chk = await counter_check(conn, code)
+    if chk["verdict"] == "used":
+        raise Conflict(chk["reason"])
+    if chk["verdict"] == "not_valid" and not outside_rules:
+        raise Conflict(chk["reason"])
+    if chk["kind"] == "claim":
+        row = await fetch_one(
+            conn, """update claims set status = 'redeemed', redeemed_at = now(), bill_amount = %s, redeemed_by = %s,
+                            outside_rules = %s where code = %s and status = 'claimed' returning touchpoint_code, via""",
+            (bill_amount, by, outside_rules if chk["verdict"] == "not_valid" else None, chk["code"]))
+        if not row:  # another phone redeemed it a moment ago
+            raise Conflict("Already used.")
+        post_code, via = row["touchpoint_code"], row["via"]
+    else:
+        post_code, via = chk["code"], None
+    meta = {"claim": chk["code"] if chk["kind"] == "claim" else None, "bill_amount": bill_amount, "by": by,
+            "outside_rules": outside_rules if chk["verdict"] == "not_valid" else None}
+    await record_outcome(conn, post_code, "redeem", source="counter", meta={k: v for k, v in meta.items() if v is not None})
+    return {**chk, "verdict": "redeemed", "bill_amount": bill_amount, "via": via}
+
+
+def whatsapp_number(number: str | None) -> str | None:
+    """Digits wa.me accepts, or None. A 10-digit number is taken as Indian."""
+    digits = "".join(ch for ch in number or "" if ch.isdigit())
+    if len(digits) == 10 or (len(digits) == 11 and digits[0] == "0"):
+        digits = "91" + digits[-10:]
+    return digits if 11 <= len(digits) <= 15 else None
+
+
+def _pin_hash(business_id: Any, pin: str) -> str:
+    return hashlib.scrypt(pin.encode(), salt=f"counter:{business_id}".encode(), n=2**14, r=8, p=1).hex()
+
+
+def _token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+async def set_counter_pin(conn: Conn, business: dict[str, Any], pin: str) -> None:
+    """A new PIN signs every staff phone out."""
+    await conn.execute("""update businesses set counter_pin_hash = %s, counter_pin_fails = 0,
+                          counter_pin_locked_until = null where id = %s""", (_pin_hash(business["id"], pin), business["id"]))
+    await conn.execute("delete from counter_sessions where business_id = %s", (business["id"],))
+    await ledger.record(conn, business["id"], "counter.pin_set", "Counter PIN changed; staff phones sign in again",
+                        actor="owner")
+
+
+async def open_counter_session(conn: Conn, business_id: Any, pin: str) -> tuple[str | None, str | None]:
+    """-> (token, error). Wrong tries are counted and lock the PIN for a while. Returns instead of raising so the
+    count is committed."""
+    b = await fetch_one(conn, """select id, counter_pin_hash, counter_pin_fails, counter_pin_locked_until
+                                 from businesses where id = %s for update""", (business_id,))
+    if not b or not b["counter_pin_hash"]:
+        return None, "The owner has not set a counter PIN yet. They can set one on the Counter page."
+    if b["counter_pin_locked_until"] and b["counter_pin_locked_until"] > datetime.now(UTC):
+        return None, f"Too many wrong PINs. Try again in {PIN_LOCK_MINUTES} minutes."
+    if not hmac.compare_digest(_pin_hash(b["id"], pin), b["counter_pin_hash"]):
+        fails = b["counter_pin_fails"] + 1
+        await conn.execute(
+            """update businesses set counter_pin_fails = %s,
+                      counter_pin_locked_until = case when %s then now() + make_interval(mins => %s) end where id = %s""",
+            (0 if fails >= PIN_TRIES else fails, fails >= PIN_TRIES, PIN_LOCK_MINUTES, b["id"]))
+        return None, "Wrong PIN."
+    await conn.execute("update businesses set counter_pin_fails = 0 where id = %s", (b["id"],))
+    token = secrets.token_urlsafe(24)
+    await conn.execute("""insert into counter_sessions (token_hash, business_id, expires_at)
+                          values (%s, %s, now() + make_interval(days => %s))""",
+                       (_token_hash(token), b["id"], COUNTER_SESSION_DAYS))
+    return token, None
+
+
+async def counter_session_business(conn: Conn, token: str | None) -> Any | None:
+    if not token:
+        return None
+    row = await fetch_one(conn, "select business_id from counter_sessions where token_hash = %s and expires_at > now()",
+                          (_token_hash(token),))
+    return row["business_id"] if row else None
+
+
+async def publish(conn: Conn, campaign_id: Any, business_id: Any, asset_ids: list[str], *, actor: ledger.Actor,
+                  summary: str | None = None) -> list[dict[str, Any]]:
+    out = []
+    for aid in asset_ids:
+        asset = await approve_asset(conn, aid, actor=actor)
+        tp = await issue_touchpoint(conn, asset)
+        await conn.execute("update assets set status = 'live', updated_at = now() where id = %s", (aid,))
+        out.append({"asset_id": str(aid), "code": tp["code"]})
+    # The first live piece starts the campaign.
+    await conn.execute("update campaigns set status = 'active' where id = %s and status in ('draft', 'planned')",
+                       (campaign_id,))
+    await ledger.record(conn, business_id, "assets.published", summary or f"{len(out)} asset(s) went live",
+                        actor=actor, campaign_id=campaign_id, payload={"assets": out})
+    return out
+
+
+async def autopublish(conn: Conn, campaign_id: Any) -> list[dict[str, Any]]:
+    """Posts the owner approved in advance (while locking this offer version) go live once they pass every check.
+    Picture-led posts wait for their picture."""
+    campaign = await get_campaign(conn, campaign_id)
+    sheet = await locked_sheet(conn, campaign_id)
+    if not sheet or campaign.get("autopublish_version") != sheet.version:
+        return []
+    rows = await fetch_all(
+        conn, """select a.id, a.channel, r.validation, r.image_key from assets a
+                 join asset_revisions r on r.asset_id = a.id and r.n = a.current_revision
+                 where a.campaign_id = %s and a.status = 'valid'""", (campaign_id,))
+    ready = [str(r["id"]) for r in rows if approvable(r["validation"], sheet.version) is None
+             and (r["image_key"] or r["channel"] not in ("instagram_post", "instagram_story", "poster"))]
+    if not ready:
+        return []
+    return await publish(conn, campaign_id, campaign["business_id"], ready, actor="system",
+                         summary=f"{len(ready)} post(s) passed every check and went live, as you approved in advance")
 
 
 # ------------------------------------------------------------------ experiments

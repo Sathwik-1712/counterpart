@@ -445,7 +445,10 @@ async def generate_copy(ctx: ToolContext, a: GenerateArgs) -> dict[str, Any]:
                         else f"failed: {str(pic.get('error') if isinstance(pic, dict) else pic)[:120]}")
     for r in results.values():
         r.pop("reads_now", None)
-    return {"assets": [results[i] for i in sorted(results)], "model": res.model, "saved_output": res.replayed}
+    out = {"assets": [results[i] for i in sorted(results)], "model": res.model, "saved_output": res.replayed}
+    if live := await _autopublish(ctx):
+        out["went_live"] = {"assets": live, "why": "The owner approved in advance every post that passes all checks."}
+    return out
 
 
 VISUAL_CHANNELS = {"instagram_post", "instagram_story", "poster"}
@@ -481,6 +484,8 @@ async def validate_assets(ctx: ToolContext, a: AssetIds) -> dict[str, Any]:
         pics = await asyncio.gather(*(make_visual(ctx, str(m["id"]), f"{items}, for {m['segment']}") for m in missing),
                                     return_exceptions=True)
         out = {**out, "pictures_added": sum(isinstance(p, dict) and "error" not in p for p in pics)}
+    if live := await _autopublish(ctx):
+        out = {**out, "went_live": live}
     return out
 
 
@@ -606,19 +611,14 @@ class PublishArgs(BaseModel):
 @tool("publish_assets", "Approve and put assets live, issuing a tracking code for each. Needs the owner.",
       PublishArgs, "customer_facing", [needs_locked_facts])
 async def publish_assets(ctx: ToolContext, a: PublishArgs) -> dict[str, Any]:
-    out = []
     async with connection() as conn:
-        for aid in a.asset_ids:
-            asset = await services.approve_asset(conn, aid, actor=ctx.actor)
-            tp = await services.issue_touchpoint(conn, asset)
-            await conn.execute("update assets set status = 'live', updated_at = now() where id = %s", (aid,))
-            out.append({"asset_id": aid, "code": tp["code"]})
-        # The first live piece starts the campaign.
-        await conn.execute(
-            "update campaigns set status = 'active' where id = %s and status in ('draft', 'planned')", (ctx.campaign_id,))
-        await ledger.record(conn, ctx.business["id"], "assets.published", f"{len(out)} asset(s) went live",
-                            actor=ctx.actor, campaign_id=ctx.campaign_id, payload={"assets": out})
+        out = await services.publish(conn, ctx.campaign_id, ctx.business["id"], a.asset_ids, actor=ctx.actor)
     return {"published": out}
+
+
+async def _autopublish(ctx: ToolContext) -> list[dict[str, Any]]:
+    async with connection() as conn:
+        return await services.autopublish(conn, ctx.campaign_id)
 
 
 # ------------------------------------------------------------------ memory & recommendations

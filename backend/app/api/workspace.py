@@ -10,7 +10,7 @@ from typing import Any, Literal
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, Request
 from pydantic import BaseModel, Field
 
-from app import auth, ledger, photos, services
+from app import auth, autofill, ledger, photos, reviews, sarvam, services
 from app.api.deps import get_router, require_owner
 from app.auth import CurrentUser, business_for, require_member
 from app.config import get_settings
@@ -85,7 +85,7 @@ async def me(user: CurrentUser) -> dict[str, Any]:
                      where m.user_id = %s order by b.is_demo, b.created_at""", (user.id,))
     s = get_settings()
     return {"user": user.model_dump(), "businesses": rows,
-            "features": {"google_photos": s.google_maps_api_key is not None}}
+            "features": {"google_photos": s.google_maps_api_key is not None, "sarvam": s.sarvam_api_key is not None}}
 
 
 # ------------------------------------------------------------------ onboarding
@@ -108,6 +108,7 @@ class NewBusiness(BaseModel):
     website: str | None = Field(None, max_length=300)
     find_on_google: bool = True
     offerings: list[Offering] = Field(min_length=1, max_length=60)
+    whatsapp: str | None = Field(None, max_length=20, description="Number customers message to claim an offer.")
 
 
 class Phrase(BaseModel):
@@ -170,6 +171,19 @@ async def _draft_brand(request: Request, b: NewBusiness) -> tuple[dict[str, Any]
     return dna, "Drafted by Counterpart from onboarding; the owner can edit it"
 
 
+class LinkBody(BaseModel):
+    link: str = Field(min_length=4, max_length=500)
+
+
+@accounts.post("/onboarding/read-link")
+async def read_link(user: CurrentUser, body: LinkBody, request: Request) -> dict[str, Any]:
+    """Pre-fill sign-up from the owner's website or Google Maps link. Nothing is saved until they confirm."""
+    try:
+        return await autofill.read_link(get_router(request), body.link)
+    except photos.UnsafeURL as e:
+        raise services.Conflict(str(e)) from e
+
+
 @accounts.post("/businesses")
 async def create_business(user: CurrentUser, body: NewBusiness, request: Request, bg: BackgroundTasks) -> dict[str, Any]:
     dna, rationale = await _draft_brand(request, body)  # model call before opening a transaction
@@ -177,6 +191,7 @@ async def create_business(user: CurrentUser, body: NewBusiness, request: Request
         "kind": body.kind, "owner": {"name": body.owner_name} if body.owner_name else {},
         "description": body.description, "website": body.website,
         "menu": [o.model_dump() for o in body.offerings], "allowed_phrases": [],
+        "whatsapp": services.whatsapp_number(body.whatsapp),
         "baseline_covers_per_window": 30,
         "channels": ["instagram_post", "instagram_story", "whatsapp", "poster"],
     }
@@ -280,6 +295,53 @@ async def upload_photo(user: CurrentUser, slug: str, body: Upload, request: Requ
     return _photo_out(row)
 
 
+class Speech(BaseModel):
+    data_url: str = Field(max_length=5_000_000, description="data:audio/...;base64,...")
+    language: Literal["en", "kn", "hi"] | None = None
+
+
+@accounts.post("/businesses/{slug}/speech")
+async def speech(user: CurrentUser, slug: str, body: Speech) -> dict[str, Any]:
+    """The owner's spoken brief, transcribed by Sarvam (Kannada, Hindi or English)."""
+    async with connection() as conn:
+        await business_for(conn, user, slug)
+    if not sarvam.available():
+        raise services.Conflict("Voice through Sarvam is not set up.")
+    m = re.match(r"^data:(audio/[\w.+-]+)(?:;[^,]*)?;base64,(.+)$", body.data_url, re.S)
+    if not m:
+        raise services.Conflict("That recording could not be read.")
+    try:
+        audio = base64.b64decode(m.group(2), validate=True)
+    except (binascii.Error, ValueError) as e:
+        raise services.Conflict("That recording could not be read.") from e
+    try:
+        return await sarvam.transcribe(audio, m.group(1), body.language)
+    except sarvam.SarvamError as e:
+        raise services.Conflict(str(e)) from e
+
+
+# ------------------------------------------------------------------ customer reviews
+
+
+class ReviewImport(BaseModel):
+    website: str | None = Field(None, max_length=300)
+    text: str | None = Field(None, max_length=20_000, description="Reviews pasted by the owner, one per paragraph")
+
+
+@accounts.post("/businesses/{slug}/reviews/import")
+async def import_reviews(user: CurrentUser, slug: str, body: ReviewImport, request: Request) -> dict[str, Any]:
+    async with connection() as conn:
+        b = await business_for(conn, user, slug)
+    website = body.website or (None if body.text else b["profile"].get("website"))
+    if not website and not (body.text or "").strip():
+        raise services.Conflict("Add your website address, or paste some reviews.")
+    try:
+        out = await reviews.import_reviews(get_router(request), b, website=website, pasted=body.text)
+    except photos.UnsafeURL as e:
+        raise services.Conflict(str(e)) from e
+    return out
+
+
 class PhotoUpdate(BaseModel):
     status: Literal["active", "hidden"]
 
@@ -367,7 +429,10 @@ async def results(user: CurrentUser, slug: str) -> dict[str, Any]:
                             a.segment, a.variant, t.code,
                             coalesce(sum(o.qty) filter (where o.type = 'scan'), 0)::int as scans,
                             coalesce(sum(o.qty) filter (where o.type = 'click'), 0)::int as claims,
-                            coalesce(sum(o.qty) filter (where o.type = 'redeem'), 0)::int as redeemed
+                            coalesce(sum(o.qty) filter (where o.type = 'redeem'), 0)::int as redeemed,
+                            coalesce(sum((o.meta->>'bill_amount')::numeric) filter (where o.type = 'redeem'), 0)::float
+                              as sales,
+                            coalesce(sum(o.qty) filter (where o.source = 'simulated'), 0)::int as simulated
                      from touchpoints t join assets a on a.id = t.asset_id join campaigns c on c.id = t.campaign_id
                      left join outcome_events o on o.touchpoint_code = t.code
                      where c.business_id = %s and not c.is_historical
@@ -376,6 +441,6 @@ async def results(user: CurrentUser, slug: str) -> dict[str, Any]:
     for r in rows:
         r["link"] = f"{base}/r/{r['code']}"
         r["conversion"] = round(r["redeemed"] / r["scans"], 4) if r["scans"] else None
-    totals = {k: sum(r[k] for r in rows) for k in ("scans", "claims", "redeemed")}
+    totals = {k: sum(r[k] for r in rows) for k in ("scans", "claims", "redeemed", "sales", "simulated")}
     totals["conversion"] = round(totals["redeemed"] / totals["scans"], 4) if totals["scans"] else None
     return {"posts": rows, "totals": totals}

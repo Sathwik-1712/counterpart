@@ -96,7 +96,7 @@ export default function AgentsPage() {
           {!data ? (
             <Skeleton className="h-64" />
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {data.agents.map((a, i) => {
                 const Icon = ICON[a.role] ?? Brain;
                 const working = live.has(a.role);

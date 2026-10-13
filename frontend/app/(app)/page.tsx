@@ -183,7 +183,7 @@ export default function Today() {
         </section>
       )}
 
-      <section className="mt-12 grid gap-10 lg:grid-cols-12" aria-labelledby="new-h">
+      <section className="mt-12 grid grid-cols-1 gap-10 lg:grid-cols-12" aria-labelledby="new-h">
         <div className="rise-in lg:col-span-7" style={stagger(2)}>
           <h2 id="new-h" className="text-[30px] md:text-[38px]">
             What should customers hear next?
@@ -219,7 +219,7 @@ export default function Today() {
       {festivals.length > 0 && (
         <section className="mt-16" aria-labelledby="fest-h">
           <SectionHeading id="fest-h" title="Festivals coming up" className="border-b-0" sub="Greetings checked by hand in your languages, the customs people follow, and ideas that fit your business." />
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             {festivals.slice(0, 2).map((f) => (
               <FestivalCard key={f.key} f={f} compact />
             ))}

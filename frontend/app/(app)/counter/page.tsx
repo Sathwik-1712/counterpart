@@ -117,7 +117,7 @@ export default function CounterPage() {
   return (
     <Shell>
       <PageHeader title="Counter" sub="A customer shows their code. Counterpart checks it against the locked offer: right day, right time, not used before. Each redemption counts for the post that brought them in." />
-      <div className="grid gap-12 lg:grid-cols-12">
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-12">
         <section className="rise-in lg:col-span-7" aria-label="Redeem a code">
           <RedeemDesk call={call} onRedeemed={reload} />
           <div className="mt-10">

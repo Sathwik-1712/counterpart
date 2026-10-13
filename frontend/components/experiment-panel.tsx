@@ -123,7 +123,7 @@ export function ExperimentPanel({ exp, labels = {} }: { exp: ExperimentStatus; l
           ) : arms.some((a) => (a.trials ?? 0) < minTrials) ? (
             <>
               <p className="mb-2 text-[14px] font-semibold">Before Counterpart can judge</p>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {arms.map((a, i) => {
                   const got = Math.min(a.trials ?? 0, minTrials);
                   return (

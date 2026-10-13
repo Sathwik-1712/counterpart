@@ -135,7 +135,7 @@ export default function CustomersPage() {
       />
 
       {!data ? (
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <Skeleton className="h-72 lg:row-span-2" />
           <Skeleton className="h-36" />
           <Skeleton className="h-36" />
@@ -147,7 +147,7 @@ export default function CustomersPage() {
           <h2 id="topics-h" className="sr-only">
             Topics
           </h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {top && (
               <article className="night rise-in flex flex-col justify-between rounded-[var(--radius-lg)] p-7 md:col-span-2 lg:col-span-1 lg:row-span-2">
                 <div>
@@ -202,10 +202,10 @@ export default function CustomersPage() {
         </section>
       )}
 
-      <div className="mt-16 grid gap-12 lg:grid-cols-12">
+      <div className="mt-16 grid grid-cols-1 gap-12 lg:grid-cols-12">
         <section className="lg:col-span-7" aria-labelledby="who-h">
           <SectionHeading id="who-h" title="Who comes in" />
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {segments.map((s, i) => (
               <article key={s.key} className="rise-in rounded-[var(--radius-lg)] bg-surface p-5 shadow-[var(--shadow-soft)] ring-1 ring-line/80" style={stagger(i)}>
                 <p className="text-[40px] font-semibold leading-none tracking-[-0.04em] tabular-nums">

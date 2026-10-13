@@ -112,7 +112,7 @@ function WhatsApp({ s, onChange }: { s: ChannelsStatus; onChange: () => void }) 
       </p>
 
       {wa ? (
-        <div className="mt-5 grid gap-6 md:grid-cols-2">
+        <div className="mt-5 grid grid-cols-1 gap-6 md:grid-cols-2">
           <div className="space-y-3">
             <p className="text-[18px] font-semibold">
               Connected: <span className="font-receipt">{wa.display}</span>
@@ -137,7 +137,7 @@ function WhatsApp({ s, onChange }: { s: ChannelsStatus; onChange: () => void }) 
           </div>
         </div>
       ) : (
-        <div className="mt-6 grid gap-8 md:grid-cols-2">
+        <div className="mt-6 grid grid-cols-1 gap-8 md:grid-cols-2">
           <Steps
             items={[
               <>Log in at <a className="font-semibold text-pen underline" href="https://developers.facebook.com/" target="_blank" rel="noreferrer">developers.facebook.com</a> (first time: <b>Get Started</b> registers you as a developer), then <b>My Apps → Create app</b> with the use case <b>Connect with customers through WhatsApp</b>.</>,
@@ -204,7 +204,7 @@ function Instagram({ s, onChange }: { s: ChannelsStatus; onChange: () => void })
           <p className="text-[13px] text-muted">Post or link from a live Instagram post on its campaign page.</p>
         </div>
       ) : (
-        <div className="mt-6 grid gap-8 md:grid-cols-2">
+        <div className="mt-6 grid grid-cols-1 gap-8 md:grid-cols-2">
           <Steps
             items={[
               <>In the Instagram app, switch the account to <b>Business</b> or <b>Creator</b> (Settings → Account type).</>,

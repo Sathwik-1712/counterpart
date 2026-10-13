@@ -304,7 +304,7 @@ export default function Onboarding() {
           {review && <h2 className="mt-14 border-t border-ink pt-6 text-[24px]">{STEPS[1]}</h2>}
           {show(1) && (
             <div className="mt-8 space-y-6">
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <label className="block">
                   <Label>City</Label>
                   <input className={field} value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Mysuru" autoFocus={!review} />

@@ -117,7 +117,7 @@ export default function PhotosPage() {
         sub={`Real photos of ${business.name}. Each post picks the best match automatically, and you can swap any post's picture.`}
       />
 
-      <section className="grid gap-4 lg:grid-cols-12" aria-label="Add photos">
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-12" aria-label="Add photos">
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -204,7 +204,7 @@ export default function PhotosPage() {
           }
         />
         {!data ? (
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Skeleton className="h-56" />
             <Skeleton className="h-72" />
             <Skeleton className="h-60" />

@@ -142,7 +142,7 @@ export function PostEditor({ asset, facts, onClose, onSaved }: { asset: Asset; f
         </Button>
       </header>
 
-      <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_480px] lg:overflow-hidden">
+      <div className="grid grid-cols-1 min-h-0 flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_480px] lg:overflow-hidden">
         <div className="flex items-start justify-center bg-sunken/60 p-6 md:p-10 lg:overflow-y-auto">
           <div className="sheet-up w-full max-w-[440px]">
             <div className="overflow-hidden rounded-[var(--radius-md)] bg-white shadow-[var(--shadow-float)] ring-1 ring-ink/10" lang={asset.language}>

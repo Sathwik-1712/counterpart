@@ -86,7 +86,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   }
 
   return (
-    <main className="grid min-h-dvh lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+    <main className="grid grid-cols-1 min-h-dvh lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
       <section className="relative hidden flex-col justify-between overflow-hidden border-r border-ink px-12 py-10 lg:flex">
         <div className="flex items-center gap-2.5">
           <img src="/icon.svg" alt="" className="h-9 w-9" />

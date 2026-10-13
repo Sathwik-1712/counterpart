@@ -104,7 +104,7 @@ export default function ResultsPage() {
             {(t?.simulated ?? 0) > 0 && (
               <p className="stamp mb-4 text-turmeric">Includes {t!.simulated} simulated results (demo)</p>
             )}
-            <div className="grid gap-px overflow-hidden rounded-[var(--radius-lg)] bg-ink ring-1 ring-ink sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-px overflow-hidden rounded-[var(--radius-lg)] bg-ink ring-1 ring-ink sm:grid-cols-2 lg:grid-cols-4">
               {[
                 { n: t?.scans ?? 0, label: "opened a post's link" },
                 { n: t?.claims ?? 0, label: "claimed an offer code" },
@@ -136,7 +136,7 @@ export default function ResultsPage() {
 
           <Reveal as="section" className="mt-14">
             <SectionHeading title="How tracking works" />
-            <ol className="grid gap-px overflow-hidden rounded-[var(--radius-lg)] bg-ink ring-1 ring-ink md:grid-cols-3">
+            <ol className="grid grid-cols-1 gap-px overflow-hidden rounded-[var(--radius-lg)] bg-ink ring-1 ring-ink md:grid-cols-3">
               {HOW.map(({ icon: Icon, title, text }, i) => (
                 <li key={title} className="bg-surface p-5">
                   <span className="flex items-center justify-between">

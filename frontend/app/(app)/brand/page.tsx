@@ -71,7 +71,7 @@ function BrandEditor({ slug, dna, onClose, onSaved }: { slug: string; dna: Recor
             <span className="text-sm font-medium">How it sounds</span> <span className="text-[13px] text-muted">words, separated by commas</span>
             <input className={box} value={f.voice} onChange={(e) => setF({ ...f, voice: e.target.value })} />
           </label>
-          <div className="grid gap-5 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <label className="block">
               <span className="text-sm font-medium">Always</span> <span className="text-[13px] text-muted">one per line</span>
               <textarea rows={4} className={box} value={f.do} onChange={(e) => setF({ ...f, do: e.target.value })} />
@@ -238,13 +238,13 @@ export default function BrandPage() {
       {!data ? (
         <Skeleton className="h-80" />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-12">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
           <section className="night rise-in flex flex-col justify-between rounded-[var(--radius-lg)] p-7 md:p-10 lg:col-span-7" aria-label="Voice">
             <p className="text-sm text-marker">The voice</p>
             <p className="mt-3 text-[34px] font-semibold leading-[1.05] tracking-[-0.035em] md:text-[46px]">
               {voice.join(", ").replace(/^\w/, (c) => c.toUpperCase())}.
             </p>
-            <dl className="mt-10 grid gap-5 sm:grid-cols-3">
+            <dl className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-3">
               {Object.entries(dna.signature_phrases ?? {}).map(([lang, phrases]) => (
                 <div key={lang} lang={lang}>
                   <dt className="text-[13px] text-white/50">{LANG_LABEL[lang] ?? lang}</dt>
@@ -347,7 +347,7 @@ export default function BrandPage() {
       {examples.length > 0 && (
         <section className="mt-16" aria-labelledby="ex-h">
           <SectionHeading id="ex-h" title="Sounds like this" sub="Counterpart matches these when it writes." />
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {examples.map((e, i) => (
               <figure key={i} className="rise-in rounded-[var(--radius-lg)] bg-surface p-6 shadow-[var(--shadow-soft)] ring-1 ring-line/80" style={stagger(i)} lang={e.lang}>
                 <figcaption className="text-[13px] text-muted">{LANG_LABEL[e.lang] ?? e.lang}</figcaption>
@@ -361,7 +361,7 @@ export default function BrandPage() {
 
       <section className="mt-16" aria-labelledby="learn-h">
         <SectionHeading id="learn-h" title="What Counterpart has learned" sub="From past campaigns and your edits. Rules apply to every new post." />
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {data?.learnings.map((m, i) => (
             <article key={m.id} className="rise-in flex gap-4 rounded-[var(--radius-lg)] bg-surface p-5 shadow-[var(--shadow-soft)] ring-1 ring-line/80" style={stagger(Math.min(i, 6))}>
               <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-lg)] ${m.kind === "brand_rule" ? "bg-ink text-marker" : "bg-pen-soft text-pen-ink"}`}>

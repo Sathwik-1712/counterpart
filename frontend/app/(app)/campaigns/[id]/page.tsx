@@ -29,7 +29,7 @@ function LoadingCampaign() {
       <Skeleton className="h-14 w-2/3" />
       <Skeleton className="h-5 w-1/2" />
       <Skeleton className="h-20" />
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <Skeleton className="aspect-square" />
         <Skeleton className="aspect-square" />
       </div>
@@ -140,7 +140,7 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
         </section>
       )}
 
-      <div className="grid gap-12 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid grid-cols-1 gap-12 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-16">
           {live.length > 0 && (
             <section id="results" aria-labelledby="results-h">
@@ -171,7 +171,7 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
 
           <section id="offer" aria-labelledby="offer-h">
             <SectionHeading id="offer-h" title="The offer" sub="Every post uses exactly this wording, in every language. Check it, then lock it." />
-            <div className="grid gap-8 md:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
               <FactsCard campaignId={id} versions={data.facts} onChange={reload} />
               <div className="space-y-4 text-[15px] text-ink-2">
                 <p>
@@ -232,7 +232,7 @@ export default function CampaignPage({ params }: { params: Promise<{ id: string 
                 {locked ? "Counterpart is writing the posts. Each one appears here once it passes its checks." : "Posts are written as soon as you lock the offer."}
               </Empty>
             ) : (
-              <div className="grid gap-6 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 {assets.map((a, i) => (
                   <AssetCard key={a.id} asset={a} i={i} facts={locked?.facts ?? []} business={business.name} onChange={reload} channels={channelStatus} />
                 ))}

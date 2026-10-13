@@ -210,7 +210,7 @@ function Tips({ tips, campaignId }: { tips: Analytics["tips"]; campaignId: strin
       <p className="flex items-center gap-2 text-[18px] font-bold">
         <Lightbulb size={20} weight="fill" className="text-pen" aria-hidden /> How to do better
       </p>
-      <ul className="mt-3 grid gap-3 md:grid-cols-2">
+      <ul className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
         {tips.map((t, i) => (
           <li key={t.kind + i} className={clsx("rise-in flex flex-col rounded-[var(--radius-md)] p-4 ring-1", t.priority <= 1 ? "bg-marker-soft ring-ink" : "bg-surface ring-line")} style={stagger(i)}>
             <p className="text-[16px] font-bold leading-snug">{t.title}</p>
@@ -260,7 +260,7 @@ function ChannelNumbers({ data, labels }: { data: Analytics; labels: Record<stri
   }
   const n = (x?: number) => (x == null ? "–" : x.toLocaleString("en-IN"));
   return (
-    <div className="grid gap-10 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
       {ig.length > 0 && (
         <div>
           <div className="flex items-center justify-between">
@@ -398,13 +398,13 @@ export function CampaignAnalytics({ campaignId, assets }: { campaignId: string; 
       <Funnel t={t} />
       <Tips tips={data.tips} campaignId={campaignId} />
 
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <Trend daily={data.daily.slice(-10)} />
         <Hours hours={data.hours} />
       </div>
 
       {t.scans > 0 && (
-        <div className="grid gap-8 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           <Breakdown title="By channel" dim="channel" rows={data.by.channel} />
           <Breakdown title="By language" dim="language" rows={data.by.language} />
           <Breakdown title="By audience" dim="segment" rows={data.by.segment} />

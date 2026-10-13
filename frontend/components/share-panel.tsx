@@ -129,7 +129,7 @@ function PostOnInstagram({ asset, channels }: { asset: Asset; channels: Channels
 export function SharePanel({ assets, rows, channels }: { assets: Asset[]; rows: ResultRow[]; channels?: ChannelsStatus | null }) {
   return (
     <div>
-      <ol className="mb-6 grid gap-px overflow-hidden rounded-[var(--radius-lg)] bg-ink ring-1 ring-ink md:grid-cols-3">
+      <ol className="mb-6 grid grid-cols-1 gap-px overflow-hidden rounded-[var(--radius-lg)] bg-ink ring-1 ring-ink md:grid-cols-3">
         {[
           ["Instagram", channels?.instagram
             ? `Post straight to ${channels.instagram.username}. The caption carries the post's code for the counter.`
@@ -153,7 +153,7 @@ export function SharePanel({ assets, rows, channels }: { assets: Asset[]; rows: 
           const Icon = CHANNEL_ICON[a.channel];
           if (!code) return null;
           return (
-            <li key={a.id} className="rise-in grid gap-4 py-5 md:grid-cols-[64px_minmax(0,1fr)_auto] md:items-center" style={stagger(i)}>
+            <li key={a.id} className="rise-in grid grid-cols-1 gap-4 py-5 md:grid-cols-[64px_minmax(0,1fr)_auto] md:items-center" style={stagger(i)}>
               <span className="relative hidden aspect-square w-16 overflow-hidden rounded-[var(--radius-sm)] bg-sunken md:block">
                 {a.image_url && a.channel !== "whatsapp" ? (
                   <img src={a.image_url} alt="" className="h-full w-full object-cover" />

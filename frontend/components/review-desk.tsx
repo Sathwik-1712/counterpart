@@ -37,7 +37,7 @@ export const needsReply = (r: ReviewRow) => !r.reply && ((r.rating ?? 5) <= 3 ||
 export function VisitSummary({ v, fixFirst }: { v: Visits; fixFirst: { theme: string; recent: number }[] }) {
   const top = Math.max(1, ...v.stars);
   return (
-    <div className="grid gap-6 rounded-[var(--radius-lg)] bg-surface p-5 ring-1 ring-ink md:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] md:p-7">
+    <div className="grid grid-cols-1 gap-6 rounded-[var(--radius-lg)] bg-surface p-5 ring-1 ring-ink md:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] md:p-7">
       <div>
         <p className="flex items-center gap-1.5 text-[13px] font-semibold text-muted">
           <SealCheck size={15} weight="fill" className="text-pen" aria-hidden /> Verified visits, 90 days

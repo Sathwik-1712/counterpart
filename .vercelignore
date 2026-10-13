@@ -1,0 +1,7 @@
+# Vercel only builds frontend/ (project root directory). Upload nothing else, and no local env files or builds.
+/*
+!/frontend
+/frontend/node_modules
+/frontend/.next
+/frontend/.env*
+!/frontend/.env.example

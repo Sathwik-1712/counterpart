@@ -19,7 +19,6 @@ from pathlib import Path
 import httpx
 
 ENV = Path(__file__).resolve().parents[1] / ".env"
-SUPABASE_URL = "https://owstnpcbfihxzmiiiznj.supabase.co"
 ALLOWED = {
     "SUPABASE_SERVICE_ROLE_KEY": "Supabase secret key (Dashboard > Project Settings > API Keys > Secret keys, sb_secret_...)",
     "GOOGLE_MAPS_API_KEY": "Google Maps Platform key with 'Places API (New)' enabled",
@@ -51,7 +50,9 @@ def _env_value(name: str) -> str | None:
 def check(name: str, value: str) -> str | None:
     """Returns a problem description, or None if the key works."""
     if name == "SUPABASE_SERVICE_ROLE_KEY":
-        base = _env_value("SUPABASE_URL") or SUPABASE_URL
+        base = _env_value("SUPABASE_URL")
+        if not base:
+            return "set SUPABASE_URL in backend/.env first (Dashboard > Project Settings > API > Project URL)"
         headers = {"apikey": value, **({"Authorization": f"Bearer {value}"} if value.startswith("eyJ") else {})}
         r = httpx.get(f"{base}/auth/v1/admin/users", params={"per_page": 1}, headers=headers, timeout=15)
         return None if r.status_code == 200 else f"Supabase said {r.status_code}; check you copied the secret key"

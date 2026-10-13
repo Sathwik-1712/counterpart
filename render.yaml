@@ -15,7 +15,7 @@ services:
       - key: AGNES_API_KEY
         sync: false
       - key: SUPABASE_URL
-        value: https://owstnpcbfihxzmiiiznj.supabase.co
+        sync: false
       - key: SUPABASE_PUBLISHABLE_KEY
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY

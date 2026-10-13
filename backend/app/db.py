@@ -29,6 +29,9 @@ async def open_pool(dsn: str, *, min_size: int = 1, max_size: int = 8) -> AsyncC
         max_size=max_size,
         kwargs={"row_factory": dict_row, "autocommit": False},
         configure=_configure,
+        # A laptop sleep or the Supabase pooler's idle timeout silently kills pooled connections; test each one as
+        # it is handed out and replace a dead one, instead of failing that request with a 500.
+        check=AsyncConnectionPool.check_connection,
         open=False,
     )
     await _pool.open(wait=True)
